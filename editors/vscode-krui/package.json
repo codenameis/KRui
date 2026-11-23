@@ -1,0 +1,102 @@
+{
+  "name": "vscode-krui",
+  "displayName": "KRui Live Preview",
+  "description": "Syntax highlighting, inline diagnostics, IME-aware interactive live preview, and jump-to-source for KRui (.krui/.css)",
+  "version": "0.1.0",
+  "publisher": "krui",
+  "license": "MIT OR Apache-2.0",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onLanguage:krui",
+    "onCommand:krui.openLivePreview"
+  ],
+  "main": "./src/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "krui",
+        "aliases": [
+          "KRui",
+          "krui"
+        ],
+        "extensions": [
+          ".krui"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "krui",
+        "scopeName": "source.krui",
+        "path": "./syntaxes/krui.tmLanguage.json",
+        "embeddedLanguages": {
+          "source.css": "css"
+        }
+      }
+    ],
+    "commands": [
+      {
+        "command": "krui.openLivePreview",
+        "title": "KRui: Open Live Preview",
+        "icon": "$(open-preview)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "krui.openLivePreview",
+        "key": "ctrl+shift+v",
+        "mac": "cmd+shift+v",
+        "when": "editorLangId == krui || resourceExtname == .css"
+      }
+    ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "krui.openLivePreview",
+          "when": "editorLangId == krui || resourceExtname == .css",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "KRui Live Preview",
+      "properties": {
+        "krui.cliPath": {
+          "type": "string",
+          "default": "",
+          "description": "Optional path to the `krui` CLI binary. When empty, tries `krui` on PATH and falls back to `cargo run -q -p krui-cli` in the workspace."
+        },
+        "krui.defaultTheme": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "fluent",
+            "material",
+            "liquid-glass",
+            "cosmic"
+          ],
+          "default": "auto",
+          "description": "Initial design system theme preset for new Live Preview panels (`auto` keeps each app's own default preset)."
+        },
+        "krui.defaultDeviceFrame": {
+          "type": "string",
+          "enum": [
+            "none",
+            "iphone-15",
+            "pixel-8",
+            "rpi-800x480"
+          ],
+          "default": "none",
+          "description": "Initial device bezel preset for new Live Preview panels."
+        }
+      }
+    }
+  }
+}

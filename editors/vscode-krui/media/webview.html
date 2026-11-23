@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'none'; style-src {{cspSource}} 'unsafe-inline'; script-src 'nonce-{{nonce}}';"
+  />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KRui Live Preview</title>
+  <link rel="stylesheet" href="{{cssUri}}" />
+</head>
+<body>
+  <header id="toolbar">
+    <span id="renderer-pill" class="pill">Connecting...</span>
+
+    <span class="toolbar-group">
+      <label class="ctrl-label" for="theme-select">Theme</label>
+      <select id="theme-select" title="Design system widget preset">
+        <option value="fluent">Fluent</option>
+        <option value="material">Material</option>
+        <option value="liquid-glass">Apple Glass</option>
+        <option value="cosmic">Cosmic (Fast)</option>
+      </select>
+    </span>
+
+    <span class="toolbar-group">
+      <label class="ctrl-label" for="frame-select">Frame</label>
+      <select id="frame-select" title="Viewport or device frame bezel">
+        <option value="none">Desktop (Panel Fit)</option>
+        <option value="iphone-15">iPhone 15</option>
+        <option value="pixel-8">Pixel 8</option>
+        <option value="rpi-800x480">RPi 800x480</option>
+      </select>
+    </span>
+
+    <span class="toolbar-group">
+      <button id="ov-relayout" class="tool-btn" type="button" title="Toggle relayout heat counter">Relayout</button>
+      <button id="ov-fps" class="tool-btn" type="button" title="Toggle frame timing overlay">FPS</button>
+      <button id="ov-hit" class="tool-btn" type="button" title="Toggle layout bounds hitboxes">Hit</button>
+    </span>
+
+    <span class="spacer"></span>
+
+    <span class="toolbar-group">
+      <button id="btn-inspect" class="tool-btn" type="button" title="Click any widget (or Alt+Click) to jump to .krui source">Inspect</button>
+      <button id="btn-restart" class="tool-btn" type="button" title="Remount preview tree">Restart</button>
+    </span>
+  </header>
+
+  <div id="banner-error" title="Click to jump to error line in source"></div>
+
+  <main id="stage" tabindex="0">
+    <canvas id="krui-canvas" width="900" height="600"></canvas>
+    <div id="loading-overlay" class="visible">
+      <div class="spinner"></div>
+      <div id="loading-text">Starting KRui Live Preview...</div>
+    </div>
+    <input
+      id="ime-bridge"
+      type="text"
+      autocomplete="off"
+      autocapitalize="off"
+      spellcheck="false"
+      aria-label="KRui IME Bridge"
+    />
+  </main>
+
+  <footer id="statusbar">
+    <span id="stat-size">--</span>
+    <span id="stat-perf">--</span>
+    <span id="stat-nodes">Nodes: --</span>
+    <span id="stat-reloads">Reloads: 0</span>
+    <span id="ime-badge">IME: Idle</span>
+  </footer>
+
+  <script nonce="{{nonce}}">
+    window.__KRUI_INIT__ = {
+      theme: "{{initialTheme}}",
+      deviceFrame: "{{initialFrame}}"
+    };
+  </script>
+  <script nonce="{{nonce}}" src="{{jsUri}}"></script>
+</body>
+</html>

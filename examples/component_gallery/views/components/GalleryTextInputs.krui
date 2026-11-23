@@ -1,0 +1,58 @@
+<div class="gallery-section">
+    <if test="{controller.active_doc_page == 16}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Search bars hold pill-shaped text input with a leading icon and optional clear button</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Search views present live-filtered catalog results as the user types with IME composition</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="gallery-col">
+                <SearchBar id="m3-catalog-searchbar" placeholder="컴포넌트 이름·카테고리 검색 (예: DatePicker, 캐러셀, 한국어)" value="{controller.search_query}" oninput="{controller.on_search_input_cmd}" show_clear="{controller.search_open}" on_clear="{controller.clear_search()}" />
+                <SearchView id="m3-catalog-searchview" open="{true}" title="M3 카탈로그 검색 결과 ({controller.search_query})">
+                    <List>
+                        <for each="{row in controller.search_results}" key="{row.id}">
+                            <ListItem headline="{row.name}" supporting="{row.summary}" trailing="{row.category}" onclick="{controller.open_search_item(row.category_idx)}" />
+                        </for>
+                        <empty>
+                            <span class="gallery-note">일치하는 컴포넌트가 없습니다.</span>
+                        </empty>
+                    </List>
+                </SearchView>
+            </div>
+        </div>
+
+    <else>
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Filled and Outlined text fields share two-way reactive bindings across views</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">OS-native Korean and Japanese IME composition stays anchored while password inputs suppress composition</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <TextField id="tf-name-filled" variant="filled" label="담당자 이름 (한국어 IME 테스트)" supporting="Filled · Outlined 입력칸이 동일 시그널을 공유합니다" error="{controller.name_error}" counter="{controller.name_counter}" bind_value="{controller.user_name_text}">
+                    <IconPerson slot="icon" class="m3-icon-sm" />
+                </TextField>
+                <TextField id="tf-name-outlined" variant="outlined" label="담당자 이름 미러 (Outlined)" placeholder="이름 입력" bind_value="{controller.user_name_text}" />
+                <TextField id="tf-password-outlined" variant="outlined" input_type="password" label="보안 액세스 토큰" supporting="데스크탑 비밀번호 필드는 OS IME 조합을 비활성화합니다" bind_value="{controller.password_text}">
+                    <IconLock slot="icon" class="m3-icon-sm" />
+                </TextField>
+                <div id="micl-floating-field" class="micl-textfield">
+                    <input id="micl-floating-input" type="text" placeholder="코드 또는 메모 입력" bind:value="{controller.micl_field_text}" />
+                    <span>MICL Outline Field (:focus-within &amp; :not(:placeholder-shown))</span>
+                </div>
+            </div>
+        </div>
+    </if>
+</div>

@@ -1,0 +1,10 @@
+[package]
+name = "krui-signals"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Fine-grained, glitch-free batched reactive signals and frame-clock animations for KRui"
+
+[dependencies]
+slotmap = { workspace = true }
+tokio = { workspace = true }

@@ -1,0 +1,118 @@
+<div id="m3-components-drawer" class="m3-doc-drawer">
+    <button id="drawer-page-0" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 0}" onclick="{controller.select_doc_page(0)}">
+        <span>Components overview</span>
+    </button>
+    <button id="drawer-page-1" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 1}" onclick="{controller.select_doc_page(1)}">
+        <span>App bars</span>
+    </button>
+    <button id="drawer-page-2" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 2}" onclick="{controller.select_doc_page(2)}">
+        <span>Badges</span>
+    </button>
+    <button id="drawer-page-3" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 3}" onclick="{controller.select_doc_page(3)}">
+        <span>Buttons</span>
+        <IconArrowDropDown class="m3-drawer-caret" />
+    </button>
+    <if test="{controller.active_doc_page == 3 || (controller.active_doc_page >= 25 && controller.active_doc_page <= 31)}">
+        <div class="m3-drawer-sub-group">
+            <button id="drawer-page-25" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 25}" onclick="{controller.select_doc_page(25)}"><span>Common buttons</span></button>
+            <button id="drawer-page-26" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 26}" onclick="{controller.select_doc_page(26)}"><span>Extended FAB</span></button>
+            <button id="drawer-page-27" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 27}" onclick="{controller.select_doc_page(27)}"><span>FAB</span></button>
+            <button id="drawer-page-28" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 28}" onclick="{controller.select_doc_page(28)}"><span>FAB menu</span></button>
+            <button id="drawer-page-29" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 29}" onclick="{controller.select_doc_page(29)}"><span>Icon buttons</span></button>
+            <button id="drawer-page-30" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 30}" onclick="{controller.select_doc_page(30)}"><span>Segmented buttons</span></button>
+            <button id="drawer-page-31" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 31}" onclick="{controller.select_doc_page(31)}"><span>Split buttons</span></button>
+        </div>
+    </if>
+    <button id="drawer-page-4" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 4}" onclick="{controller.select_doc_page(4)}">
+        <span>Cards</span>
+    </button>
+    <button id="drawer-page-5" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 5}" onclick="{controller.select_doc_page(5)}">
+        <span>Carousel</span>
+    </button>
+    <button id="drawer-page-6" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 6}" onclick="{controller.select_doc_page(6)}">
+        <span>Checkbox</span>
+    </button>
+    <button id="drawer-page-7" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 7}" onclick="{controller.select_doc_page(7)}">
+        <span>Chips</span>
+    </button>
+    <button id="drawer-page-8" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 8}" onclick="{controller.select_doc_page(8)}">
+        <span>Date &amp; time pickers</span>
+        <IconArrowDropDown class="m3-drawer-caret" />
+    </button>
+    <if test="{controller.active_doc_page == 8 || controller.active_doc_page == 32 || controller.active_doc_page == 33}">
+        <div class="m3-drawer-sub-group">
+            <button id="drawer-page-32" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 32}" onclick="{controller.select_doc_page(32)}"><span>Date pickers</span></button>
+            <button id="drawer-page-33" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 33}" onclick="{controller.select_doc_page(33)}"><span>Time pickers</span></button>
+        </div>
+    </if>
+    <button id="drawer-page-9" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 9}" onclick="{controller.select_doc_page(9)}">
+        <span>Dialogs</span>
+    </button>
+    <button id="drawer-page-10" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 10}" onclick="{controller.select_doc_page(10)}">
+        <span>Divider</span>
+    </button>
+    <button id="drawer-page-11" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 11}" onclick="{controller.select_doc_page(11)}">
+        <span>Lists</span>
+    </button>
+    <button id="drawer-page-12" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 12}" onclick="{controller.select_doc_page(12)}">
+        <span>Loading &amp; progress</span>
+        <IconArrowDropDown class="m3-drawer-caret" />
+    </button>
+    <if test="{controller.active_doc_page == 12 || controller.active_doc_page == 34 || controller.active_doc_page == 35}">
+        <div class="m3-drawer-sub-group">
+            <button id="drawer-page-34" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 34}" onclick="{controller.select_doc_page(34)}"><span>Loading indicator</span></button>
+            <button id="drawer-page-35" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 35}" onclick="{controller.select_doc_page(35)}"><span>Progress indicators</span></button>
+        </div>
+    </if>
+    <button id="drawer-page-13" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 13}" onclick="{controller.select_doc_page(13)}">
+        <span>Menus</span>
+    </button>
+    <button id="drawer-page-14" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 14}" onclick="{controller.select_doc_page(14)}">
+        <span>Navigation</span>
+        <IconArrowDropDown class="m3-drawer-caret" />
+    </button>
+    <if test="{controller.active_doc_page == 14 || (controller.active_doc_page >= 36 && controller.active_doc_page <= 38)}">
+        <div class="m3-drawer-sub-group">
+            <button id="drawer-page-36" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 36}" onclick="{controller.select_doc_page(36)}"><span>Navigation bar</span></button>
+            <button id="drawer-page-37" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 37}" onclick="{controller.select_doc_page(37)}"><span>Navigation drawer</span></button>
+            <button id="drawer-page-38" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 38}" onclick="{controller.select_doc_page(38)}"><span>Navigation rail</span></button>
+        </div>
+    </if>
+    <button id="drawer-page-15" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 15}" onclick="{controller.select_doc_page(15)}">
+        <span>Radio button</span>
+    </button>
+    <button id="drawer-page-16" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 16}" onclick="{controller.select_doc_page(16)}">
+        <span>Search</span>
+    </button>
+    <button id="drawer-page-17" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 17}" onclick="{controller.select_doc_page(17)}">
+        <span>Sheets</span>
+        <IconArrowDropDown class="m3-drawer-caret" />
+    </button>
+    <if test="{controller.active_doc_page == 17 || controller.active_doc_page == 39 || controller.active_doc_page == 40}">
+        <div class="m3-drawer-sub-group">
+            <button id="drawer-page-39" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 39}" onclick="{controller.select_doc_page(39)}"><span>Bottom sheets</span></button>
+            <button id="drawer-page-40" class="m3-drawer-sub-btn m3-drawer-sub-btn-{controller.active_doc_page == 40}" onclick="{controller.select_doc_page(40)}"><span>Side sheets</span></button>
+        </div>
+    </if>
+    <button id="drawer-page-18" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 18}" onclick="{controller.select_doc_page(18)}">
+        <span>Sliders</span>
+    </button>
+    <button id="drawer-page-19" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 19}" onclick="{controller.select_doc_page(19)}">
+        <span>Snackbar</span>
+    </button>
+    <button id="drawer-page-20" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 20}" onclick="{controller.select_doc_page(20)}">
+        <span>Switch</span>
+    </button>
+    <button id="drawer-page-21" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 21}" onclick="{controller.select_doc_page(21)}">
+        <span>Tabs</span>
+    </button>
+    <button id="drawer-page-22" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 22}" onclick="{controller.select_doc_page(22)}">
+        <span>Text fields</span>
+    </button>
+    <button id="drawer-page-23" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 23}" onclick="{controller.select_doc_page(23)}">
+        <span>Time pickers</span>
+    </button>
+    <button id="drawer-page-24" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 24}" onclick="{controller.select_doc_page(24)}">
+        <span>Tooltips</span>
+    </button>
+</div>

@@ -1,0 +1,16 @@
+[package]
+name = "krui-compiler"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Build-time HTML+CSS compiler, stylesheet collector, slot classifier, and DOM IR generator for KRui"
+
+[features]
+default = []
+preview = ["krui-style/preview", "dep:serde", "dep:postcard"]
+
+[dependencies]
+krui-style = { workspace = true }
+svgtypes = { workspace = true }
+serde = { workspace = true, optional = true }
+postcard = { workspace = true, optional = true }

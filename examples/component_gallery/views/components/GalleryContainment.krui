@@ -1,0 +1,243 @@
+<div class="gallery-section">
+    <if test="{controller.active_doc_page == 4}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Use cards to contain related elements</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Three variants: elevated, filled, outlined</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Contents can include anything from images to headlines, supporting text, buttons, and lists</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Can also contain other components</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Cards have flexible layouts and dimensions based on their contents</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-cards-trio-grid">
+                <div class="m3-cards-trio-col">
+                    <div id="demo-card-elevated" class="m3-doc-card md-card-elevated" onclick="{controller.select_list_item(0)}">
+                        <div class="m3-doc-card-top">
+                            <button class="m3-doc-card-more" onclick="{controller.record_action(1)}">
+                                <IconMoreVert class="m3-icon-sm" />
+                            </button>
+                        </div>
+                        <span class="m3-doc-card-label">Elevated</span>
+                    </div>
+                    <div class="m3-step-badge-wrap">
+                        <div class="m3-step-badge"><span>1</span></div>
+                    </div>
+                </div>
+
+                <div class="m3-cards-trio-col">
+                    <div id="demo-card-filled" class="m3-doc-card md-card-filled" onclick="{controller.select_list_item(1)}">
+                        <div class="m3-doc-card-top">
+                            <button class="m3-doc-card-more" onclick="{controller.record_action(1)}">
+                                <IconMoreVert class="m3-icon-sm" />
+                            </button>
+                        </div>
+                        <span class="m3-doc-card-label">Filled</span>
+                    </div>
+                    <div class="m3-step-badge-wrap">
+                        <div class="m3-step-badge"><span>2</span></div>
+                    </div>
+                </div>
+
+                <div class="m3-cards-trio-col">
+                    <div id="demo-card-outlined" class="m3-doc-card md-card-outlined" onclick="{controller.select_list_item(2)}">
+                        <div class="m3-doc-card-top">
+                            <button class="m3-doc-card-more" onclick="{controller.record_action(1)}">
+                                <IconMoreVert class="m3-icon-sm" />
+                            </button>
+                        </div>
+                        <span class="m3-doc-card-label">Outlined</span>
+                    </div>
+                    <div class="m3-step-badge-wrap">
+                        <div class="m3-step-badge"><span>3</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row">
+                <div class="m3-step-badge"><span>1</span></div>
+                <span class="m3-legend-text">Elevated card</span>
+            </div>
+            <div class="m3-legend-row">
+                <div class="m3-step-badge"><span>2</span></div>
+                <span class="m3-legend-text">Filled card</span>
+            </div>
+            <div class="m3-legend-row">
+                <div class="m3-step-badge"><span>3</span></div>
+                <span class="m3-legend-text">Outlined card</span>
+            </div>
+        </div>
+
+        <div class="micl-panel">
+            <div id="micl-selectable-card" class="micl-select-card">
+                <span class="gallery-note">MICL :has(input:checked) &amp; light-dark() Selectable Card</span>
+                <input id="micl-card-checkbox" type="checkbox" bind:checked="{controller.micl_card_checked}" />
+            </div>
+            <details id="micl-details-demo" class="micl-details" open="true">
+                <summary class="micl-summary">MICL Native &lt;details&gt; &amp; &lt;summary&gt;</summary>
+                <span class="gallery-note">@layer micl 토큰 + W3C 전방 호환 스타일시트가 무수정 적용됩니다.</span>
+            </details>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 5}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Carousels contain a browsable collection of items that enter and exit smoothly across edges</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Horizontal panning runs purely through transform translateX with zero Taffy layout recalculation</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <Carousel id="showcase-carousel" offset_px="{controller.carousel.offset_px}" title="테마 캐러셀 (0-relayout)" indicator="{controller.carousel.indicator_label}" on_prev="{controller.carousel.prev()}" on_next="{controller.carousel.next()}">
+                <CarouselItem class="carousel-demo-card" title="01. Material 3" subtitle="구글 M3 토큰·다이나믹 톤·물결" onclick="{controller.carousel.select(0)}" />
+                <CarouselItem class="carousel-demo-card" title="02. Tailwind v4" subtitle="Zinc & Indigo 유틸리티 토큰" onclick="{controller.carousel.select(1)}" />
+                <CarouselItem class="carousel-demo-card" title="03. Unstyled Base" subtitle="순수 CSS 캐스케이드 폴백 코어" onclick="{controller.carousel.select(2)}" />
+                <CarouselItem class="carousel-demo-card" title="04. 0-Relayout Switch" subtitle="Taffy 재배치 0회 런타임 전환" onclick="{controller.carousel.select(3)}" />
+            </Carousel>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 9}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Dialogs display important prompts that require user confirmation before continuing</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Rendered in KRui's Top-Layer scrim with 28dp rounded corners (--krui-dialog-radius)</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-col-center">
+                <div class="m3-stage-row-center">
+                    <Button id="open-dialog-btn" variant="filled" onclick="{controller.set_dialog_open(true)}">Open basic dialog</Button>
+                    <Button id="open-micl-dialog-btn" variant="tonal" onclick="{controller.toggle_micl_dialog()}">Toggle MICL &lt;dialog&gt;</Button>
+                </div>
+                <if test="{controller.micl_dialog_open}">
+                    <dialog id="micl-native-dialog" class="micl-dialog" open="true">
+                        <span>Pure HTML &lt;dialog&gt; styled by micl.css (@supports backdrop-filter)</span>
+                        <Button variant="text" onclick="{controller.toggle_micl_dialog()}">닫기</Button>
+                    </dialog>
+                </if>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 10}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Dividers are 1dp lines that visually group related items within lists and cards</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Supports full-bleed horizontal, inset horizontal, and vertical orientations</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <span class="gallery-note">Full-bleed divider</span>
+                <Divider />
+                <span class="gallery-note">Inset divider</span>
+                <Divider inset="{true}" />
+                <div class="gallery-row">
+                    <Button variant="text" onclick="{controller.record_action(0)}">Section A</Button>
+                    <Divider vertical="{true}" />
+                    <Button variant="text" onclick="{controller.record_action(1)}">Section B</Button>
+                </div>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 11}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Lists present a continuous vertical index of items with leading icons, supporting text, and trailing metadata</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <List id="containment-list">
+                    <ListItem headline="Material 3 디자인 토큰" supporting="999px 알약 버튼·12px 카드·포인터 좌표 물결" trailing="M3" selected="{controller.selected_list_idx == 0}" onclick="{controller.select_list_item(0)}">
+                        <span slot="leading">M</span>
+                    </ListItem>
+                    <ListItem headline="Tailwind v4 디자인 토큰" supporting="6px rounded-md 버튼·1px Zinc 링·물결 비활성" trailing="TW" selected="{controller.selected_list_idx == 1}" onclick="{controller.select_list_item(1)}">
+                        <span slot="leading">T</span>
+                    </ListItem>
+                    <ListItem headline="Unstyled 코어 베이스" supporting="레이아웃 치수 보존·외부 순수 CSS 덮어쓰기" trailing="CSS" selected="{controller.selected_list_idx == 2}" onclick="{controller.select_list_item(2)}">
+                        <span slot="leading">U</span>
+                    </ListItem>
+                </List>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 17}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Sheets present supplementary content or tools anchored to bottom or trailing edges</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Open either bottom sheet or side sheet overlays directly in KRui's Top-Layer</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Button id="open-bottom-sheet-btn" variant="tonal" onclick="{controller.set_bottom_sheet_open(true)}">Open bottom sheet</Button>
+                <Button id="open-side-sheet-btn" variant="outlined" onclick="{controller.set_side_sheet_open(true)}">Open side sheet</Button>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 39}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Bottom sheets anchor supplementary actions to the bottom viewport edge</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Button id="open-bottom-sheet-btn" variant="filled" onclick="{controller.set_bottom_sheet_open(true)}">Open bottom sheet</Button>
+            </div>
+        </div>
+
+    <else>
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Side sheets dock contextual panels and filters cleanly along the trailing edge</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Button id="open-side-sheet-btn" variant="filled" onclick="{controller.set_side_sheet_open(true)}">Open side sheet</Button>
+            </div>
+        </div>
+    </if>
+</div>

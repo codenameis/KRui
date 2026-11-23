@@ -1,0 +1,10 @@
+[package]
+name = "krui-a11y"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "AccessKit semantic tree integration, keyboard focus navigation, and secret-field masking for KRui"
+
+[dependencies]
+accesskit = { workspace = true }
+krui-layout = { workspace = true }

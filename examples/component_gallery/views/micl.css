@@ -1,0 +1,227 @@
+/* ==========================================================================
+ * KRui 토큰 팩(Material Design 3 / MICL 팔레트 참고)
+ * Semantic component patterns inspired by https://github.com/henkpb/micl
+ * ========================================================================== */
+@layer micl;
+
+:root {
+    --md-comp-card-bg: light-dark(#F7F2FA, #211F26);
+    --md-comp-card-selected-bg: light-dark(#EADDFF, #4F378B);
+    --md-comp-card-selected-fg: light-dark(#21005D, #EADDFF);
+    --md-comp-field-outline: light-dark(#79747E, #938F99);
+    --md-comp-field-surface: light-dark(#FFFFFF, #1D1B20);
+    --md-comp-accent-tint: color-mix(in oklch, oklch(0.55 0.18 292) 82%, white);
+}
+
+@keyframes micl-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@layer micl {
+    .micl-btn-group > button,
+    .micl-textfield > input {
+        -webkit-appearance: none;
+        appearance: none;
+    }
+}
+
+.micl-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background-color: var(--md-comp-card-bg);
+    border: 1px solid var(--md-comp-field-outline);
+}
+
+.micl-spinner-rot {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border-top: 4px solid var(--krui-accent);
+    border-right: 4px solid var(--krui-secondary-bg);
+    border-bottom: 4px solid transparent;
+    border-left: 4px solid var(--krui-accent);
+    animation: micl-spin 1100ms linear infinite;
+    will-change: transform, opacity;
+    touch-action: manipulation;
+}
+
+.micl-spinner-idle {
+    width: 40px;
+    height: 40px;
+    border-radius: 999px;
+    border: 4px solid var(--krui-border-subtle);
+}
+
+.micl-btn-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+}
+
+.micl-btn-group > button {
+    -webkit-appearance: none;
+    appearance: none;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    white-space: nowrap;
+    padding: 9px 18px;
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border: 1px solid var(--md-comp-field-outline);
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    will-change: transform;
+    touch-action: manipulation;
+    transition: border-radius 160ms cubic-bezier(0.2, 0, 0, 1), background-color 150ms linear;
+}
+
+.micl-btn-group > button:first-child {
+    border-radius: 20px 6px 6px 20px;
+}
+
+.micl-btn-group > button:last-child {
+    border-radius: 6px 20px 20px 6px;
+}
+
+.micl-btn-group > button + button {
+    border-left-width: 1px;
+}
+
+.micl-btn-group > button::before {
+    content: "";
+    position: absolute;
+    inset: 0px;
+    opacity: 0;
+    background-image: radial-gradient(circle at var(--krui-pointer-x, 50%) var(--krui-pointer-y, 50%), currentColor 10%, transparent 10.5%);
+    background-size: 1000%;
+    transition: background-size 480ms cubic-bezier(0.2, 0, 0, 1), opacity 560ms linear;
+}
+
+.micl-btn-group > button:hover::before {
+    opacity: 0.08;
+}
+
+.micl-btn-group > button:active {
+    border-radius: 16px;
+}
+
+.micl-btn-group > button:active::before {
+    background-size: 0%;
+    opacity: 0.20;
+    transition: 0s;
+}
+
+.micl-select-card {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background-color: var(--md-comp-card-bg);
+    color: var(--krui-text);
+    border: 1px solid var(--krui-border-subtle);
+    box-shadow: 0px 1px 3px 0px rgba(0, 0, 0, 0.14);
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), border-color 180ms linear;
+}
+
+.micl-select-card:has(input:checked) {
+    background-color: var(--md-comp-card-selected-bg);
+    color: var(--md-comp-card-selected-fg);
+    border: 2px solid var(--krui-accent);
+}
+
+.micl-textfield {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px 14px;
+    border-radius: 12px 12px 6px 6px;
+    background-color: var(--md-comp-field-surface);
+    border: 1px solid var(--md-comp-field-outline);
+    transition: border-color 150ms linear;
+}
+
+.micl-textfield:focus-within {
+    border: 2px solid var(--krui-accent);
+    outline-width: 2px;
+    outline-color: var(--md-comp-accent-tint);
+    outline-offset: 1px;
+}
+
+.micl-textfield > input {
+    -webkit-appearance: none;
+    appearance: none;
+    border: 0px solid transparent;
+    background-color: transparent;
+    color: var(--krui-text);
+    font-size: 14px;
+    padding: 2px 0px;
+}
+
+.micl-textfield > input:not(:placeholder-shown) + span {
+    color: var(--krui-accent);
+    font-weight: 700;
+}
+
+details.micl-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    background-color: var(--md-comp-card-bg);
+    border: 1px solid var(--krui-border-subtle);
+}
+
+summary.micl-summary {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--krui-heading-color);
+}
+
+dialog.micl-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 20px 24px;
+    border-radius: 28px;
+    background-color: var(--md-comp-card-bg);
+    color: var(--krui-text);
+    border: 1px solid var(--krui-border-subtle);
+    box-shadow: 0px 4px 12px 2px rgba(0, 0, 0, 0.22);
+}
+
+progress.micl-progress {
+    width: 220px;
+    height: 10px;
+    border-radius: 999px;
+    background-color: var(--krui-item-bg);
+    border: 1px solid var(--krui-accent);
+}
+
+@supports (backdrop-filter: blur(8px)) {
+    dialog.micl-dialog {
+        backdrop-filter: blur(8px);
+    }
+}
+
+@supports (not (grid-template-rows: subgrid)) {
+    .micl-subgrid-fallback {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+}

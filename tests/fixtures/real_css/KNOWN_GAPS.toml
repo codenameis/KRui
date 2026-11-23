@@ -1,0 +1,16 @@
+# Known CSS Conformance Gaps — Bidirectional Ratchet
+# Every failing property check must match an entry in `[[gap]]`.
+# Every `[[gap]]` entry must match at least one currently failing property check;
+# once an engine stage fixes a gap, `real_css_conformance` fails until that entry is removed.
+
+[[gap]]
+id = "container_query"
+stage = "BACKLOG"
+reason = "@container size queries against ancestor container-type: inline-size are not yet evaluated against laid-out container boxes"
+targets = ["probes.probe-container.rect_width", "probes.probe-container.background_color"]
+
+[[gap]]
+id = "css_filter"
+stage = "BACKLOG"
+reason = "CSS filter functions (invert/grayscale/blur on element subtree) are dropped rather than rendered via offscreen pass"
+targets = ["probes.probe-filter.filter_effect"]

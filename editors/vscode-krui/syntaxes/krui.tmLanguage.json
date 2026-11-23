@@ -1,0 +1,137 @@
+{
+  "name": "KRui",
+  "scopeName": "source.krui",
+  "fileTypes": [
+    "krui"
+  ],
+  "patterns": [
+    {
+      "include": "#comment"
+    },
+    {
+      "include": "#style-block"
+    },
+    {
+      "include": "#krui-expr"
+    },
+    {
+      "include": "#tag"
+    }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.block.html.krui",
+      "begin": "<!--",
+      "end": "-->"
+    },
+    "style-block": {
+      "begin": "(<)(style)\\b([^>]*)(>)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.krui"
+        },
+        "2": {
+          "name": "entity.name.tag.style.krui"
+        },
+        "4": {
+          "name": "punctuation.definition.tag.end.krui"
+        }
+      },
+      "end": "(</)(style)(>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.krui"
+        },
+        "2": {
+          "name": "entity.name.tag.style.krui"
+        },
+        "3": {
+          "name": "punctuation.definition.tag.end.krui"
+        }
+      },
+      "contentName": "source.css",
+      "patterns": [
+        {
+          "include": "source.css"
+        }
+      ]
+    },
+    "krui-expr": {
+      "name": "meta.embedded.expression.krui",
+      "begin": "\\{(?!\\{)",
+      "end": "\\}(?!\\})",
+      "patterns": [
+        {
+          "name": "keyword.operator.krui",
+          "match": "(&&|\\|\\||==|!=|<=|>=|!|<|>|\\+|\\-|\\*|/|::)"
+        },
+        {
+          "name": "constant.language.boolean.krui",
+          "match": "\\b(true|false|in)\\b"
+        },
+        {
+          "name": "constant.numeric.krui",
+          "match": "\\b[0-9]+(\\.[0-9]+)?\\b"
+        },
+        {
+          "name": "string.quoted.double.krui",
+          "match": "\"[^\"]*\""
+        },
+        {
+          "name": "variable.other.krui",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_]*\\b"
+        }
+      ]
+    },
+    "tag": {
+      "begin": "(</?)([A-Za-z][A-Za-z0-9_-]*)",
+      "beginCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.begin.krui"
+        },
+        "2": {
+          "patterns": [
+            {
+              "name": "keyword.control.flow.krui",
+              "match": "^(if|else-if|else|for|empty|slot)$"
+            },
+            {
+              "name": "support.class.component.krui",
+              "match": "^[A-Z][A-Za-z0-9_]*$"
+            },
+            {
+              "name": "entity.name.tag.krui",
+              "match": ".+"
+            }
+          ]
+        }
+      },
+      "end": "(/?>)",
+      "endCaptures": {
+        "1": {
+          "name": "punctuation.definition.tag.end.krui"
+        }
+      },
+      "patterns": [
+        {
+          "name": "entity.other.attribute-name.binding.krui",
+          "match": "\\b(?:bind:[A-Za-z_-]+|on:?[a-z]+)\\b"
+        },
+        {
+          "name": "entity.other.attribute-name.krui",
+          "match": "\\b[A-Za-z_][A-Za-z0-9_:-]*\\b"
+        },
+        {
+          "name": "string.quoted.double.attribute.krui",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "include": "#krui-expr"
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

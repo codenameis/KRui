@@ -1,0 +1,204 @@
+:root {
+  color-scheme: dark light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--vscode-font-family, system-ui, -apple-system, sans-serif);
+  font-size: 12px;
+  color: var(--vscode-editor-foreground, #e4e4e7);
+  background: var(--vscode-editor-background, #14161a);
+  user-select: none;
+}
+
+#toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  background: var(--vscode-sideBar-background, #1b1e24);
+}
+
+.toolbar-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.pill {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--vscode-badge-background, #2b303a);
+  color: var(--vscode-badge-foreground, #e4e4e7);
+  border: 1px solid var(--vscode-panel-border, rgba(255, 255, 255, 0.1));
+}
+
+label.ctrl-label {
+  font-size: 11px;
+  opacity: 0.78;
+}
+
+select,
+button.tool-btn {
+  height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-dropdown-border, rgba(128, 128, 128, 0.35));
+  background: var(--vscode-dropdown-background, #252932);
+  color: var(--vscode-dropdown-foreground, #f4f4f5);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+button.tool-btn:hover {
+  background: var(--vscode-toolbar-hoverBackground, #313744);
+}
+
+button.tool-btn.active {
+  background: var(--vscode-button-background, #0078d4);
+  color: var(--vscode-button-foreground, #ffffff);
+  border-color: var(--vscode-button-background, #0078d4);
+}
+
+#banner-error {
+  display: none;
+  padding: 7px 12px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  background: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-errorForeground, #ffd5d5);
+  border-bottom: 1px solid var(--vscode-inputValidation-errorBorder, #be1100);
+  cursor: pointer;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+#banner-error.visible {
+  display: block;
+}
+
+#stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  overflow: hidden;
+  outline: none;
+  background:
+    radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.08), transparent 48%),
+    radial-gradient(circle at 80% 80%, rgba(14, 165, 233, 0.07), transparent 48%),
+    var(--vscode-editor-background, #111317);
+}
+
+#krui-canvas {
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+  background: #0d1016;
+}
+
+#stage.inspecting #krui-canvas {
+  outline: 2px dashed #38bdf8;
+  cursor: crosshair !important;
+}
+
+#loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(16, 18, 24, 0.72);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+#loading-overlay.visible {
+  opacity: 1;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.18);
+  border-top-color: #38bdf8;
+  animation: krui-spin 0.8s linear infinite;
+}
+
+@keyframes krui-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+#loading-text {
+  font-size: 12px;
+  font-weight: 500;
+  color: #e4e4e7;
+}
+
+#ime-bridge {
+  position: fixed;
+  left: -9999px;
+  top: -9999px;
+  width: 2px;
+  height: 20px;
+  opacity: 0.001;
+  pointer-events: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  outline: none;
+  z-index: 20;
+}
+
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 10px;
+  font-size: 11px;
+  opacity: 0.85;
+  border-top: 1px solid var(--vscode-panel-border, rgba(128, 128, 128, 0.25));
+  background: var(--vscode-statusBar-background, #181b20);
+  color: var(--vscode-statusBar-foreground, #d4d4d8);
+}
+
+#ime-badge {
+  margin-left: auto;
+  font-weight: 600;
+}

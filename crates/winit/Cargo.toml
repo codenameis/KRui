@@ -1,0 +1,23 @@
+[package]
+name = "krui-winit"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Desktop winit window host, event loop, arboard clipboard, EngineSession, and live preview watcher for KRui"
+
+[features]
+default = []
+preview = ["dep:krui-preview", "krui-core/preview", "krui-style/preview"]
+
+[dependencies]
+krui-core = { workspace = true }
+krui-a11y = { workspace = true }
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+krui-renderer = { workspace = true }
+krui-preview = { workspace = true, optional = true }
+accesskit = { workspace = true }
+accesskit_winit = { workspace = true }
+arboard = { workspace = true }
+softbuffer = { workspace = true }
+winit = { workspace = true }

@@ -1,0 +1,288 @@
+<link rel="krui-preset" href="krui://preset/unstyled" />
+<link rel="stylesheet" href="themes/material.css" />
+<link rel="stylesheet" href="themes/tailwind.css" />
+<link rel="stylesheet" href="micl.css" />
+<link rel="stylesheet" href="styles/rail.css" />
+<link rel="stylesheet" href="styles/drawer.css" />
+<link rel="stylesheet" href="styles/doc_page.css" />
+<link rel="stylesheet" href="styles/toc.css" />
+<link rel="stylesheet" href="styles/home.css" />
+<link rel="stylesheet" href="styles/overview.css" />
+<link rel="stylesheet" href="component_gallery.css" />
+
+<div id="component-gallery-root" class="gallery-shell" data-theme="{controller.theme_slug}">
+    <div id="main-site-rail" class="m3-site-rail">
+        <div class="m3-rail-top">
+            <button id="global-search-trigger" class="m3-rail-search-btn" onclick="{controller.open_search_overlay()}">
+                <IconSearch />
+            </button>
+            <div class="m3-rail-group">
+                <button id="nav-sec-home" class="m3-rail-btn m3-rail-btn-{controller.active_section == 0}" onclick="{controller.select_section(0)}">
+                    <div id="rail-pill-0" class="m3-rail-pill m3-rail-pill-{controller.active_section == 0}">
+                        <if test="{controller.active_section == 0}">
+                            <IconHomeFill />
+                        <else>
+                            <IconHome />
+                        </if>
+                    </div>
+                    <span id="rail-label-0" class="m3-rail-label m3-rail-label-{controller.active_section == 0}">Home</span>
+                </button>
+                <button id="nav-sec-started" class="m3-rail-btn m3-rail-btn-{controller.active_section == 1}" onclick="{controller.select_section(1)}">
+                    <div id="rail-pill-1" class="m3-rail-pill m3-rail-pill-{controller.active_section == 1}">
+                        <if test="{controller.active_section == 1}">
+                            <IconAppsFill />
+                        <else>
+                            <IconApps />
+                        </if>
+                    </div>
+                    <span id="rail-label-1" class="m3-rail-label m3-rail-label-{controller.active_section == 1}">Get started</span>
+                </button>
+                <button id="nav-sec-develop" class="m3-rail-btn m3-rail-btn-{controller.active_section == 4}" onclick="{controller.select_section(4)}">
+                    <div id="rail-pill-4" class="m3-rail-pill m3-rail-pill-{controller.active_section == 4}">
+                        <if test="{controller.active_section == 4}">
+                            <IconCodeFill />
+                        <else>
+                            <IconCode />
+                        </if>
+                    </div>
+                    <span id="rail-label-4" class="m3-rail-label m3-rail-label-{controller.active_section == 4}">Develop</span>
+                </button>
+                <button id="nav-sec-foundations" class="m3-rail-btn m3-rail-btn-{controller.active_section == 5}" onclick="{controller.select_section(5)}">
+                    <div id="rail-pill-5" class="m3-rail-pill m3-rail-pill-{controller.active_section == 5}">
+                        <if test="{controller.active_section == 5}">
+                            <IconBookFill />
+                        <else>
+                            <IconBook />
+                        </if>
+                    </div>
+                    <span id="rail-label-5" class="m3-rail-label m3-rail-label-{controller.active_section == 5}">Foundations</span>
+                </button>
+                <button id="nav-sec-styles" class="m3-rail-btn m3-rail-btn-{controller.active_section == 2}" onclick="{controller.select_section(2)}">
+                    <div id="rail-pill-2" class="m3-rail-pill m3-rail-pill-{controller.active_section == 2}">
+                        <if test="{controller.active_section == 2}">
+                            <IconPaletteFill />
+                        <else>
+                            <IconPalette />
+                        </if>
+                    </div>
+                    <span id="rail-label-2" class="m3-rail-label m3-rail-label-{controller.active_section == 2}">Styles</span>
+                </button>
+                <button id="nav-sec-components" class="m3-rail-btn m3-rail-btn-{controller.active_section == 3}" onclick="{controller.select_section(3)}">
+                    <div id="rail-pill-3" class="m3-rail-pill m3-rail-pill-{controller.active_section == 3}">
+                        <if test="{controller.active_section == 3}">
+                            <IconAddCircleFill />
+                        <else>
+                            <IconAddCircle />
+                        </if>
+                    </div>
+                    <span id="rail-label-3" class="m3-rail-label m3-rail-label-{controller.active_section == 3}">Components</span>
+                </button>
+                <button id="nav-sec-blog" class="m3-rail-btn m3-rail-btn-{controller.active_section == 6}" onclick="{controller.select_section(6)}">
+                    <div id="rail-pill-6" class="m3-rail-pill m3-rail-pill-{controller.active_section == 6}">
+                        <if test="{controller.active_section == 6}">
+                            <IconPagesFill />
+                        <else>
+                            <IconPages />
+                        </if>
+                    </div>
+                    <span id="rail-label-6" class="m3-rail-label m3-rail-label-{controller.active_section == 6}">Blog</span>
+                </button>
+            </div>
+        </div>
+        <div class="m3-rail-bottom">
+            <button id="rail-motion-toggle" class="m3-rail-circle-btn" onclick="{controller.toggle_animations_paused()}">
+                <if test="{controller.animations_paused}">
+                    <IconPlayArrow />
+                <else>
+                    <IconPause />
+                </if>
+            </button>
+            <button id="rail-scheme-mode-btn" class="m3-scheme-pill" onclick="{controller.cycle_color_scheme_mode()}">
+                <span>{controller.color_scheme_label}</span>
+            </button>
+            <button id="rail-dark-toggle" class="m3-rail-circle-btn" onclick="{controller.toggle_dark_mode()}">
+                <if test="{controller.dark_mode}">
+                    <IconLightMode />
+                <else>
+                    <IconDarkMode />
+                </if>
+            </button>
+        </div>
+    </div>
+
+    <if test="{controller.active_section == 3}">
+        <GalleryDrawer />
+    </if>
+
+    <main class="m3-doc-viewport">
+        <if test="{controller.active_section == 3 && controller.active_doc_page > 0}">
+            <div id="m3-doc-header" class="m3-doc-page-header">
+                <h1 id="m3-doc-title" class="m3-doc-page-title">{controller.doc_title}</h1>
+                <span id="m3-doc-summary" class="m3-doc-page-summary">{controller.doc_summary}</span>
+            </div>
+            <div id="m3-doc-tabs" class="md-pill-tab-bar">
+                <button id="doc-tab-0" class="md-pill-tab md-pill-tab-active-{controller.active_doc_tab == 0}" onclick="{controller.set_doc_tab(0)}">
+                    <if test="{controller.active_doc_tab == 0}">
+                        <IconInfoFill />
+                    <else>
+                        <IconInfo />
+                    </if>
+                    <span id="doc-tab-label-0">Overview</span>
+                </button>
+                <button id="doc-tab-1" class="md-pill-tab md-pill-tab-active-{controller.active_doc_tab == 1}" onclick="{controller.set_doc_tab(1)}">
+                    <if test="{controller.active_doc_tab == 1}">
+                        <IconStyleFill />
+                    <else>
+                        <IconStyle />
+                    </if>
+                    <span id="doc-tab-label-1">Specs</span>
+                </button>
+                <button id="doc-tab-2" class="md-pill-tab md-pill-tab-active-{controller.active_doc_tab == 2}" onclick="{controller.set_doc_tab(2)}">
+                    <if test="{controller.active_doc_tab == 2}">
+                        <IconDesignServicesFill />
+                    <else>
+                        <IconDesignServices />
+                    </if>
+                    <span id="doc-tab-label-2">Guidelines</span>
+                </button>
+                <button id="doc-tab-3" class="md-pill-tab md-pill-tab-active-{controller.active_doc_tab == 3}" onclick="{controller.set_doc_tab(3)}">
+                    <if test="{controller.active_doc_tab == 3}">
+                        <IconAccessibilityNewFill />
+                    <else>
+                        <IconAccessibilityNew />
+                    </if>
+                    <span id="doc-tab-label-3">Accessibility</span>
+                </button>
+            </div>
+        </if>
+
+        <div class="m3-doc-canvas">
+            <div class="m3-doc-main-col">
+                <if test="{controller.active_section == 0}">
+                    <GalleryHome />
+                <else-if test="{controller.active_section == 1}">
+                    <GalleryGetStarted />
+                <else-if test="{controller.active_section == 2}">
+                    <GalleryStyles />
+                <else-if test="{controller.active_section == 4}">
+                    <Card variant="elevated" title="Develop · Debug-Only Live Preview &amp; Zero Release Parser" subtitle="프로덕션 바이너리에서 파서 완전 분리 · Debug 전용 핫리로드">
+                        <div class="gallery-col">
+                            <span class="m3-hero-sub">krui!/include_krui! 매크로는 컴파일 타임에 `.krui`/`.css`를 네이티브 Rust 코드로 컴파일합니다.</span>
+                            <span class="m3-hero-sub">실행 중 스타일·마크업 패치는 `cfg!(debug_assertions)` 가드 하에서만 허용되며 `themes/material.css` · `themes/tailwind.css` 순수 CSS 테마팩을 그대로 교체·이식할 수 있습니다.</span>
+                            <div class="gallery-row">
+                                <Button variant="filled" onclick="{controller.select_section(3)}">Components 보기</Button>
+                                <Button variant="outlined" onclick="{controller.open_search_overlay()}">전체 카탈로그 검색</Button>
+                            </div>
+                        </div>
+                    </Card>
+                <else-if test="{controller.active_section == 5}">
+                    <Card variant="elevated" title="Foundations · Zero-Relayout Motion &amp; Native IME" subtitle="W3C cubic-bezier &amp; linear() easing · OS 조합 창 위치 추적">
+                        <div class="gallery-col">
+                            <span class="m3-hero-sub">transform, opacity, background-color, box-shadow 전환은 Taffy 재계산 0회로 컴포지터에서 120Hz 보간됩니다.</span>
+                            <span class="m3-hero-sub">한국어·일본어·영어 IME 조합 상태는 `ime_target`이 소유하여 포커스 전환 중에도 조합 글자를 유실하지 않습니다.</span>
+                            <div class="gallery-row">
+                                <Button variant="filled" onclick="{controller.select_category(5)}">IME 입력 데모</Button>
+                                <Button variant="tonal" onclick="{controller.toggle_animations_paused()}">모션 일시정지 토글</Button>
+                            </div>
+                        </div>
+                    </Card>
+                <else-if test="{controller.active_section == 6}">
+                    <Card variant="elevated" title="Blog &amp; Releases · Material 3 &amp; Tailwind v4 Pure CSS" subtitle="Material 3 · Tailwind v4 순수 CSS 테마 스위칭">
+                        <div class="gallery-col">
+                            <span class="m3-hero-sub">공식 Material Design 3 토큰(`--md-sys-*`)과 Tailwind v4(`--krui-*`) 테마팩이 하나의 무스타일(`krui://preset/unstyled`) 코어 위에서 순수 CSS만으로 전환됩니다.</span>
+                            <div class="gallery-row">
+                                <Button variant="filled" onclick="{controller.select_doc_page(4)}">Cards Overview 바로가기</Button>
+                            </div>
+                        </div>
+                    </Card>
+                <else>
+                    <if test="{controller.active_doc_page == 0}">
+                        <GalleryComponentsOverview />
+                    <else>
+                        <if test="{controller.active_doc_tab == 0}">
+                            <if test="{controller.active_category == 0}">
+                                <GalleryActions />
+                            <else-if test="{controller.active_category == 1}">
+                                <GalleryCommunication />
+                            <else-if test="{controller.active_category == 2}">
+                                <GalleryContainment />
+                            <else-if test="{controller.active_category == 3}">
+                                <GalleryNavigation />
+                            <else-if test="{controller.active_category == 4}">
+                                <GallerySelection />
+                            <else>
+                                <GalleryTextInputs />
+                            </if>
+                        <else-if test="{controller.active_doc_tab == 1}">
+                            <Card variant="elevated" title="{controller.doc_title} · M3 Design Token Specs" subtitle="{controller.theme_shape_spec}">
+                                <div class="gallery-col">
+                                    <span class="m3-hero-sub">{controller.doc_spec_note}</span>
+                                    <span class="m3-hero-sub">Active theme preset ({controller.theme_name}): shared KRui UI controls cascade --krui-* and --md-sys-* tokens purely via CSS ([data-theme]).</span>
+                                    <div class="gallery-row">
+                                        <Button variant="filled" onclick="{controller.set_doc_tab(0)}">Overview</Button>
+                                    </div>
+                                </div>
+                            </Card>
+                        <else-if test="{controller.active_doc_tab == 2}">
+                            <Card variant="outlined" title="{controller.doc_title} · Guidelines &amp; Resources" subtitle="{controller.doc_summary}">
+                                <div class="gallery-col">
+                                    <span class="m3-hero-sub">{controller.doc_guideline_note}</span>
+                                    <span class="m3-hero-sub">Availability: Works identically across Material 3 and Tailwind v4 pure CSS theme packs via cascade (switchable with F5-F6).</span>
+                                    <div class="gallery-row">
+                                        <Button variant="tonal" onclick="{controller.set_doc_tab(0)}">Overview</Button>
+                                    </div>
+                                </div>
+                            </Card>
+                        <else>
+                            <Card variant="outlined" title="{controller.doc_title} · Accessibility &amp; IME" subtitle="AccessKit 역할 · Focus Ring · Reduced Motion · OS 네이티브 IME">
+                                <div class="gallery-col">
+                                    <span class="m3-hero-sub">{controller.doc_a11y_note}</span>
+                                    <span class="m3-hero-sub">Theme motion pause toggle calls ViewTree::set_animations_paused globally across active compositor transitions.</span>
+                                    <div class="gallery-row">
+                                        <Button variant="filled" onclick="{controller.set_doc_tab(0)}">Overview</Button>
+                                    </div>
+                                </div>
+                            </Card>
+                        </if>
+                    </if>
+                </if>
+            </div>
+
+            <div id="m3-doc-toc" class="m3-doc-toc">
+                <span class="m3-toc-eyebrow">Theme pack (F5-F6)</span>
+                <div class="m3-theme-mini-grid">
+                    <button id="toc-theme-material" class="m3-theme-pill m3-theme-pill-{controller.theme_index == 0}" onclick="{controller.select_theme(0)}">Material 3 (M3)</button>
+                    <button id="toc-theme-tailwind" class="m3-theme-pill m3-theme-pill-{controller.theme_index == 1}" onclick="{controller.select_theme(1)}">Tailwind v4 (TW)</button>
+                </div>
+                <span id="m3-toc-overline" class="m3-toc-eyebrow">On this page</span>
+                <if test="{controller.active_section == 3}">
+                    <if test="{controller.active_doc_page == 0}">
+                        <button class="m3-toc-link" onclick="{controller.select_doc_page(3)}">Buttons</button>
+                        <button class="m3-toc-link" onclick="{controller.select_doc_page(8)}">Date &amp; time pickers</button>
+                        <button class="m3-toc-link" onclick="{controller.select_doc_page(12)}">Loading &amp; progress</button>
+                        <button class="m3-toc-link" onclick="{controller.select_doc_page(14)}">Navigation</button>
+                        <button class="m3-toc-link" onclick="{controller.select_doc_page(17)}">Sheets</button>
+                    <else>
+                        <button class="m3-toc-link" onclick="{controller.set_doc_tab(0)}">Overview</button>
+                        <button class="m3-toc-link" onclick="{controller.set_doc_tab(1)}">Token specs</button>
+                        <button class="m3-toc-link" onclick="{controller.set_doc_tab(2)}">Availability &amp; resources</button>
+                        <button class="m3-toc-link" onclick="{controller.set_doc_tab(3)}">Accessibility &amp; IME</button>
+                    </if>
+                <else>
+                    <button class="m3-toc-link" onclick="{controller.select_section(1)}">Get started</button>
+                    <button class="m3-toc-link" onclick="{controller.select_section(2)}">Styles &amp; tokens</button>
+                    <button class="m3-toc-link" onclick="{controller.select_section(3)}">Components</button>
+                </if>
+            </div>
+        </div>
+    </main>
+
+    <nav id="compact-bottom-nav" class="m3-compact-bottom-bar">
+        <button id="compact-nav-home" class="m3-compact-nav-btn" onclick="{controller.select_section(0)}">Home</button>
+        <button id="compact-nav-styles" class="m3-compact-nav-btn" onclick="{controller.select_section(2)}">Styles</button>
+        <button id="compact-nav-components" class="m3-compact-nav-btn" onclick="{controller.select_section(3)}">Components</button>
+        <button id="compact-nav-search" class="m3-compact-nav-btn" onclick="{controller.open_search_overlay()}">Search</button>
+    </nav>
+
+    <GalleryOverlays />
+</div>

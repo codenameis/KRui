@@ -1,0 +1,219 @@
+/* ==========================================================================
+ * [KRUI SYSTEM PRESET — UNSTYLED BROWSER UA BASELINE]
+ * Loaded at User-Agent origin when `unstyled: true`. Uses `:root` defaults and
+ * `var(--krui-*, fallback)` so author `[data-theme]` overrides always cascade cleanly.
+ * Applies block display only to explicit block container tags rather than `*`.
+ * ========================================================================== */
+
+:root {
+    --krui-bg: #ffffff;
+    --krui-surface: #ffffff;
+    --krui-card: #ffffff;
+    --krui-item-bg: #f4f4f5;
+    --krui-border: #cccccc;
+    --krui-border-subtle: #e5e5e5;
+    --krui-text: #000000;
+    --krui-text-secondary: #757575;
+    --krui-text-muted: #777777;
+    --krui-accent: #2563eb;
+    --krui-accent-hover: #1d4ed8;
+    --krui-accent-active: #1e40af;
+    --krui-accent-border: #2563eb;
+    --krui-accent-fg: #ffffff;
+    --krui-secondary-bg: #f4f4f5;
+    --krui-secondary-fg: #111827;
+    --krui-secondary-border: #d4d4d8;
+    --krui-tertiary-bg: #e0f2fe;
+    --krui-tertiary-fg: #0c4a6e;
+    --krui-tertiary-border: #7dd3fc;
+    --krui-danger-bg: #dc2626;
+    --krui-danger-fg: #ffffff;
+    --krui-danger-border: #dc2626;
+    --krui-overlay-bg: rgba(0, 0, 0, 0.1);
+    --krui-disabled-bg: #f4f4f5;
+    --krui-disabled-fg: #9ca3af;
+    --krui-disabled-border: #e5e7eb;
+    --krui-ime-preedit: #2563eb;
+    --krui-ime-target-bg: rgba(37, 99, 235, 0.20);
+    --krui-caret: #000000;
+    --krui-selection-bg: rgba(37, 99, 235, 0.20);
+    --krui-selection-border: #2563eb;
+    --krui-radius: 0px;
+    --krui-radius-lg: 0px;
+    --krui-border-width: 1px;
+    --krui-font-family: sans-serif;
+    --krui-backdrop-blur: 0px;
+    --krui-shadow: none;
+    --krui-btn-radius: 0px;
+    --krui-input-radius: 0px;
+    --krui-card-radius: 0px;
+    --krui-state-hover-overlay: rgba(0, 0, 0, 0.00);
+    --krui-state-focus-overlay: rgba(0, 0, 0, 0.00);
+    --krui-state-pressed-overlay: rgba(0, 0, 0, 0.00);
+    --krui-input-bg: #ffffff;
+    --krui-input-hover-bg: #ffffff;
+    --krui-input-focus-bg: #ffffff;
+    --krui-input-border: #cccccc;
+    --krui-input-bottom-border: #767676;
+    --krui-input-focus-bottom-color: #2563eb;
+    --krui-input-focus-bottom-width: 2px;
+    --krui-focus-ring-color: #2563eb;
+    --krui-focus-ring-width: 2px;
+    --krui-focus-ring-offset: 1px;
+    --krui-heading-color: #000000;
+    --krui-fab-radius: 0px;
+    --krui-chip-radius: 0px;
+    --krui-dialog-radius: 0px;
+    --krui-sheet-radius: 0px;
+    --krui-nav-indicator-radius: 0px;
+    --krui-pill-radius: 999px;
+    --krui-badge-bg: #dc2626;
+    --krui-badge-fg: #ffffff;
+    --krui-snackbar-bg: #1f2937;
+    --krui-snackbar-fg: #ffffff;
+    --krui-tooltip-bg: #1f2937;
+    --krui-tooltip-fg: #ffffff;
+}
+
+html, body, div, section, header, footer, main, nav, aside, article,
+hgroup, address, search, dialog, details, summary, menu, form, fieldset,
+legend, p, h1, h2, h3, h4, h5, h6, ul, ol, li, dl, dt, dd, figure,
+figcaption, blockquote, pre, table, thead, tbody, tfoot, hr {
+    display: block;
+}
+
+head, style {
+    display: none;
+}
+
+span, b, strong, em, i, small, mark, sub, sup, kbd, samp, var, u, s,
+q, cite, dfn, abbr, time, data, output, code, a, label, wbr {
+    display: inline;
+}
+
+button {
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    text-align: center;
+}
+
+input, select {
+    display: inline-block;
+    padding: 2px 4px;
+    border: 1px solid var(--krui-input-border, #cccccc);
+}
+
+select {
+    padding-right: 24px;
+}
+
+textarea {
+    display: inline-block;
+    flex-direction: column;
+    padding: 2px 4px;
+    border: 1px solid var(--krui-input-border, #cccccc);
+}
+
+input[type="checkbox"], input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    padding: 3px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--krui-input-bottom-border, #767676);
+    background-color: var(--krui-input-bg, #ffffff);
+}
+
+input[type="checkbox"] {
+    border-radius: 3px;
+}
+
+input[type="checkbox"]:checked {
+    background-color: var(--krui-accent, #2563eb);
+    border-color: var(--krui-accent, #2563eb);
+    color: var(--krui-accent-fg, #ffffff);
+}
+
+input[type="radio"] {
+    border-radius: 999px;
+    padding: 4px;
+}
+
+input[type="range"] {
+    min-width: 120px;
+    min-height: 24px;
+    padding: 0px;
+    border-width: 0px;
+    border-style: none;
+    background-color: transparent;
+}
+
+tr {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+th, td {
+    display: block;
+    flex-grow: 1;
+}
+
+th, b, strong {
+    font-weight: 700;
+}
+
+h1 {
+    font-size: 32px;
+    font-weight: 700;
+}
+
+h2 {
+    font-size: 24px;
+    font-weight: 700;
+}
+
+h3 {
+    font-size: 18.72px;
+    font-weight: 700;
+}
+
+h4 {
+    font-size: 16px;
+    font-weight: 700;
+}
+
+h5 {
+    font-size: 13.28px;
+    font-weight: 700;
+}
+
+h6 {
+    font-size: 10.72px;
+    font-weight: 700;
+}
+
+small, sub, sup {
+    font-size: 13.333px;
+}
+
+code, pre, kbd, samp {
+    font-family: monospace;
+}
+
+hr {
+    display: block;
+    width: 100%;
+    height: 0px;
+    border-top: 1px solid var(--krui-border-subtle, #cccccc);
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--krui-text-secondary, #757575);
+    opacity: 1;
+}
+
+dialog::backdrop {
+    background-color: var(--krui-overlay-bg, rgba(0, 0, 0, 0.1));
+}

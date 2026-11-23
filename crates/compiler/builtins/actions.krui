@@ -1,0 +1,334 @@
+<style>
+.krui-ui-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 18px;
+    border-radius: var(--krui-btn-radius);
+    font-size: 13px;
+    font-weight: 600;
+    text-box: trim-both cap alphabetic;
+    border: 0px solid transparent;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-btn-filled {
+    background-color: var(--krui-accent);
+    color: var(--krui-accent-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-btn-filled:hover {
+    background-color: var(--krui-accent-hover);
+}
+.krui-ui-btn-filled:active {
+    background-color: var(--krui-accent-active);
+}
+.krui-ui-btn-elevated {
+    background-color: var(--krui-card);
+    color: var(--krui-accent-border);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+}
+.krui-ui-btn-elevated:hover, .krui-ui-btn-tonal:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-btn-elevated:active, .krui-ui-btn-tonal:active {
+    background-image: linear-gradient(var(--krui-state-pressed-overlay), var(--krui-state-pressed-overlay));
+}
+.krui-ui-btn-tonal {
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-btn-outlined {
+    background-color: transparent;
+    color: var(--krui-text);
+    border: 1px solid var(--krui-border);
+}
+.krui-ui-btn-text {
+    background-color: transparent;
+    color: var(--krui-accent-border);
+    border: 0px solid transparent;
+    padding: 9px 12px;
+}
+.krui-ui-btn-outlined:hover, .krui-ui-btn-text:hover {
+    background-color: var(--krui-state-hover-overlay);
+}
+.krui-ui-btn-outlined:active, .krui-ui-btn-text:active {
+    background-color: var(--krui-state-pressed-overlay);
+}
+.krui-ui-btn:disabled {
+    background-color: var(--krui-disabled-bg);
+    color: var(--krui-disabled-fg);
+    border-color: var(--krui-disabled-border);
+}
+
+.krui-ui-icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0px;
+    border-radius: var(--krui-pill-radius);
+    font-size: 16px;
+    font-weight: 600;
+    text-box: trim-both cap alphabetic;
+    border: 0px solid transparent;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-icon-btn:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-icon-btn:active {
+    background-image: linear-gradient(var(--krui-state-pressed-overlay), var(--krui-state-pressed-overlay));
+}
+.krui-ui-icon-btn-standard {
+    background-color: transparent;
+    color: var(--krui-text-secondary);
+    border: 0px solid transparent;
+}
+.krui-ui-icon-btn-filled {
+    background-color: var(--krui-accent);
+    color: var(--krui-accent-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-icon-btn-tonal {
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-icon-btn-outlined {
+    background-color: transparent;
+    color: var(--krui-text);
+    border: 1px solid var(--krui-border);
+}
+.krui-ui-icon-btn.krui-ui-selected-true {
+    background-color: var(--krui-accent);
+    color: var(--krui-accent-fg);
+    border: 0px solid transparent;
+}
+
+.krui-ui-seg-group {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--krui-surface);
+    border: 1px solid var(--krui-border);
+    border-radius: var(--krui-pill-radius);
+    padding: 3px;
+    gap: 3px;
+}
+.krui-ui-seg-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 14px;
+    border-radius: var(--krui-pill-radius);
+    border: 0px solid transparent;
+    background-color: transparent;
+    color: var(--krui-text-secondary);
+    font-size: 12px;
+    font-weight: 600;
+    text-box: trim-both cap alphabetic;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-seg-item:hover {
+    background-color: var(--krui-state-hover-overlay);
+}
+.krui-ui-seg-item.krui-ui-selected-true {
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border: 0px solid transparent;
+}
+
+.krui-ui-split-wrap {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    gap: 6px;
+}
+.krui-ui-split-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 2px;
+}
+.krui-ui-split-lead {
+    border-radius: 20px 4px 4px 20px;
+}
+.krui-ui-split-drop {
+    min-width: 40px;
+    padding: 8px 10px;
+    border-radius: 4px 20px 20px 4px;
+}
+.krui-ui-split-arrow {
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+}
+.krui-ui-split-menu {
+    display: flex;
+    flex-direction: column;
+    z-index: 40;
+    gap: 4px;
+    padding: 6px;
+    background-color: var(--krui-card);
+    border: 0px solid transparent;
+    border-radius: var(--krui-radius);
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+
+.krui-ui-fab {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: var(--krui-fab-radius);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+    font-weight: 700;
+    text-box: trim-both cap alphabetic;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-fab:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-fab:active {
+    background-image: linear-gradient(var(--krui-state-pressed-overlay), var(--krui-state-pressed-overlay));
+}
+.krui-ui-fab-size-sm { width: 40px; height: 40px; border-radius: 12px; padding: 0px; font-size: 16px; }
+.krui-ui-fab-size-md { width: 56px; height: 56px; border-radius: 16px; padding: 0px; font-size: 20px; }
+.krui-ui-fab-size-lg { width: 96px; height: 96px; border-radius: 28px; padding: 0px; font-size: 24px; --md-icon-size: 36px; }
+.krui-ui-fab-extended {
+    min-height: 56px;
+    padding: 12px 20px;
+    gap: 12px;
+    font-size: 14px;
+}
+.krui-ui-fab-primary {
+    background-color: var(--krui-accent);
+    color: var(--krui-accent-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-fab-surface {
+    background-color: var(--krui-card);
+    color: var(--krui-accent-border);
+    border: 0px solid transparent;
+}
+.krui-ui-fab-secondary {
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-fab-tertiary {
+    background-color: var(--krui-tertiary-bg);
+    color: var(--krui-tertiary-fg);
+    border: 0px solid transparent;
+}
+
+.krui-ui-fab-menu {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    position: relative;
+    gap: 8px;
+}
+.krui-ui-fab-menu-items {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    z-index: 45;
+    gap: 6px;
+}
+.krui-ui-fab-menu-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--krui-fab-radius);
+    background-color: var(--krui-card);
+    color: var(--krui-text);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    font-size: 12px;
+    font-weight: 600;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 200ms cubic-bezier(0.2, 0, 0, 1), transform 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-fab-menu-item:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+</style>
+
+<template name="Button" variant="filled" btn_type="button" disabled="{false}" onclick="" id="" class="" title="">
+    <button type="{btn_type}" id="{id}" class="krui-ui-btn krui-ui-btn-{variant} {class}" title="{title}" disabled="{disabled}" onclick="{onclick}"><slot/></button>
+</template>
+
+<template name="IconButton" variant="standard" selected="{false}" disabled="{false}" label="" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-icon-btn krui-ui-icon-btn-{variant} krui-ui-selected-{selected} {class}" aria-label="{label}" title="{title}" disabled="{disabled}" onclick="{onclick}"><slot/></button>
+</template>
+
+<template name="SegmentedButton" id="" class="">
+    <div id="{id}" class="krui-ui-seg-group {class}"><slot/></div>
+</template>
+
+<template name="SegmentItem" selected="{false}" disabled="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-seg-item krui-ui-selected-{selected} {class}" title="{title}" disabled="{disabled}" onclick="{onclick}"><slot/></button>
+</template>
+
+<template name="SplitButton" label="" variant="filled" leading_icon="" disabled="{false}" menu_open="{false}" menu_label="메뉴 열기" onclick="" on_menu_click="" id="" class="" title="">
+    <div id="{id}" class="krui-ui-split-wrap {class}">
+        <div class="krui-ui-split-row">
+            <button type="button" class="krui-ui-btn krui-ui-btn-{variant} krui-ui-split-lead" title="{title}" disabled="{disabled}" onclick="{onclick}">
+                <slot name="icon"/>
+                <if test="{leading_icon != ''}"><span>{leading_icon}</span></if>
+                <span>{label}</span>
+            </button>
+            <button type="button" class="krui-ui-btn krui-ui-btn-{variant} krui-ui-split-drop" aria-label="{menu_label}" disabled="{disabled}" onclick="{on_menu_click}">
+                <slot name="trailing_icon"><svg class="krui-ui-split-arrow" width="20" height="20" viewBox="0 -960 960 960" fill="currentColor"><path d="M480-360 280-559h400L480-360Z"/></svg></slot>
+            </button>
+        </div>
+        <if test="{menu_open}">
+            <div class="krui-ui-split-menu"><slot/></div>
+        </if>
+    </div>
+</template>
+
+<template name="Fab" variant="primary" size="md" icon="" disabled="{false}" label="" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-fab krui-ui-fab-{variant} krui-ui-fab-size-{size} {class}" aria-label="{label}" title="{title}" disabled="{disabled}" onclick="{onclick}">
+        <slot name="icon"/>
+        <if test="{icon != ''}"><span>{icon}</span></if>
+        <slot/>
+    </button>
+</template>
+
+<template name="ExtendedFab" variant="primary" icon="" label="" disabled="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-fab krui-ui-fab-extended krui-ui-fab-{variant} {class}" title="{title}" disabled="{disabled}" onclick="{onclick}">
+        <slot name="icon"/>
+        <if test="{icon != ''}"><span>{icon}</span></if>
+        <span>{label}<slot/></span>
+    </button>
+</template>
+
+<template name="FabMenu" open="{false}" id="" class="">
+    <div id="{id}" class="krui-ui-fab-menu {class}">
+        <if test="{open}">
+            <div class="krui-ui-fab-menu-items"><slot/></div>
+        </if>
+        <slot name="trigger"/>
+    </div>
+</template>
+
+<template name="FabMenuItem" label="" icon="" disabled="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-fab-menu-item {class}" title="{title}" disabled="{disabled}" onclick="{onclick}">
+        <slot name="icon"/>
+        <if test="{icon != ''}"><span>{icon}</span></if>
+        <span>{label}<slot/></span>
+    </button>
+</template>

@@ -1,0 +1,18 @@
+[package]
+name = "krui-renderer"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Dual wgpu + tiny-skia rendering engine, lyon 2D canvas tessellator, and 3D/VR-AR extensibility hooks for KRui"
+
+[dependencies]
+krui-core = { workspace = true }
+krui-style = { workspace = true }
+krui-layout = { workspace = true }
+krui-text = { workspace = true }
+bytemuck = { workspace = true }
+lyon_tessellation = { workspace = true }
+lyon_path = { workspace = true }
+tiny-skia = { workspace = true }
+wgpu = { workspace = true }
+pollster = { workspace = true }

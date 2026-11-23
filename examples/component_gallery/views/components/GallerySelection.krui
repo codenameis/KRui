@@ -1,0 +1,154 @@
+<div class="gallery-section">
+    <if test="{controller.active_doc_page == 6}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Checkboxes allow users to select zero, one, or multiple items independently</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <CheckboxField id="chk-auto-save" label="자동 저장" supporting="편집 시 프리뷰 상태 유지" bind_checked="{controller.chk_auto_save}" />
+                <CheckboxField id="chk-analytics" label="익명 진단 로그" bind_checked="{controller.chk_analytics}" />
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 7}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Chips handle four distinct patterns: Assist, Filter, Input (removable), and Suggestion</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Chip variant="assist" label="도움말 칩" onclick="{controller.record_action(0)}">
+                    <IconLightbulb slot="icon" class="m3-icon-sm" />
+                </Chip>
+                <Chip variant="filter" label="접근성" selected="{controller.chip_filter_a11y}" onclick="{controller.toggle_chip_a11y()}">
+                    <IconCheck slot="icon" class="m3-icon-sm" />
+                </Chip>
+                <Chip variant="filter" label="IME 지원" selected="{controller.chip_filter_ime}" onclick="{controller.toggle_chip_ime()}">
+                    <IconTranslate slot="icon" class="m3-icon-sm" />
+                </Chip>
+                <if test="{controller.chip_input_visible}">
+                    <Chip variant="input" label="제거 가능 칩" removable="{true}" onclick="{controller.restore_input_chip()}" on_remove="{controller.remove_input_chip()}" />
+                <else>
+                    <Button variant="text" onclick="{controller.restore_input_chip()}">입력 칩 복구</Button>
+                </if>
+                <Chip variant="suggestion" label="Material 추천" onclick="{controller.select_theme(0)}" />
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 8}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Date and time pickers combine leap-year calendar selection with 12H/24H clock input</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-duo-grid">
+                <DatePicker id="gallery-date-picker" title="출시 예정일 선택 (윤년 지원)" headline="{controller.date_picker.headline}" month_label="{controller.date_picker.month_label}" selected_label="{controller.picker_summary}" iso_value="{controller.date_picker.iso_input}" on_prev_month="{controller.date_picker.prev_month()}" on_next_month="{controller.date_picker.next_month()}" on_iso_input="{controller.date_picker.on_iso_input_cmd}" on_confirm="{controller.confirm_date_picker()}" on_cancel="{controller.cancel_date_picker()}">
+                    <for each="{cell in controller.date_picker.cells}" key="{cell.index}">
+                        <button type="button" class="cal-day cal-in-{cell.in_month} cal-sel-{cell.is_selected}" onclick="{controller.date_picker.select_cell(cell.index)}">{cell.label}</button>
+                    </for>
+                </DatePicker>
+                <TimePicker id="gallery-time-picker" title="배포 알림 시각 ({controller.time_picker.formatted_label})" hour_text="{controller.time_picker.hour_text}" minute_text="{controller.time_picker.minute_text}" period_text="{controller.time_picker.period_text}" is_pm="{controller.time_picker.is_pm}" is_24h="{controller.time_picker.is_24h}" hm_value="{controller.time_picker.hm_value}" on_hour_inc="{controller.time_picker.inc_hour()}" on_hour_dec="{controller.time_picker.dec_hour()}" on_min_inc="{controller.time_picker.inc_minute()}" on_min_dec="{controller.time_picker.dec_minute()}" on_set_am="{controller.time_picker.set_am()}" on_set_pm="{controller.time_picker.set_pm()}" on_toggle_mode="{controller.time_picker.toggle_24h()}" on_hm_input="{controller.time_picker.on_hm_input_cmd}">
+                    <div class="gallery-row">
+                        <Chip variant="suggestion" label="09:00" onclick="{controller.time_picker.select_preset(9, 0)}" />
+                        <Chip variant="suggestion" label="14:30" onclick="{controller.time_picker.select_preset(14, 30)}" />
+                        <Chip variant="suggestion" label="18:45" onclick="{controller.time_picker.select_preset(18, 45)}" />
+                    </div>
+                </TimePicker>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 32}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Date pickers support month stepping, leap-year calendar validation, and direct ISO input</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <DatePicker id="gallery-date-picker" title="출시 예정일 선택 (윤년 지원)" headline="{controller.date_picker.headline}" month_label="{controller.date_picker.month_label}" selected_label="{controller.picker_summary}" iso_value="{controller.date_picker.iso_input}" on_prev_month="{controller.date_picker.prev_month()}" on_next_month="{controller.date_picker.next_month()}" on_iso_input="{controller.date_picker.on_iso_input_cmd}" on_confirm="{controller.confirm_date_picker()}" on_cancel="{controller.cancel_date_picker()}">
+                <for each="{cell in controller.date_picker.cells}" key="{cell.index}">
+                    <button type="button" class="cal-day cal-in-{cell.in_month} cal-sel-{cell.is_selected}" onclick="{controller.date_picker.select_cell(cell.index)}">{cell.label}</button>
+                </for>
+            </DatePicker>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 15}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Radio buttons select one mutually exclusive option from a clear list of choices</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <RadioField id="radio-plan-free" label="Standard" group="gallery_plan" value="free" bind_checked="{controller.plan_free}" />
+                <RadioField id="radio-plan-pro" label="Pro (권장)" group="gallery_plan" value="pro" bind_checked="{controller.plan_pro}" />
+                <RadioField id="radio-plan-ent" label="Enterprise" group="gallery_plan" value="enterprise" bind_checked="{controller.plan_ent}" />
+                <SelectField id="select-region-field" label="배포 리전" supporting="현재 리전 코드: {controller.select_region}" bind_value="{controller.select_region}">
+                    <option value="kr">서울 (ap-northeast-2)</option>
+                    <option value="jp">도쿄 (ap-northeast-1)</option>
+                    <option value="us">오리건 (us-west-2)</option>
+                </SelectField>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 18}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Sliders adjust a continuous or discrete numeric value along a track</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <SliderField id="slider-master-vol" label="마스터 볼륨" value_text="{controller.slider_label}" min="0" max="100" step="5" bind_value="{controller.slider_pct}" />
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 20}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Switches toggle a single item on or off immediately without separate save actions</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-surface-box">
+                <Switch id="switch-dark-mode" label="고대비 미리보기" checked="{controller.switch_dark}" onclick="{controller.toggle_switch_dark()}" />
+                <Switch id="switch-haptic-mode" label="입력 포커스 하이라이트" checked="{controller.switch_haptic}" onclick="{controller.toggle_switch_haptic()}" />
+            </div>
+        </div>
+
+    <else>
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Time pickers let users choose hours, minutes, and AM/PM or 24H modes seamlessly</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <TimePicker id="gallery-time-picker" title="배포 알림 시각 ({controller.time_picker.formatted_label})" hour_text="{controller.time_picker.hour_text}" minute_text="{controller.time_picker.minute_text}" period_text="{controller.time_picker.period_text}" is_pm="{controller.time_picker.is_pm}" is_24h="{controller.time_picker.is_24h}" hm_value="{controller.time_picker.hm_value}" on_hour_inc="{controller.time_picker.inc_hour()}" on_hour_dec="{controller.time_picker.dec_hour()}" on_min_inc="{controller.time_picker.inc_minute()}" on_min_dec="{controller.time_picker.dec_minute()}" on_set_am="{controller.time_picker.set_am()}" on_set_pm="{controller.time_picker.set_pm()}" on_toggle_mode="{controller.time_picker.toggle_24h()}" on_hm_input="{controller.time_picker.on_hm_input_cmd}">
+                <div class="gallery-row">
+                    <Chip variant="suggestion" label="09:00" onclick="{controller.time_picker.select_preset(9, 0)}" />
+                    <Chip variant="suggestion" label="14:30" onclick="{controller.time_picker.select_preset(14, 30)}" />
+                    <Chip variant="suggestion" label="18:45" onclick="{controller.time_picker.select_preset(18, 45)}" />
+                </div>
+            </TimePicker>
+        </div>
+    </if>
+</div>

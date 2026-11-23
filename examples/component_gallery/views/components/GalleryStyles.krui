@@ -1,0 +1,58 @@
+<div class="gallery-section">
+    <Card variant="filled" title="Styles · Color, Shape, Typography & Elevation" subtitle="활성 테마: {controller.theme_name} ({controller.theme_shape_spec})">
+        <span>테마 스위처나 아래 칩을 누르면 모든 색상 스와치, 모서리 반경(Shape), 그림자·물결 효과가 0-relayout으로 즉시 전환됩니다.</span>
+        <div slot="actions" class="gallery-row">
+            <Chip variant="filter" label="Material 3" selected="{controller.theme_index == 0}" onclick="{controller.select_theme(0)}" />
+            <Chip variant="filter" label="Tailwind v4" selected="{controller.theme_index == 1}" onclick="{controller.select_theme(1)}" />
+        </div>
+    </Card>
+
+    <Card variant="elevated" title="Color System Tokens (--krui-*)" subtitle="테마별 Primary · Secondary · Tertiary · Error · Surface 역할 매핑">
+        <div class="m3-swatch-grid">
+            <div class="m3-swatch m3-swatch-primary">
+                <span class="m3-swatch-title">Primary (--krui-accent)</span>
+                <span class="m3-swatch-desc">On-Primary: --krui-accent-fg</span>
+            </div>
+            <div class="m3-swatch m3-swatch-secondary">
+                <span class="m3-swatch-title">Secondary Container</span>
+                <span class="m3-swatch-desc">--krui-secondary-bg / fg</span>
+            </div>
+            <div class="m3-swatch m3-swatch-tertiary">
+                <span class="m3-swatch-title">Tertiary Container</span>
+                <span class="m3-swatch-desc">--krui-tertiary-bg / fg</span>
+            </div>
+            <div class="m3-swatch m3-swatch-danger">
+                <span class="m3-swatch-title">Error / Danger</span>
+                <span class="m3-swatch-desc">--krui-danger-bg / fg</span>
+            </div>
+            <div class="m3-swatch m3-swatch-surface">
+                <span class="m3-swatch-title">Surface Container</span>
+                <span class="m3-swatch-desc">--krui-surface / border</span>
+            </div>
+            <div class="m3-swatch m3-swatch-card">
+                <span class="m3-swatch-title">Card Container High</span>
+                <span class="m3-swatch-desc">--krui-card / shadow</span>
+            </div>
+        </div>
+    </Card>
+
+    <div class="gallery-grid-2">
+        <Card variant="outlined" title="Shape Scale Tokens" subtitle="디자인 시스템별 모서리 둥글기 계층">
+            <div class="m3-swatch-grid">
+                <div class="m3-shape-box m3-shape-btn"><span>Button Radius (--krui-btn-radius)</span></div>
+                <div class="m3-shape-box m3-shape-chip"><span>Chip Radius (--krui-chip-radius)</span></div>
+                <div class="m3-shape-box m3-shape-card"><span>Card Radius (--krui-card-radius)</span></div>
+                <div class="m3-shape-box m3-shape-dialog"><span>Dialog / Sheet (--krui-dialog-radius)</span></div>
+            </div>
+        </Card>
+
+        <Card variant="outlined" title="Typography & Motion Scale" subtitle="Display · Title · Body · Transform2D Fast-Path">
+            <div class="gallery-col">
+                <span class="m3-type-display">Display · KRui 한국어 UI 가독성</span>
+                <span class="m3-type-title">Title · 선언형 M3 디자인 스펙 동기화</span>
+                <span class="m3-type-body">Body · `--krui-font-family` 스택과 `inherits_text_color` 런타임 상속이 버튼/카드 내부 텍스트까지 일관되게 전달됩니다.</span>
+                <span class="gallery-note">Caption · Material 3 (999px pill · pointer ripple) / Tailwind v4 (6px rounded-md · 1px ring)</span>
+            </div>
+        </Card>
+    </div>
+</div>

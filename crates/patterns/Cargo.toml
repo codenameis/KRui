@@ -1,0 +1,16 @@
+[package]
+name = "krui-patterns"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "KRui — Compile-time type-safe MVVM, MVC, MVI, and Flux/Elm architectural patterns"
+
+[features]
+default = []
+preview = ["krui-core/preview", "krui-macros/preview"]
+
+[dependencies]
+krui-signals = { workspace = true }
+krui-core = { workspace = true }
+krui-macros = { workspace = true }
+tokio = { workspace = true }

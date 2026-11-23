@@ -1,0 +1,228 @@
+/* ==========================================================================
+ * KRui 토큰 팩(Tailwind CSS v4 Zinc/Indigo 팔레트 참고) — Light / Dark
+ * Loaded alongside `krui://preset/unstyled` via `[data-theme="tailwind"]`.
+ * Maintains exact box-model metrics (`border-width`, `font-family`, spacing,
+ * typescale, icon sizes) so Material <-> Tailwind switches with 0 relayouts.
+ * ========================================================================== */
+
+[data-theme="tailwind"] {
+    color-scheme: light dark;
+
+    /* Site Surface Roles Mapped to Zinc/Indigo Palette */
+    --md-site-rail-bg: light-dark(#f4f4f5, #18181b);
+    --md-site-hero-bg: light-dark(#f4f4f5, #18181b);
+    --md-site-hero-fg: light-dark(#09090b, #fafafa);
+    --md-site-search-fab-bg: light-dark(#eef2ff, #312e81);
+    --md-site-search-fab-fg: light-dark(#3730a3, #e0e7ff);
+    --md-site-active-pill-bg: light-dark(#e0e7ff, #312e81);
+    --md-site-active-pill-fg: light-dark(#1e1b4b, #e0e7ff);
+    --md-site-inactive-fg: light-dark(#52525b, #a1a1aa);
+    --md-site-toc-link-fg: light-dark(#4f46e5, #818cf8);
+
+    /* Typescale Parity (`reference/README.md` — 0-relayout invariant) */
+    --md-sys-typescale-hero-size: 88px;
+    --md-sys-typescale-hero-line-height: 96px;
+    --md-sys-typescale-display-medium-size: 45px;
+    --md-sys-typescale-display-small-size: 36px;
+    --md-sys-typescale-headline-small-size: 24px;
+    --md-sys-typescale-title-large-size: 22px;
+    --md-sys-typescale-title-large-line-height: 30px;
+    --md-sys-typescale-title-medium-size: 16px;
+    --md-sys-typescale-title-medium-line-height: 24px;
+    --md-sys-typescale-title-small-size: 14px;
+    --md-sys-typescale-title-small-line-height: 20px;
+    --md-sys-typescale-body-large-size: 16px;
+    --md-sys-typescale-body-medium-size: 14px;
+    --md-sys-typescale-body-small-size: 12px;
+    --md-sys-typescale-label-large-size: 14px;
+    --md-sys-typescale-label-medium-size: 12px;
+    --md-sys-typescale-label-medium-line-height: 16px;
+    --md-sys-typescale-label-small-size: 11px;
+    --md-sys-typescale-label-small-line-height: 16px;
+
+    /* Tailwind Crisp Shape Corner Scale (pure compositor Fast-Path) */
+    --md-sys-shape-corner-extra-small: 4px;
+    --md-sys-shape-corner-small: 6px;
+    --md-sys-shape-corner-medium: 12px;
+    --md-sys-shape-corner-large: 12px;
+    --md-sys-shape-corner-large-increased: 12px;
+    --md-sys-shape-corner-extra-large: 12px;
+    --md-sys-shape-corner-dialog: 12px;
+    --md-sys-shape-corner-tabbar: 8px;
+    --md-sys-shape-corner-full: 999px;
+
+    /* Icon & Site Chrome Dimensions (identical to Material for 0-relayout switch) */
+    --md-icon-size: 24px;
+    --md-icon-size-sm: 18px;
+    --md-icon-size-lg: 36px;
+    --md-site-rail-width: 88px;
+    --md-site-rail-width-compact: 76px;
+    --md-site-rail-padding-y: 20px;
+    --md-site-rail-padding-x: 4px;
+    --md-site-search-fab-size: 56px;
+    --md-site-rail-item-width: 80px;
+    --md-site-rail-item-height: 60px;
+    --md-site-rail-item-gap: 12px;
+    --md-site-rail-pill-width: 56px;
+    --md-site-rail-pill-height: 32px;
+    --md-site-rail-pill-gap: 4px;
+    --md-site-rail-label-width: 76px;
+    --md-site-rail-toggle-size: 48px;
+    --md-site-scheme-pill-width: 64px;
+    --md-site-scheme-pill-height: 28px;
+    --md-site-drawer-width: 240px;
+    --md-site-drawer-width-compact: 196px;
+    --md-site-drawer-padding: 8px;
+    --md-site-drawer-item-height: 44px;
+    --md-site-drawer-item-px: 16px;
+    --md-site-drawer-sub-indent: 12px;
+    --md-site-viewport-padding: 16px;
+    --md-site-header-padding: 56px;
+    --md-site-header-title-gap: 16px;
+    --md-site-tabbar-height: 80px;
+    --md-site-tab-px: 24px;
+    --md-site-tab-gap: 8px;
+    --md-site-toc-width: 196px;
+    --md-site-toc-item-height: 40px;
+    --md-site-toc-item-px: 16px;
+    --md-site-theme-pill-height: 36px;
+    --md-site-stage-padding: 32px;
+    --md-site-step-badge-size: 28px;
+
+    /* Tailwind Zinc & Indigo System Tokens (`--krui-*`) */
+    --krui-bg: light-dark(#ffffff, #09090b);
+    --krui-surface: light-dark(#fafafa, #18181b);
+    --krui-card: light-dark(#ffffff, #18181b);
+    --krui-item-bg: light-dark(#f4f4f5, #27272a);
+    --krui-border: light-dark(#d4d4d8, #3f3f46);
+    --krui-border-subtle: light-dark(#e4e4e7, #27272a);
+    --krui-text: light-dark(#09090b, #fafafa);
+    --krui-text-secondary: light-dark(#52525b, #a1a1aa);
+    --krui-text-muted: light-dark(#71717a, #71717a);
+    --krui-heading-color: light-dark(#09090b, #fafafa);
+
+    --krui-accent: light-dark(#4f46e5, #818cf8);
+    --krui-accent-hover: light-dark(#4338ca, #a5b4fc);
+    --krui-accent-active: light-dark(#3730a3, #6366f1);
+    --krui-accent-border: light-dark(#4f46e5, #818cf8);
+    --krui-accent-fg: light-dark(#ffffff, #09090b);
+
+    --krui-secondary-bg: light-dark(#eef2ff, #1e1b4b);
+    --krui-secondary-fg: light-dark(#3730a3, #c7d2fe);
+    --krui-secondary-border: light-dark(#c7d2fe, #312e81);
+
+    --krui-tertiary-bg: light-dark(#ecfdf5, #022c22);
+    --krui-tertiary-fg: light-dark(#065f46, #6ee7b7);
+    --krui-tertiary-border: light-dark(#a7f3d0, #064e3b);
+
+    --krui-danger-bg: light-dark(#dc2626, #f87171);
+    --krui-danger-fg: light-dark(#ffffff, #450a0a);
+    --krui-danger-border: light-dark(#dc2626, #f87171);
+
+    --krui-overlay-bg: light-dark(rgba(9, 9, 11, 0.45), rgba(0, 0, 0, 0.78));
+    --krui-disabled-bg: light-dark(#f4f4f5, #27272a);
+    --krui-disabled-fg: light-dark(#a1a1aa, #71717a);
+    --krui-disabled-border: light-dark(#e4e4e7, #27272a);
+
+    --krui-ime-preedit: light-dark(#4f46e5, #818cf8);
+    --krui-ime-target-bg: light-dark(rgba(79, 70, 229, 0.18), rgba(129, 140, 248, 0.25));
+    --krui-caret: light-dark(#4f46e5, #818cf8);
+    --krui-selection-bg: light-dark(rgba(79, 70, 229, 0.20), rgba(129, 140, 248, 0.26));
+    --krui-selection-border: light-dark(rgba(79, 70, 229, 0.55), rgba(129, 140, 248, 0.65));
+
+    --krui-radius: 6px;
+    --krui-radius-lg: 8px;
+    --krui-btn-radius: 6px;
+    --krui-input-radius: 6px;
+    --krui-card-radius: 12px;
+    --krui-fab-radius: 12px;
+    --krui-chip-radius: 6px;
+    --krui-dialog-radius: 12px;
+    --krui-sheet-radius: 12px;
+    --krui-nav-indicator-radius: 6px;
+    --krui-pill-radius: 999px;
+
+    /* Layout-invariant tokens shared across Material <-> Tailwind for 0-relayout switch */
+    --krui-border-width: 1px;
+    --krui-font-family: "Roboto", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    --krui-backdrop-blur: 0px;
+    --krui-input-focus-bottom-width: 2px;
+    --krui-focus-ring-width: 2px;
+    --krui-focus-ring-offset: 2px;
+
+    /* Tailwind Ring + Shadow via `box-shadow` (0 layout impact) */
+    --krui-shadow: 0px 0px 0px 1px light-dark(rgba(9, 9, 11, 0.08), rgba(255, 255, 255, 0.10));
+
+    --krui-state-hover-overlay: light-dark(rgba(9, 9, 11, 0.05), rgba(250, 250, 250, 0.06));
+    --krui-state-focus-overlay: light-dark(rgba(79, 70, 229, 0.08), rgba(129, 140, 248, 0.10));
+    --krui-state-pressed-overlay: light-dark(rgba(9, 9, 11, 0.10), rgba(250, 250, 250, 0.12));
+
+    --krui-input-bg: light-dark(#ffffff, #09090b);
+    --krui-input-hover-bg: light-dark(#fafafa, #18181b);
+    --krui-input-focus-bg: light-dark(#ffffff, #09090b);
+    --krui-input-border: light-dark(#d4d4d8, #3f3f46);
+    --krui-input-bottom-border: light-dark(#a1a1aa, #52525b);
+    --krui-input-focus-bottom-color: light-dark(#4f46e5, #818cf8);
+    --krui-focus-ring-color: light-dark(#4f46e5, #818cf8);
+
+    --krui-badge-bg: light-dark(#dc2626, #ef4444);
+    --krui-badge-fg: #ffffff;
+    --krui-snackbar-bg: light-dark(#18181b, #fafafa);
+    --krui-snackbar-fg: light-dark(#fafafa, #09090b);
+    --krui-tooltip-bg: light-dark(#18181b, #27272a);
+    --krui-tooltip-fg: #fafafa;
+}
+
+/* Multi-layer Tailwind Ring + Elevation (`shadow-sm`) */
+[data-theme="tailwind"] .md-card-elevated,
+[data-theme="tailwind"] .krui-ui-card-elevated {
+    box-shadow: 0px 0px 0px 1px rgba(9, 9, 11, 0.08), 0px 1px 2px 0px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="tailwind"] .micl-panel,
+[data-theme="tailwind"] .micl-select-card,
+[data-theme="tailwind"] .micl-textfield,
+[data-theme="tailwind"] details.micl-details {
+    background-color: var(--krui-card);
+    border-color: var(--krui-border-subtle);
+    border-radius: var(--krui-card-radius);
+}
+
+[data-theme="tailwind"] .micl-select-card:has(input:checked) {
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border-color: var(--krui-accent);
+}
+
+[data-theme="tailwind"] .md-pill-tab-bar {
+    border-radius: var(--md-sys-shape-corner-tabbar);
+}
+
+[data-theme="tailwind"] .md-pill-tab {
+    border-radius: var(--md-sys-shape-corner-tabbar);
+}
+
+/* Disable M3 Ink Ripple in Tailwind Mode (Zero Relayout) */
+[data-theme="tailwind"] .krui-ui-btn:hover,
+[data-theme="tailwind"] .krui-ui-fab:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+
+[data-theme="tailwind"] .krui-ui-btn:active,
+[data-theme="tailwind"] .krui-ui-fab:active {
+    background-image: linear-gradient(var(--krui-state-pressed-overlay), var(--krui-state-pressed-overlay));
+}
+
+[data-theme="tailwind"] .krui-ui-btn::before,
+[data-theme="tailwind"] .krui-ui-btn:hover::before,
+[data-theme="tailwind"] .krui-ui-btn:active::before,
+[data-theme="tailwind"] .krui-ui-fab::before,
+[data-theme="tailwind"] .krui-ui-fab:hover::before,
+[data-theme="tailwind"] .krui-ui-fab:active::before,
+[data-theme="tailwind"] .micl-btn-group > button::before,
+[data-theme="tailwind"] .micl-btn-group > button:hover::before,
+[data-theme="tailwind"] .micl-btn-group > button:active::before {
+    opacity: 0;
+    background-image: none;
+    transition: 0s;
+}

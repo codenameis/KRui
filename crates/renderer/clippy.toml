@@ -1,0 +1,7 @@
+disallowed-methods = [
+    { path = "krui_style::color::Color::rgb", reason = "Hardcoded RGB colors are forbidden in krui-renderer; render colors from PaintScene" },
+    { path = "krui_style::color::Color::rgba", reason = "Hardcoded RGBA colors are forbidden in krui-renderer; render colors from PaintScene" },
+]
+disallowed-types = [
+    { path = "krui_style::theme::ThemePreset", allow-invalid = true, reason = "krui-renderer must remain completely decoupled from ThemePreset" },
+]

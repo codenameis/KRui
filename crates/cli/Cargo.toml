@@ -1,0 +1,19 @@
+[package]
+name = "krui-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Command-line developer server (`krui serve`) for live KRui `.krui`/`.css` hot-reload and device frame preview"
+
+[[bin]]
+name = "krui"
+path = "src/main.rs"
+
+[dependencies]
+krui-compiler = { workspace = true, features = ["preview"] }
+krui-core = { workspace = true, features = ["preview"] }
+krui-preview = { workspace = true }
+krui-renderer = { workspace = true }
+krui-signals = { workspace = true }
+krui-style = { workspace = true, features = ["preview"] }
+krui-text = { workspace = true }

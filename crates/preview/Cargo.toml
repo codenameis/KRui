@@ -1,0 +1,16 @@
+[package]
+name = "krui-preview"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Runtime CompiledDocument interpreter, TemplateExpr evaluator, and live hot-reload file watcher for KRui (dev preview only)"
+
+[dependencies]
+krui-compiler = { workspace = true, features = ["preview"] }
+krui-core = { workspace = true, features = ["preview"] }
+krui-layout = { workspace = true }
+krui-signals = { workspace = true }
+krui-style = { workspace = true, features = ["preview"] }
+krui-text = { workspace = true }
+serde = { workspace = true }
+postcard = { workspace = true }

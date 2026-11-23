@@ -1,0 +1,201 @@
+<div class="gallery-section">
+    <if test="{controller.active_doc_page == 1}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Top and bottom app bars surface navigation controls, titles, and primary contextual actions</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Docked and floating toolbars adapt automatically across Material 3 and Tailwind v4 surfaces</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="gallery-col">
+                <TopAppBar variant="center" title="Center TopAppBar" subtitle="Selected menu: {controller.nav_menu_label}">
+                    <IconButton slot="navigation" variant="standard" label="Open menu" onclick="{controller.toggle_nav_menu()}">
+                        <IconMenu />
+                    </IconButton>
+                    <div slot="actions" class="gallery-row">
+                        <Button variant="tonal" onclick="{controller.toggle_nav_menu()}">Menu</Button>
+                    </div>
+                </TopAppBar>
+                <Toolbar variant="docked">
+                    <Button variant="text" onclick="{controller.record_action(0)}">Undo</Button>
+                    <Button variant="text" onclick="{controller.record_action(1)}">Redo</Button>
+                    <Button variant="tonal" onclick="{controller.toggle_nav_menu()}">View</Button>
+                </Toolbar>
+                <BottomAppBar id="bottom-app-bar">
+                    <Button variant="text" onclick="{controller.record_action(3)}">Search</Button>
+                    <Button variant="text" onclick="{controller.record_action(4)}">Filter</Button>
+                    <Fab slot="fab" variant="primary" size="sm" label="Quick add" onclick="{controller.record_action(5)}">
+                        <IconAdd slot="icon" />
+                    </Fab>
+                </BottomAppBar>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 13}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Menus display a list of choices on an elevated temporary surface</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-col-center">
+                <Button id="nav-menu-trigger" variant="tonal" onclick="{controller.toggle_nav_menu()}">메뉴 열기/닫기 ({controller.nav_menu_label})</Button>
+                <Menu id="nav-popup-menu" open="{controller.nav_menu_open}">
+                    <MenuItem label="기본 보기" trailing="Ctrl+1" selected="{controller.nav_menu_label == '기본 보기'}" onclick="{controller.pick_nav_menu_item(0)}">
+                        <IconViewAgenda slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                    <MenuItem label="확장 레이아웃" trailing="Ctrl+2" selected="{controller.nav_menu_label == '확장 레이아웃'}" onclick="{controller.pick_nav_menu_item(1)}">
+                        <IconViewColumn slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                    <MenuItem label="토큰 인스펙터" trailing="Ctrl+3" selected="{controller.nav_menu_label == '토큰 인스펙터'}" onclick="{controller.pick_nav_menu_item(2)}">
+                        <IconSettings slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                </Menu>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 14}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Navigation patterns include bars for compact views, rails for tablet, and drawers for expanded destinations</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="gallery-col">
+                <div class="gallery-row">
+                    <NavigationRail id="mini-nav-rail">
+                        <span slot="header" class="gallery-note">Rail</span>
+                        <NavigationRailItem label="홈" selected="{controller.bottom_nav_idx == 0}" onclick="{controller.set_bottom_nav(0)}">
+                            <IconHome slot="icon" class="m3-icon-sm" />
+                        </NavigationRailItem>
+                        <NavigationRailItem label="알림" badge="{controller.unread_text}" selected="{controller.bottom_nav_idx == 1}" onclick="{controller.set_bottom_nav(1)}">
+                            <IconNotifications slot="icon" class="m3-icon-sm" />
+                        </NavigationRailItem>
+                    </NavigationRail>
+                    <NavigationDrawer id="mini-nav-drawer" title="워크스페이스 탐색">
+                        <NavigationDrawerItem label="프로젝트 루트" badge="4" selected="{controller.drawer_idx == 0}" onclick="{controller.set_drawer_item(0)}">
+                            <IconFolder slot="icon" class="m3-icon-sm" />
+                        </NavigationDrawerItem>
+                        <NavigationDrawerItem label="기본 컴포넌트 팩" selected="{controller.drawer_idx == 1}" onclick="{controller.set_drawer_item(1)}">
+                            <IconExtension slot="icon" class="m3-icon-sm" />
+                        </NavigationDrawerItem>
+                        <NavigationDrawerItem label="테마 프리셋 설정" selected="{controller.drawer_idx == 2}" onclick="{controller.set_drawer_item(2)}">
+                            <IconSettings slot="icon" class="m3-icon-sm" />
+                        </NavigationDrawerItem>
+                    </NavigationDrawer>
+                </div>
+                <NavigationBar id="bottom-nav-bar">
+                    <NavigationBarItem label="탐색" selected="{controller.bottom_nav_idx == 0}" onclick="{controller.set_bottom_nav(0)}">
+                        <IconExplore slot="icon" class="m3-icon-sm" />
+                    </NavigationBarItem>
+                    <NavigationBarItem label="즐겨찾기" badge="{controller.unread_text}" selected="{controller.bottom_nav_idx == 1}" onclick="{controller.set_bottom_nav(1)}">
+                        <IconStar slot="icon" class="m3-icon-sm" />
+                    </NavigationBarItem>
+                    <NavigationBarItem label="설정" selected="{controller.bottom_nav_idx == 2}" onclick="{controller.set_bottom_nav(2)}">
+                        <IconSettings slot="icon" class="m3-icon-sm" />
+                    </NavigationBarItem>
+                </NavigationBar>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 36}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Navigation bars anchor 3 to 5 top-level destinations at the bottom of compact windows</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <NavigationBar id="bottom-nav-bar">
+                <NavigationBarItem label="탐색" selected="{controller.bottom_nav_idx == 0}" onclick="{controller.set_bottom_nav(0)}">
+                    <IconExplore slot="icon" class="m3-icon-sm" />
+                </NavigationBarItem>
+                <NavigationBarItem label="즐겨찾기" badge="{controller.unread_text}" selected="{controller.bottom_nav_idx == 1}" onclick="{controller.set_bottom_nav(1)}">
+                    <IconStar slot="icon" class="m3-icon-sm" />
+                </NavigationBarItem>
+                <NavigationBarItem label="설정" selected="{controller.bottom_nav_idx == 2}" onclick="{controller.set_bottom_nav(2)}">
+                    <IconSettings slot="icon" class="m3-icon-sm" />
+                </NavigationBarItem>
+            </NavigationBar>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 37}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Navigation drawers organize rich destination trees with active pill indicators and badges</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <NavigationDrawer id="mini-nav-drawer" title="워크스페이스 탐색">
+                <NavigationDrawerItem label="프로젝트 루트" badge="4" selected="{controller.drawer_idx == 0}" onclick="{controller.set_drawer_item(0)}">
+                    <IconFolder slot="icon" class="m3-icon-sm" />
+                </NavigationDrawerItem>
+                <NavigationDrawerItem label="기본 컴포넌트 팩" selected="{controller.drawer_idx == 1}" onclick="{controller.set_drawer_item(1)}">
+                    <IconExtension slot="icon" class="m3-icon-sm" />
+                </NavigationDrawerItem>
+                <NavigationDrawerItem label="테마 프리셋 설정" selected="{controller.drawer_idx == 2}" onclick="{controller.set_drawer_item(2)}">
+                    <IconSettings slot="icon" class="m3-icon-sm" />
+                </NavigationDrawerItem>
+            </NavigationDrawer>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 38}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Navigation rails provide persistent ergonomic access on medium and expanded desktop screens</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <NavigationRail id="mini-nav-rail">
+                    <span slot="header" class="gallery-note">Rail</span>
+                    <NavigationRailItem label="홈" selected="{controller.bottom_nav_idx == 0}" onclick="{controller.set_bottom_nav(0)}">
+                        <IconHome slot="icon" class="m3-icon-sm" />
+                    </NavigationRailItem>
+                    <NavigationRailItem label="알림" badge="{controller.unread_text}" selected="{controller.bottom_nav_idx == 1}" onclick="{controller.set_bottom_nav(1)}">
+                        <IconNotifications slot="icon" class="m3-icon-sm" />
+                    </NavigationRailItem>
+                    <NavigationRailItem label="설정" selected="{controller.bottom_nav_idx == 2}" onclick="{controller.set_bottom_nav(2)}">
+                        <IconSettings slot="icon" class="m3-icon-sm" />
+                    </NavigationRailItem>
+                </NavigationRail>
+            </div>
+        </div>
+
+    <else>
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Tabs organize content across related screens, data sets, and sub-views</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <Tabs id="nav-tabs-demo" variant="primary">
+                <Tab label="개요" selected="{controller.active_tab == 0}" onclick="{controller.set_active_tab(0)}">
+                    <IconInfo slot="icon" class="m3-icon-sm" />
+                </Tab>
+                <Tab label="토큰 매핑" selected="{controller.active_tab == 1}" onclick="{controller.set_active_tab(1)}">
+                    <IconPalette slot="icon" class="m3-icon-sm" />
+                </Tab>
+                <Tab label="레이아웃 로그" selected="{controller.active_tab == 2}" onclick="{controller.set_active_tab(2)}">
+                    <IconViewAgenda slot="icon" class="m3-icon-sm" />
+                </Tab>
+            </Tabs>
+        </div>
+    </if>
+</div>

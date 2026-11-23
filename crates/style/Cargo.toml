@@ -1,0 +1,14 @@
+[package]
+name = "krui-style"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Compiled static layout/paint styles, zero-cost design system themes, and text security sanitization for KRui"
+
+[features]
+default = []
+preview = ["dep:serde"]
+
+[dependencies]
+krui-signals = { workspace = true }
+serde = { workspace = true, optional = true }

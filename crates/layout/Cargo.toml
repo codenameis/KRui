@@ -1,0 +1,10 @@
+[package]
+name = "krui-layout"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+krui-style = { workspace = true }
+krui-stylo-bridge = { workspace = true }
+slotmap = { workspace = true }
+taffy = { workspace = true }

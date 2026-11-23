@@ -1,0 +1,4 @@
+disallowed-methods = [
+    { path = "krui_style::color::Color::rgb", reason = "Hardcoded RGB colors are forbidden in krui-stylo-bridge; resolve colors via Stylo ComputedValues" },
+    { path = "krui_style::color::Color::rgba", reason = "Hardcoded RGBA colors are forbidden in krui-stylo-bridge; resolve colors via Stylo ComputedValues" },
+]

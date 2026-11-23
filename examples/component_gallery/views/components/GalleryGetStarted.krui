@@ -1,0 +1,36 @@
+<div class="gallery-section">
+    <Card variant="filled" title="Get started with Material 3 in KRui" subtitle="HTML/CSS 개발자와 Rust 입문자 모두가 5분 만에 읽고 고치는 선언형 GUI 프레임워크">
+        <span>M3 디자인 가이드라인(m3.material.io/get-started)의 설계 원칙을 순수 Rust 매크로 IR과 Debug 전용 라이브 프리뷰 워크플로에 그대로 통합했습니다.</span>
+        <div slot="actions" class="gallery-row">
+            <Button variant="filled" onclick="{controller.select_section(2)}">Styles 토큰 보기</Button>
+            <Button variant="outlined" onclick="{controller.select_section(3)}">47종 컴포넌트 바로가기</Button>
+        </div>
+    </Card>
+
+    <div class="gallery-grid-2">
+        <Card variant="elevated" title="1. 순수 CSS 테마 팩 (2 Themes)" subtitle="Material 3 · Tailwind v4">
+            <span>`krui://preset/unstyled` 선언과 순수 CSS `[data-theme]` 토큰 팩으로 67개 시스템 토큰을 연결하며, 런타임 테마 전환 시 relayout 0회로 즉시 반영됩니다.</span>
+        </Card>
+        <Card variant="elevated" title="2. 컴파일 타임 IR (릴리즈 파서 0%)" subtitle="include_krui! 매크로 + Typed Paint/Layout IR">
+            <span>모든 `.krui`/`.css`는 컴파일 타임에 정적 Rust 코드로 변환됩니다. 릴리즈 바이너리 의존성 트리에는 `krui-compiler`나 `cssparser`가 포함되지 않습니다.</span>
+        </Card>
+        <Card variant="elevated" title="3. Debug 전용 라이브 핫패치" subtitle="cfg!(debug_assertions) + TCP 핫리로드">
+            <span>`krui serve`와 파일 워처는 오직 Debug 빌드에서만 활성화됩니다. 스타일·동적 클래스 변경 시 Taffy 레이아웃 트리와 입력 상태를 보존한 채 인플레이스 패치합니다.</span>
+        </Card>
+        <Card variant="elevated" title="4. 표준 반응형 + 선택형 아키텍처 패턴" subtitle="Signal / Computed / Effect + krui-patterns">
+            <span>기본 `#[controller]` / `Signal` 반응형 외에도 `02_mvvm`, `03_mvc`, `04_elm(Flux)`, `05_mvi` 패턴 예제를 동일 컴포넌트로 구현할 수 있습니다.</span>
+        </Card>
+    </div>
+
+    <Card variant="outlined" title="프로젝트 시작 온보딩 체크리스트" subtitle="{controller.guide.progress_label}">
+        <div class="gallery-col">
+            <CheckboxField id="guide-chk-tokens" label="1단계: 순수 CSS 테마 토큰(--krui-*)과 0-relayout 스위칭 확인" supporting="모든 색상·둥글기·그림자·물결 효과는 외부 순수 CSS 테마팩이 전담합니다." bind_checked="{controller.guide.step_tokens}" />
+            <CheckboxField id="guide-chk-dsl" label="2단계: 선언형 제어 흐름(if / for-key) 및 양방향 bind:value 확인" supporting="목록 갱신 성능과 IME 포커스 보존을 위해 반복 목록에는 필수 key를 지정합니다." bind_checked="{controller.guide.step_dsl}" />
+            <CheckboxField id="guide-chk-preview" label="3단계: Debug 빌드 라이브 프리뷰 및 Release 파서 분리 검증" supporting="cargo test --release --features preview로 릴리즈 핫패치 차단을 검증합니다." bind_checked="{controller.guide.step_preview}" />
+        </div>
+        <div slot="actions" class="gallery-row">
+            <Button variant="tonal" onclick="{controller.guide.complete_all()}">모두 완료 표시</Button>
+            <Button variant="filled" onclick="{controller.select_category(0)}">Actions 예제로 이동</Button>
+        </div>
+    </Card>
+</div>

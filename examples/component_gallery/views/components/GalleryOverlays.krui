@@ -1,0 +1,59 @@
+<if test="{controller.dialog_open || controller.bottom_sheet_open || controller.side_sheet_open || controller.search_overlay_open}">
+    <div class="m3-overlays-root">
+        <if test="{controller.dialog_open}">
+            <div id="scrim-dialog" class="m3-scrim m3-scrim-center">
+                <Dialog id="sync-dialog" class="m3-dialog-box" open="{true}" title="테마 프리셋 동기화" confirm_label="적용" dismiss_label="취소" on_confirm="{controller.confirm_dialog()}" on_dismiss="{controller.set_dialog_open(false)}">
+                    <IconSettings slot="icon" />
+                    <span>현재 선택된 `{controller.theme_name}` 테마의 CSS 변수 토큰을 하위 컴포넌트에 일괄 동기화합니다.</span>
+                </Dialog>
+            </div>
+        </if>
+
+        <if test="{controller.bottom_sheet_open}">
+            <div id="scrim-bottom-sheet" class="m3-scrim m3-scrim-bottom">
+                <BottomSheet id="share-bottom-sheet" class="m3-bottom-sheet-box" open="{true}" title="빠른 공유 및 내보내기" on_dismiss="{controller.set_bottom_sheet_open(false)}">
+                    <span>BottomSheet는 루트 뷰포트 하단에 앵커링되어 전체 콘텐츠 위에 딤 스크림과 함께 표시됩니다.</span>
+                    <div class="gallery-row">
+                        <Button variant="filled" onclick="{controller.set_bottom_sheet_open(false)}">토큰 JSON 복사</Button>
+                        <Button variant="outlined" onclick="{controller.set_bottom_sheet_open(false)}">닫기</Button>
+                    </div>
+                </BottomSheet>
+            </div>
+        </if>
+
+        <if test="{controller.side_sheet_open}">
+            <div id="scrim-side-sheet" class="m3-scrim m3-scrim-end">
+                <SideSheet id="inspector-side-sheet" class="m3-side-sheet-box" open="{true}" title="속성 인스펙터 시트" position="end" on_dismiss="{controller.set_side_sheet_open(false)}">
+                    <span>SideSheet는 우측 화면 가장자리에 도킹되는 보조 속성 패널입니다.</span>
+                    <span class="gallery-note">활성 테마: {controller.theme_name} ({controller.theme_shape_spec})</span>
+                    <div slot="actions" class="gallery-row">
+                        <Button variant="filled" onclick="{controller.set_side_sheet_open(false)}">완료</Button>
+                    </div>
+                </SideSheet>
+            </div>
+        </if>
+
+        <if test="{controller.search_overlay_open}">
+            <div id="scrim-search-overlay" class="m3-scrim m3-scrim-top">
+                <div class="m3-search-modal">
+                    <div class="m3-search-modal-head">
+                        <div class="m3-search-modal-input">
+                            <SearchBar id="global-modal-searchbar" placeholder="컴포넌트 이름·카테고리 검색 (예: DatePicker, 캐러셀, Switch)" value="{controller.search_query}" oninput="{controller.on_search_input_cmd}" show_clear="{controller.search_open}" on_clear="{controller.clear_search()}" />
+                        </div>
+                        <Button id="close-search-overlay-btn" variant="tonal" onclick="{controller.close_search_overlay()}">닫기</Button>
+                    </div>
+                    <SearchView id="global-modal-searchview" class="m3-search-modal-list" open="{true}" title="M3 카탈로그 검색 결과 ({controller.search_query})">
+                        <List>
+                            <for each="{row in controller.search_results}" key="{row.id}">
+                                <ListItem headline="{row.name}" supporting="{row.summary}" trailing="{row.category}" onclick="{controller.open_search_item(row.category_idx)}" />
+                            </for>
+                            <empty>
+                                <span class="gallery-note">일치하는 컴포넌트가 없습니다.</span>
+                            </empty>
+                        </List>
+                    </SearchView>
+                </div>
+            </div>
+        </if>
+    </div>
+</if>

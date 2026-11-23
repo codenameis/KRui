@@ -1,0 +1,206 @@
+<style>
+.krui-ui-badge-host {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+.krui-ui-badge-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: var(--krui-pill-radius);
+    background-color: var(--krui-badge-bg);
+}
+.krui-ui-badge-pill {
+    padding: 2px 7px;
+    border-radius: var(--krui-pill-radius);
+    background-color: var(--krui-badge-bg);
+    color: var(--krui-badge-fg);
+    font-size: 11px;
+    font-weight: 700;
+    text-box: trim-both cap alphabetic;
+}
+
+.krui-ui-progress-wrap {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 140px;
+    gap: 6px;
+}
+.krui-ui-progress-lbl {
+    font-size: 12px;
+    color: var(--krui-text-secondary);
+}
+.krui-ui-linear-track {
+    width: 100%;
+    min-width: 140px;
+    height: 6px;
+    border-radius: var(--krui-pill-radius);
+    background-color: var(--krui-secondary-bg);
+    border: 0px solid transparent;
+    overflow: hidden;
+}
+.krui-ui-linear-fill {
+    height: 6px;
+    border-radius: var(--krui-pill-radius);
+    background-color: var(--krui-accent);
+}
+
+.krui-ui-circular-wrap {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+.krui-ui-circular-rot {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    color: var(--krui-accent-border);
+}
+
+.krui-ui-snackbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0px;
+    z-index: 80;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-snackbar-bg);
+    color: var(--krui-snackbar-fg);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-snackbar-msg {
+    flex-grow: 1;
+    min-width: 0px;
+    font-size: 13px;
+    color: var(--krui-snackbar-fg);
+}
+.krui-ui-snackbar-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 6px;
+}
+.krui-ui-snackbar-btn {
+    background-color: var(--krui-accent);
+    color: var(--krui-accent-fg);
+    border: 0px solid transparent;
+    border-radius: var(--krui-btn-radius);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 5px 12px;
+}
+.krui-ui-snackbar-dismiss {
+    background-color: transparent;
+    color: var(--krui-snackbar-fg);
+    border: 1px solid var(--krui-snackbar-fg);
+    border-radius: var(--krui-btn-radius);
+    font-size: 11px;
+    padding: 4px 8px;
+}
+
+.krui-ui-tooltip-host {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+.krui-ui-rich-tooltip {
+    display: flex;
+    flex-direction: column;
+    z-index: 60;
+    gap: 6px;
+    max-width: 300px;
+    padding: 12px 14px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-card);
+    color: var(--krui-text);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-rich-tooltip-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--krui-heading-color);
+}
+.krui-ui-rich-tooltip-body {
+    font-size: 12px;
+    color: var(--krui-text-secondary);
+}
+</style>
+
+<template name="Badge" text="" dot="{false}" variant="error" id="" class="" title="">
+    <div id="{id}" class="krui-ui-badge-host {class}" title="{title}">
+        <slot/>
+        <if test="{dot}">
+            <span class="krui-ui-badge-dot"></span>
+        <else-if test="{text != ''}">
+            <span class="krui-ui-badge-pill">{text}</span>
+        </if>
+    </div>
+</template>
+
+<template name="LinearProgress" value_px="140" track_width="220" label="" id="" class="" title="">
+    <div id="{id}" class="krui-ui-progress-wrap {class}" title="{title}">
+        <if test="{label != ''}"><span class="krui-ui-progress-lbl">{label}</span></if>
+        <div class="krui-ui-linear-track" style="width: {track_width}px;">
+            <div class="krui-ui-linear-fill" style="width: {value_px}px;"></div>
+        </div>
+    </div>
+</template>
+
+<template name="CircularProgress" rotate_deg="0" label="" id="" class="" title="">
+    <div id="{id}" class="krui-ui-circular-wrap {class}" title="{title}">
+        <div class="krui-ui-circular-rot" style="transform: rotate({rotate_deg}deg);">
+            <svg width="36" height="36" viewBox="0 0 36 36">
+                <circle cx="18" cy="18" r="14" fill="none" stroke="#64748b44" stroke-width="3" />
+                <path d="M 18 4 A 14 14 0 1 1 5.88 25" fill="none" stroke="currentColor" stroke-width="3.5" />
+            </svg>
+        </div>
+        <if test="{label != ''}"><span class="krui-ui-progress-lbl">{label}</span></if>
+    </div>
+</template>
+
+<template name="Snackbar" open="{true}" message="" action_label="" dismiss_label="닫기" on_action="" on_dismiss="" id="" class="" title="">
+    <if test="{open}">
+        <div id="{id}" class="krui-ui-snackbar {class}" title="{title}">
+            <span class="krui-ui-snackbar-msg">{message}<slot/></span>
+            <div class="krui-ui-snackbar-actions">
+                <if test="{action_label != ''}">
+                    <button type="button" class="krui-ui-snackbar-btn" onclick="{on_action}">{action_label}</button>
+                </if>
+                <if test="{dismiss_label != ''}">
+                    <button type="button" class="krui-ui-snackbar-dismiss" onclick="{on_dismiss}">{dismiss_label}</button>
+                </if>
+            </div>
+        </div>
+    </if>
+</template>
+
+<template name="Tooltip" text="" supporting="" action_label="" open="{false}" on_action="" id="" class="">
+    <div id="{id}" class="krui-ui-tooltip-host {class}">
+        <slot name="anchor"/>
+        <if test="{open}">
+            <div class="krui-ui-rich-tooltip">
+                <if test="{text != ''}"><span class="krui-ui-rich-tooltip-title">{text}</span></if>
+                <if test="{supporting != ''}"><span class="krui-ui-rich-tooltip-body">{supporting}</span></if>
+                <slot/>
+                <if test="{action_label != ''}">
+                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_action}">{action_label}</button>
+                </if>
+            </div>
+        </if>
+    </div>
+</template>

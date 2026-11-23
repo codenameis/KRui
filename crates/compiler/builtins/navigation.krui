@@ -1,0 +1,306 @@
+<style>
+.krui-ui-topbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 18px;
+    background-color: var(--krui-surface);
+    border-bottom: 1px solid var(--krui-border-subtle);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-topbar-medium { padding: 16px 18px; }
+.krui-ui-topbar-large { padding: 22px 18px; }
+.krui-ui-bar-titles {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+}
+.krui-ui-topbar-center {
+    text-align: center;
+}
+.krui-ui-bar-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--krui-heading-color);
+}
+.krui-ui-bar-sub {
+    font-size: 12px;
+    color: var(--krui-text-muted);
+}
+.krui-ui-bar-actions {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+
+.krui-ui-bottombar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 14px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-surface);
+    border: 1px solid var(--krui-border);
+}
+
+.krui-ui-navbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-around;
+    gap: 6px;
+    padding: 8px 10px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-surface);
+    border: 0px solid transparent;
+}
+.krui-ui-navrail {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 8px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-surface);
+    border: 0px solid transparent;
+}
+.krui-ui-navdrawer {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px;
+    border-radius: var(--krui-sheet-radius);
+    background-color: var(--krui-card);
+    border: 0px solid transparent;
+}
+.krui-ui-nav-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 14px;
+    border-radius: var(--krui-nav-indicator-radius);
+    background-color: transparent;
+    color: var(--krui-text-secondary);
+    border: 0px solid transparent;
+    font-size: 13px;
+    font-weight: 600;
+    transition: color 180ms cubic-bezier(0.2, 0, 0, 1), background-color 200ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-nav-main {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+}
+.krui-ui-nav-item:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-nav-item.krui-ui-selected-true {
+    background-color: var(--krui-secondary-bg);
+    color: var(--krui-secondary-fg);
+    border: 0px solid transparent;
+}
+.krui-ui-nav-badge {
+    padding: 2px 6px;
+    border-radius: var(--krui-pill-radius);
+    background-color: var(--krui-badge-bg);
+    color: var(--krui-badge-fg);
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.krui-ui-tabs {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    border-bottom: 1px solid var(--krui-border);
+}
+.krui-ui-tab {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 16px;
+    background-color: transparent;
+    color: var(--krui-text-secondary);
+    border: 0px solid transparent;
+    border-bottom: 2px solid transparent;
+    border-radius: 0px;
+    font-size: 13px;
+    font-weight: 600;
+    transition: color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-tab.krui-ui-selected-true {
+    color: var(--krui-accent-border);
+    border-bottom: 2px solid var(--krui-accent-border);
+}
+
+.krui-ui-menu {
+    display: flex;
+    flex-direction: column;
+    z-index: 50;
+    gap: 3px;
+    padding: 6px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-card);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-menu-item {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 8px 12px;
+    border-radius: var(--krui-btn-radius);
+    background-color: transparent;
+    color: var(--krui-text);
+    border: 0px solid transparent;
+    font-size: 13px;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-menu-item:hover {
+    background-color: var(--krui-state-hover-overlay);
+}
+.krui-ui-menu-item.krui-ui-selected-true {
+    background-color: var(--krui-selection-bg);
+    color: var(--krui-accent-border);
+}
+
+.krui-ui-toolbar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    background-color: var(--krui-surface);
+    border: 0px solid transparent;
+}
+.krui-ui-toolbar-floating {
+    border-radius: var(--krui-pill-radius);
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-toolbar-docked {
+    border-radius: var(--krui-radius);
+}
+</style>
+
+<template name="TopAppBar" variant="small" title="" subtitle="" id="" class="">
+    <header id="{id}" class="krui-ui-topbar krui-ui-topbar-{variant} {class}">
+        <div class="krui-ui-bar-actions"><slot name="navigation"/></div>
+        <div class="krui-ui-bar-titles">
+            <if test="{title != ''}"><span class="krui-ui-bar-title">{title}</span></if>
+            <if test="{subtitle != ''}"><span class="krui-ui-bar-sub">{subtitle}</span></if>
+            <slot/>
+        </div>
+        <div class="krui-ui-bar-actions"><slot name="actions"/></div>
+    </header>
+</template>
+
+<template name="BottomAppBar" id="" class="">
+    <footer id="{id}" class="krui-ui-bottombar {class}">
+        <div class="krui-ui-bar-actions"><slot/></div>
+        <div class="krui-ui-bar-actions"><slot name="fab"/></div>
+    </footer>
+</template>
+
+<template name="NavigationBar" id="" class="">
+    <div id="{id}" class="krui-ui-navbar {class}"><slot/></div>
+</template>
+
+<template name="NavigationBarItem" label="" icon="" badge="" selected="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-nav-item krui-ui-selected-{selected} {class}" title="{title}" onclick="{onclick}">
+        <span class="krui-ui-nav-main">
+            <slot name="icon"/>
+            <if test="{icon != ''}"><span>{icon}</span></if>
+            <span>{label}</span>
+            <slot/>
+        </span>
+        <if test="{badge != ''}"><span class="krui-ui-nav-badge">{badge}</span></if>
+    </button>
+</template>
+
+<template name="NavigationRail" id="" class="">
+    <section id="{id}" class="krui-ui-navrail {class}">
+        <slot name="header"/>
+        <slot/>
+        <slot name="footer"/>
+    </section>
+</template>
+
+<template name="NavigationRailItem" label="" icon="" badge="" selected="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-nav-item krui-ui-selected-{selected} {class}" title="{title}" onclick="{onclick}">
+        <span class="krui-ui-nav-main">
+            <slot name="icon"/>
+            <if test="{icon != ''}"><span>{icon}</span></if>
+            <span>{label}</span>
+            <slot/>
+        </span>
+        <if test="{badge != ''}"><span class="krui-ui-nav-badge">{badge}</span></if>
+    </button>
+</template>
+
+<template name="NavigationDrawer" title="" id="" class="">
+    <section id="{id}" class="krui-ui-navdrawer {class}">
+        <if test="{title != ''}"><span class="krui-ui-bar-title">{title}</span></if>
+        <slot name="header"/>
+        <slot/>
+    </section>
+</template>
+
+<template name="NavigationDrawerItem" label="" icon="" badge="" selected="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-nav-item krui-ui-selected-{selected} {class}" title="{title}" onclick="{onclick}">
+        <span class="krui-ui-nav-main">
+            <slot name="icon"/>
+            <if test="{icon != ''}"><span>{icon}</span></if>
+            <span>{label}</span>
+            <slot/>
+        </span>
+        <if test="{badge != ''}"><span class="krui-ui-nav-badge">{badge}</span></if>
+    </button>
+</template>
+
+<template name="Tabs" variant="primary" id="" class="">
+    <div id="{id}" class="krui-ui-tabs krui-ui-tabs-{variant} {class}"><slot/></div>
+</template>
+
+<template name="Tab" label="" icon="" variant="primary" selected="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-tab krui-ui-tab-{variant} krui-ui-selected-{selected} {class}" title="{title}" onclick="{onclick}">
+        <slot name="icon"/>
+        <if test="{icon != ''}"><span>{icon}</span></if>
+        <span>{label}<slot/></span>
+    </button>
+</template>
+
+<template name="Menu" open="{false}" id="" class="">
+    <if test="{open}">
+        <div id="{id}" class="krui-ui-menu {class}"><slot/></div>
+    </if>
+</template>
+
+<template name="MenuItem" label="" leading="" trailing="" selected="{false}" disabled="{false}" onclick="" id="" class="" title="">
+    <button type="button" id="{id}" class="krui-ui-menu-item krui-ui-selected-{selected} {class}" title="{title}" disabled="{disabled}" onclick="{onclick}">
+        <span class="krui-ui-nav-main">
+            <slot name="icon"/>
+            <if test="{leading != ''}"><span>{leading}</span></if>
+            <span>{label}</span>
+            <slot/>
+        </span>
+        <if test="{trailing != ''}"><span class="krui-ui-bar-sub">{trailing}</span></if>
+    </button>
+</template>
+
+<template name="Toolbar" variant="docked" id="" class="">
+    <div id="{id}" class="krui-ui-toolbar krui-ui-toolbar-{variant} {class}"><slot/></div>
+</template>

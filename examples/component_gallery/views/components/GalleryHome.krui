@@ -1,0 +1,69 @@
+<div class="gallery-section">
+    <section class="m3-hero-card">
+        <div class="m3-hero-copy">
+            <span class="m3-hero-eyebrow">MATERIAL DESIGN 3 · NATIVE KRUI ENGINE</span>
+            <h1 class="m3-hero-title">Material Design 3 for KRui</h1>
+            <p class="m3-hero-sub">Google M3(m3.material.io) 컴포넌트 47종을 순수 CSS 테마팩(Material 3 · Tailwind v4)으로 0-relayout 즉시 전환하고 120Hz 패스트패스로 검증하세요.</p>
+            <div class="gallery-row">
+                <Button id="hero-get-started-btn" variant="filled" onclick="{controller.select_section(1)}">Get started 시작하기</Button>
+                <Button id="hero-components-btn" variant="tonal" onclick="{controller.select_section(3)}">47개 컴포넌트 탐색</Button>
+                <Button id="hero-styles-btn" variant="outlined" onclick="{controller.select_section(2)}">Styles 토큰 보기</Button>
+                <Button id="hero-search-btn" variant="text" onclick="{controller.open_search_overlay()}">
+                    <IconSearch class="m3-icon-sm" />
+                    <span>전체 검색</span>
+                </Button>
+            </div>
+        </div>
+        <div class="m3-hero-spec">
+            <Card variant="filled" title="현재 활성 디자인 시스템" subtitle="{controller.theme_name}">
+                <span class="m3-spec-line">{controller.theme_shape_spec}</span>
+                <div class="gallery-row">
+                    <Chip variant="suggestion" label="Material 3" selected="{controller.theme_index == 0}" onclick="{controller.select_theme(0)}" />
+                    <Chip variant="suggestion" label="Tailwind v4" selected="{controller.theme_index == 1}" onclick="{controller.select_theme(1)}" />
+                </div>
+            </Card>
+        </div>
+    </section>
+
+    <div class="m3-grid-3">
+        <Card variant="elevated" title="01. 순수 CSS 디자인 토큰 스위칭" subtitle="krui://preset/unstyled + [data-theme]">
+            <span>`--krui-accent`, `--krui-btn-radius`, `--krui-shadow` 토큰이 Rust 개입 없이 순수 CSS 캐스케이드만으로 즉시 전환됩니다.</span>
+            <div slot="actions" class="gallery-row">
+                <Button variant="text" onclick="{controller.select_section(2)}">Styles 열기</Button>
+            </div>
+        </Card>
+        <Card variant="elevated" title="02. 120Hz Zero-Relayout Fast-Path" subtitle="Transform2D · Opacity · State Layer">
+            <span>스위치 슬라이드, 원형 스피너, 캐러셀 이동, 호버/포커스 링은 Taffy 레이아웃 재계산 없이 합성 단계에서 0회 relayout로 렌더링됩니다.</span>
+            <div slot="actions" class="gallery-row">
+                <Button variant="text" onclick="{controller.select_category(1)}">진행률 데모</Button>
+            </div>
+        </Card>
+        <Card variant="elevated" title="03. 네이티브 한국어·일본어 IME" subtitle="OS 조합 유지 + 포커스 이동 보존">
+            <span>한글·일본어 조합 중 포커스가 바뀌어도 `ime_target` 상태 기계가 조합 텍스트를 잃지 않으며, 비밀번호 필드는 OS IME 조합을 비활성화합니다.</span>
+            <div slot="actions" class="gallery-row">
+                <Button variant="text" onclick="{controller.select_category(5)}">텍스트 입력</Button>
+            </div>
+        </Card>
+    </div>
+
+    <div class="gallery-grid-2">
+        <Card variant="outlined" title="M3 컴포넌트 6대 카테고리 (47종 내장)" subtitle="m3.material.io/components 스펙 1:1 매핑">
+            <div class="gallery-grid-2">
+                <Button variant="tonal" onclick="{controller.select_category(0)}"><IconTouchApp class="m3-icon-sm" /><span>Actions (9)</span></Button>
+                <Button variant="tonal" onclick="{controller.select_category(1)}"><IconChat class="m3-icon-sm" /><span>Communication (5)</span></Button>
+                <Button variant="tonal" onclick="{controller.select_category(2)}"><IconLayers class="m3-icon-sm" /><span>Containment (9)</span></Button>
+                <Button variant="tonal" onclick="{controller.select_category(3)}"><IconNavigation class="m3-icon-sm" /><span>Navigation (13)</span></Button>
+                <Button variant="tonal" onclick="{controller.select_category(4)}"><IconCheckBox class="m3-icon-sm" /><span>Selection (8)</span></Button>
+                <Button variant="tonal" onclick="{controller.select_category(5)}"><IconTextFields class="m3-icon-sm" /><span>Text Inputs (3)</span></Button>
+            </div>
+        </Card>
+        <Card variant="outlined" title="모달·시트·검색 오버레이 체험" subtitle="뷰포트 루트 딤 스크림 + z-index 스태킹">
+            <span>콘텐츠 카드 내부가 아닌 루트 뷰포트 최상단에 스크림과 모달을 띄워 어느 화면에서도 안전하게 상호작용할 수 있습니다.</span>
+            <div slot="actions" class="gallery-row">
+                <Button variant="filled" onclick="{controller.set_dialog_open(true)}">Dialog 열기</Button>
+                <Button variant="tonal" onclick="{controller.set_bottom_sheet_open(true)}">BottomSheet</Button>
+                <Button variant="outlined" onclick="{controller.open_search_overlay()}">SearchView</Button>
+            </div>
+        </Card>
+    </div>
+</div>

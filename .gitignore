@@ -1,0 +1,39 @@
+# Rust / Cargo build outputs
+/target
+/target-*
+Cargo.lock
+**/*.rs.bk
+*.pdb
+*.profraw
+*.profdata
+*.exe
+*.dll
+*.so
+*.dylib
+*.rlib
+*.rmeta
+
+# Node / VS Code extension packages
+node_modules/
+*.vsix
+npm-debug.log*
+
+# IDE / Editors
+.vscode/
+.idea/
+.vs/
+*.iml
+*.swp
+*~
+
+# OS / Temp / Logs
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+*.tmp
+.env
+.env.local
+
+# Generated reference screenshots
+/examples/component_gallery/reference/screens/

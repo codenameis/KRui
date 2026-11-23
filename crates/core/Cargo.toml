@@ -1,0 +1,23 @@
+[package]
+name = "krui-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Platform-agnostic ViewTree, layout/input dispatch, accessibility, and PaintScene for KRui"
+
+[features]
+default = []
+preview = []
+
+[dependencies]
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+krui-stylo-bridge = { workspace = true }
+krui-layout = { workspace = true }
+krui-text = { workspace = true }
+krui-a11y = { workspace = true }
+image = { workspace = true }
+accesskit = { workspace = true }
+taffy = { workspace = true }
+unicode-segmentation = { workspace = true }
+slotmap = { workspace = true }

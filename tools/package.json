@@ -1,0 +1,13 @@
+{
+  "name": "krui-dev-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Development-only CSS fixture generators and headless Chromium oracle extractors for KRui",
+  "devDependencies": {
+    "@material-symbols/svg-400": "^0.49.0",
+    "@tailwindcss/cli": "4.3.5",
+    "playwright": "1.65.1",
+    "tailwindcss": "4.3.5"
+  }
+}

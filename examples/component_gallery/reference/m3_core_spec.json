@@ -1,0 +1,19 @@
+{
+  "source": "https://m3.material.io",
+  "viewport": "1280x840",
+  "color_scheme": "light",
+  "measured_sections": 7,
+  "total_sections": 7,
+  "measured_doc_pages": 41,
+  "total_doc_pages": 41,
+  "dimensions_px": {
+    "rail_width": 88.0,
+    "pill_width": 56.0,
+    "pill_height": 32.0,
+    "rail_label_font_px": 12.0,
+    "rail_label_line_height": 16.0,
+    "tabbar_height": 79.0,
+    "hero_padding_px": 56.0,
+    "title_line_height": 96.0
+  }
+}

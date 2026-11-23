@@ -1,0 +1,279 @@
+<div class="gallery-section">
+    <if test="{controller.active_doc_page == 3}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Buttons initiate actions across five emphasis tiers: elevated, filled, tonal, outlined, and text</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Use floating action buttons (FAB) and extended FABs for a screen's primary action</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Icon buttons, segmented buttons, and split buttons share KRui action controls styled by theme tokens</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-duo-grid">
+                <div class="m3-stage-col-center">
+                    <div class="m3-stage-surface-box">
+                        <div class="gallery-row">
+                            <Button id="btn-demo-filled" variant="filled" onclick="{controller.record_action(0)}">Filled</Button>
+                            <Button id="btn-demo-tonal" variant="tonal" onclick="{controller.record_action(2)}">Tonal</Button>
+                            <Button id="btn-demo-outlined" variant="outlined" onclick="{controller.record_action(3)}">Outlined</Button>
+                        </div>
+                        <div class="gallery-row">
+                            <Fab id="fab-md-secondary" variant="primary" size="md" label="Create" onclick="{controller.record_action(6)}">
+                                <IconAdd slot="icon" />
+                            </Fab>
+                            <ExtendedFab id="fab-ext-primary" variant="primary" label="Compose" onclick="{controller.record_action(8)}">
+                                <IconAdd slot="icon" />
+                            </ExtendedFab>
+                            <IconButton id="icon-fav-standard" variant="filled" selected="{controller.fav_selected}" label="Favorite" onclick="{controller.toggle_fav()}">
+                                <if test="{controller.fav_selected}">
+                                    <IconStarFill />
+                                <else>
+                                    <IconStar />
+                                </if>
+                            </IconButton>
+                        </div>
+                    </div>
+                    <div class="m3-step-badge-wrap"><div class="m3-step-badge"><span>1</span></div></div>
+                </div>
+
+                <div class="m3-stage-col-center">
+                    <div class="m3-stage-surface-box">
+                        <SegmentedButton id="seg-density-group">
+                            <SegmentItem id="seg-density-0" selected="{controller.density_mode == 0}" onclick="{controller.set_density(0)}">Day</SegmentItem>
+                            <SegmentItem id="seg-density-1" selected="{controller.density_mode == 1}" onclick="{controller.set_density(1)}">Week</SegmentItem>
+                            <SegmentItem id="seg-density-2" selected="{controller.density_mode == 2}" onclick="{controller.set_density(2)}">Month</SegmentItem>
+                        </SegmentedButton>
+                        <SplitButton id="split-save-btn" label="{controller.split_mode_label}" menu_open="{controller.split_menu_open}" onclick="{controller.record_action(0)}" on_menu_click="{controller.toggle_split_menu()}">
+                            <IconAdd slot="icon" class="m3-icon-sm" />
+                            <MenuItem label="즉시 저장" selected="{controller.split_mode_label == '즉시 저장'}" onclick="{controller.pick_split_mode(0)}">
+                                <IconCheck slot="icon" class="m3-icon-sm" />
+                            </MenuItem>
+                            <MenuItem label="임시 보관" selected="{controller.split_mode_label == '임시 보관'}" onclick="{controller.pick_split_mode(1)}">
+                                <IconArchive slot="icon" class="m3-icon-sm" />
+                            </MenuItem>
+                            <MenuItem label="새 버전 내보내기" selected="{controller.split_mode_label == '새 버전 내보내기'}" onclick="{controller.pick_split_mode(2)}">
+                                <IconOpenInNew slot="icon" class="m3-icon-sm" />
+                            </MenuItem>
+                        </SplitButton>
+                        <div id="micl-connected-group" class="micl-btn-group">
+                            <button id="micl-seg-day" onclick="{controller.set_density(0)}">Day</button>
+                            <button id="micl-seg-week" onclick="{controller.set_density(1)}">Week</button>
+                            <button id="micl-seg-month" onclick="{controller.set_density(2)}">Month</button>
+                        </div>
+                    </div>
+                    <div class="m3-step-badge-wrap"><div class="m3-step-badge"><span>2</span></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>1</span></div><span class="m3-legend-text">Common buttons, FABs, and Icon buttons ({controller.action_count} activations)</span></div>
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>2</span></div><span class="m3-legend-text">Segmented, Split, and MICL Connected button groups</span></div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 25}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Choose the button style that matches visual emphasis: elevated, filled, tonal, outlined, or text</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Full pill corners in Material 3 morph smoothly on press and hover via compositor State Layers</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Button id="btn-demo-elevated" variant="elevated" onclick="{controller.record_action(1)}">Elevated</Button>
+                <Button id="btn-demo-filled" variant="filled" onclick="{controller.record_action(0)}">Filled</Button>
+                <Button id="btn-demo-tonal" variant="tonal" onclick="{controller.record_action(2)}">Tonal</Button>
+                <Button id="btn-demo-outlined" variant="outlined" onclick="{controller.record_action(3)}">Outlined</Button>
+                <Button id="btn-demo-text" variant="text" onclick="{controller.record_action(4)}">Text</Button>
+                <Button id="btn-demo-disabled" variant="filled" disabled="{true}">Disabled</Button>
+            </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>1</span></div><span class="m3-legend-text">Elevated button — high emphasis on busy backgrounds</span></div>
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>2</span></div><span class="m3-legend-text">Filled button — highest emphasis primary action ({controller.action_count} activations)</span></div>
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>3</span></div><span class="m3-legend-text">Tonal, Outlined, and Text buttons — medium to low emphasis</span></div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 26}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Extended FABs pair a 24dp icon with a concise label for clear primary actions</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Available in primary, secondary, and tertiary color container mappings</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <ExtendedFab id="fab-ext-primary" variant="primary" label="New task" onclick="{controller.record_action(8)}">
+                    <IconAdd slot="icon" />
+                </ExtendedFab>
+                <ExtendedFab variant="secondary" label="Edit layout" onclick="{controller.record_action(8)}">
+                    <IconEdit slot="icon" />
+                </ExtendedFab>
+                <ExtendedFab variant="tertiary" label="Star item" onclick="{controller.record_action(8)}">
+                    <IconStar slot="icon" />
+                </ExtendedFab>
+            </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>1</span></div><span class="m3-legend-text">Extended FAB container tokens cascade smoothly across Material 3 and Tailwind v4 ({controller.action_count} activations)</span></div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 27}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Floating action buttons represent the single most common screen action</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Three sizes: Small (sm), Medium (md), and Large (lg) across primary, secondary, and tertiary roles</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Fab id="fab-sm-primary" variant="primary" size="sm" label="Small Primary FAB" onclick="{controller.record_action(5)}">
+                    <IconAdd slot="icon" />
+                </Fab>
+                <Fab id="fab-md-secondary" variant="secondary" size="md" label="Medium Secondary FAB" onclick="{controller.record_action(6)}">
+                    <IconAdd slot="icon" />
+                </Fab>
+                <Fab id="fab-lg-tertiary" variant="tertiary" size="lg" label="Large Tertiary FAB" onclick="{controller.record_action(7)}">
+                    <IconAdd slot="icon" />
+                </Fab>
+            </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>1</span></div><span class="m3-legend-text">Small (40dp), Medium (56dp), and Large (96dp) FAB scale tokens ({controller.action_count} activations)</span></div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 28}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">FAB menus expand from a primary FAB trigger to display 2-6 related contextual actions</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <FabMenu id="fab-speed-dial" open="{controller.fab_menu_open}">
+                    <Button id="fab-menu-trigger" slot="trigger" variant="filled" onclick="{controller.toggle_fab_menu()}">Quick actions menu</Button>
+                    <FabMenuItem label="새 문서 작성" onclick="{controller.pick_fab_action(0)}">
+                        <IconDescription slot="icon" class="m3-icon-sm" />
+                    </FabMenuItem>
+                    <FabMenuItem label="ROI 이미지 불러오기" onclick="{controller.pick_fab_action(1)}">
+                        <IconImage slot="icon" class="m3-icon-sm" />
+                    </FabMenuItem>
+                    <FabMenuItem label="테마 토큰 내보내기" onclick="{controller.pick_fab_action(2)}">
+                        <IconPalette slot="icon" class="m3-icon-sm" />
+                    </FabMenuItem>
+                </FabMenu>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 29}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Icon buttons trigger compact single-tap actions or toggle binary states like favorite or bookmark</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <IconButton id="icon-fav-standard" variant="standard" selected="{controller.fav_selected}" label="Favorite toggle" onclick="{controller.toggle_fav()}">
+                    <if test="{controller.fav_selected}">
+                        <IconStarFill />
+                    <else>
+                        <IconStar />
+                    </if>
+                </IconButton>
+                <IconButton id="icon-fav-filled" variant="filled" selected="{controller.fav_selected}" label="Filled IconButton" onclick="{controller.toggle_fav()}">
+                    <if test="{controller.fav_selected}">
+                        <IconFavoriteFill />
+                    <else>
+                        <IconFavorite />
+                    </if>
+                </IconButton>
+                <IconButton id="icon-bm-tonal" variant="tonal" selected="{controller.bookmark_selected}" label="Bookmark toggle" onclick="{controller.toggle_bookmark()}">
+                    <if test="{controller.bookmark_selected}">
+                        <IconBookmarkFill />
+                    <else>
+                        <IconBookmark />
+                    </if>
+                </IconButton>
+                <IconButton id="icon-bm-outlined" variant="outlined" selected="{controller.bookmark_selected}" label="Outlined IconButton" onclick="{controller.toggle_bookmark()}">
+                    <IconCheck />
+                </IconButton>
+            </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>1</span></div><span class="m3-legend-text">Standard, Filled, Tonal, and Outlined icon button toggle states</span></div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 30}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Segmented buttons let users select options, switch views, or filter density cleanly</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <SegmentedButton id="seg-density-group">
+                    <SegmentItem id="seg-density-0" selected="{controller.density_mode == 0}" onclick="{controller.set_density(0)}">보통</SegmentItem>
+                    <SegmentItem id="seg-density-1" selected="{controller.density_mode == 1}" onclick="{controller.set_density(1)}">컴팩트</SegmentItem>
+                    <SegmentItem id="seg-density-2" selected="{controller.density_mode == 2}" onclick="{controller.set_density(2)}">여유</SegmentItem>
+                </SegmentedButton>
+            </div>
+        </div>
+
+    <else>
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Split buttons pair a primary button action with an expandable dropdown of alternative modes</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <SplitButton id="split-save-btn" label="{controller.split_mode_label}" menu_open="{controller.split_menu_open}" onclick="{controller.record_action(0)}" on_menu_click="{controller.toggle_split_menu()}">
+                    <IconAdd slot="icon" class="m3-icon-sm" />
+                    <MenuItem label="즉시 저장" selected="{controller.split_mode_label == '즉시 저장'}" onclick="{controller.pick_split_mode(0)}">
+                        <IconCheck slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                    <MenuItem label="임시 보관" selected="{controller.split_mode_label == '임시 보관'}" onclick="{controller.pick_split_mode(1)}">
+                        <IconArchive slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                    <MenuItem label="새 버전 내보내기" selected="{controller.split_mode_label == '새 버전 내보내기'}" onclick="{controller.pick_split_mode(2)}">
+                        <IconOpenInNew slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                </SplitButton>
+            </div>
+        </div>
+    </if>
+</div>

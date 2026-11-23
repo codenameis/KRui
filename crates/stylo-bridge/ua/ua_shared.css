@@ -1,0 +1,106 @@
+/* ==========================================================================
+ * [KRUI SHARED UA TAG DEFAULTS]
+ * Loaded before themed `.krui-sys` presets so semantic HTML5 tag defaults
+ * live entirely in UA CSS rather than Rust code.
+ * ========================================================================== */
+
+@property --krui-text-box {
+    syntax: "*";
+    inherits: false;
+}
+
+@property --krui-text-box-trim {
+    syntax: "*";
+    inherits: false;
+}
+
+@property --krui-text-box-edge {
+    syntax: "*";
+    inherits: false;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+form, nav, aside, article, details, figure, fieldset, ol, dialog {
+    flex-direction: column;
+}
+
+summary {
+    align-items: center;
+}
+
+button {
+    text-align: center;
+}
+
+hr {
+    width: 100%;
+    height: 0px;
+    border-top: 1px solid var(--krui-border-subtle);
+}
+
+b, strong {
+    font-weight: 700;
+}
+
+code, pre, kbd, samp {
+    font-family: monospace;
+}
+
+h4 {
+    font-size: 16px;
+    font-weight: 600;
+}
+
+h5 {
+    font-size: 14px;
+    font-weight: 600;
+}
+
+h6 {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+input, select, textarea {
+    appearance: auto;
+}
+
+input, textarea {
+    caret-color: var(--krui-caret);
+}
+
+input[type="checkbox"], input[type="radio"] {
+    width: 20px;
+    height: 20px;
+    padding: 3px;
+}
+
+input[type="checkbox"] {
+    border-radius: 4px;
+}
+
+input[type="radio"] {
+    border-radius: 999px;
+    padding: 4px;
+}
+
+input[type="range"] {
+    min-width: 120px;
+    min-height: 24px;
+    padding: 0px;
+    border-width: 0px;
+    border-style: none;
+    background-color: transparent;
+}
+
+input::placeholder, textarea::placeholder {
+    color: var(--krui-text-secondary);
+    opacity: 1;
+}
+
+dialog::backdrop {
+    background-color: var(--krui-overlay-bg);
+}

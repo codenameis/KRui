@@ -1,0 +1,13 @@
+[package]
+name = "krui-text"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "BiDi-aware, CJK/Korean/Emoji-capable text shaping and glyph rasterization via cosmic-text for KRui"
+
+[dependencies]
+krui-style = { workspace = true }
+cosmic-text = { workspace = true }
+swash = { workspace = true }
+unicode-bidi = { workspace = true }
+unicode-segmentation = { workspace = true }

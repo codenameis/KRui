@@ -1,0 +1,372 @@
+<style>
+.krui-ui-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0px;
+    gap: 10px;
+    padding: 16px;
+    border-radius: var(--krui-card-radius);
+    border: 0px solid transparent;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), box-shadow 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-card-elevated {
+    background-color: var(--krui-card);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-card-elevated:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-card-filled {
+    background-color: var(--krui-item-bg);
+    border: 0px solid transparent;
+    box-shadow: none;
+}
+.krui-ui-card-outlined {
+    background-color: var(--krui-bg);
+    border: 1px solid var(--krui-border-subtle);
+    box-shadow: none;
+}
+.krui-ui-card-head {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.krui-ui-card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--krui-heading-color);
+}
+.krui-ui-card-sub {
+    font-size: 12px;
+    color: var(--krui-text-muted);
+}
+.krui-ui-card-body {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0px;
+    gap: 8px;
+}
+.krui-ui-card-actions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.krui-ui-divider {
+    background-color: var(--krui-border-subtle);
+    height: 1px;
+}
+.krui-ui-div-v-true {
+    width: 1px;
+    height: 28px;
+}
+.krui-ui-div-inset-true {
+    margin-left: 16px;
+    margin-right: 16px;
+}
+
+.krui-ui-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0px;
+    gap: 4px;
+    padding: 4px 0px;
+}
+.krui-ui-list-item {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0px;
+}
+.krui-ui-list-btn {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    min-width: 0px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: var(--krui-radius);
+    background-color: var(--krui-item-bg);
+    color: var(--krui-text);
+    border: 0px solid transparent;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+.krui-ui-list-btn:hover {
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-list-btn.krui-ui-selected-true {
+    background-color: var(--krui-secondary-bg);
+    border: 0px solid transparent;
+}
+.krui-ui-list-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex-grow: 1;
+    min-width: 0px;
+}
+.krui-ui-list-headline {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--krui-text);
+}
+.krui-ui-list-sub {
+    font-size: 12px;
+    color: var(--krui-text-muted);
+}
+.krui-ui-list-trailing {
+    font-size: 12px;
+    color: var(--krui-accent-border);
+    font-weight: 600;
+}
+
+.krui-ui-carousel {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-width: 0px;
+    gap: 8px;
+}
+.krui-ui-carousel-bar {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-width: 0px;
+    gap: 8px;
+}
+.krui-ui-carousel-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--krui-heading-color);
+    flex-grow: 1;
+    min-width: 0px;
+}
+.krui-ui-carousel-nav {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 6px;
+}
+.krui-ui-carousel-viewport {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    min-width: 0px;
+    overflow: hidden;
+    border-radius: var(--krui-card-radius);
+    border: 1px solid var(--krui-border-subtle);
+    padding: 8px;
+}
+.krui-ui-carousel-track {
+    display: flex;
+    flex-direction: row;
+    flex-shrink: 0;
+    gap: 10px;
+}
+.krui-ui-carousel-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 210px;
+    padding: 14px;
+    border-radius: var(--krui-card-radius);
+    background-color: var(--krui-item-bg);
+    border: 1px solid var(--krui-border);
+    flex-shrink: 0;
+}
+
+.krui-ui-dialog-card {
+    display: flex;
+    z-index: 100;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px;
+    border-radius: var(--krui-dialog-radius);
+    background-color: var(--krui-card);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-dialog-title-row {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+.krui-ui-dialog-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--krui-heading-color);
+}
+.krui-ui-dialog-actions {
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.krui-ui-dialog-actions > button {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.krui-ui-sheet {
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    gap: 10px;
+    padding: 16px 20px;
+    border-radius: var(--krui-sheet-radius);
+    background-color: var(--krui-card);
+    border: 0px solid transparent;
+    box-shadow: var(--krui-shadow);
+    backdrop-filter: blur(var(--krui-backdrop-blur));
+}
+.krui-ui-sheet-handle-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    width: 100%;
+}
+.krui-ui-sheet-handle {
+    width: 36px;
+    height: 4px;
+    border-radius: var(--krui-pill-radius);
+    background-color: var(--krui-border);
+}
+.krui-ui-sheet-head {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+}
+.krui-ui-sheet-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--krui-heading-color);
+}
+</style>
+
+<template name="Card" variant="elevated" title="" subtitle="" onclick="" id="" class="">
+    <section id="{id}" class="krui-ui-card krui-ui-card-{variant} {class}" onclick="{onclick}">
+        <if test="{title != ''}">
+            <div class="krui-ui-card-head">
+                <span class="krui-ui-card-title">{title}</span>
+                <if test="{subtitle != ''}"><span class="krui-ui-card-sub">{subtitle}</span></if>
+            </div>
+        </if>
+        <slot name="header"/>
+        <div class="krui-ui-card-body"><slot/></div>
+        <div class="krui-ui-card-actions"><slot name="actions"/></div>
+    </section>
+</template>
+
+<template name="Divider" vertical="{false}" inset="{false}" id="" class="">
+    <div id="{id}" class="krui-ui-divider krui-ui-div-v-{vertical} krui-ui-div-inset-{inset} {class}"></div>
+</template>
+
+<template name="List" id="" class="">
+    <ul id="{id}" class="krui-ui-list {class}"><slot/></ul>
+</template>
+
+<template name="ListItem" headline="" supporting="" trailing="" selected="{false}" disabled="{false}" onclick="" id="" class="" title="">
+    <li id="{id}" class="krui-ui-list-item {class}" title="{title}">
+        <button type="button" class="krui-ui-list-btn krui-ui-selected-{selected}" disabled="{disabled}" onclick="{onclick}">
+            <slot name="leading"/>
+            <div class="krui-ui-list-text">
+                <if test="{headline != ''}"><span class="krui-ui-list-headline">{headline}</span></if>
+                <if test="{supporting != ''}"><span class="krui-ui-list-sub">{supporting}</span></if>
+                <slot/>
+            </div>
+            <if test="{trailing != ''}"><span class="krui-ui-list-trailing">{trailing}</span></if>
+            <slot name="trailing"/>
+        </button>
+    </li>
+</template>
+
+<template name="Carousel" offset_px="0" title="" indicator="" prev_label="이전" next_label="다음" on_prev="" on_next="" id="" class="">
+    <section id="{id}" class="krui-ui-carousel {class}">
+        <div class="krui-ui-carousel-bar">
+            <span class="krui-ui-carousel-title">{title} {indicator}</span>
+            <div class="krui-ui-carousel-nav">
+                <button type="button" class="krui-ui-btn krui-ui-btn-outlined" onclick="{on_prev}">{prev_label}</button>
+                <button type="button" class="krui-ui-btn krui-ui-btn-outlined" onclick="{on_next}">{next_label}</button>
+            </div>
+        </div>
+        <div class="krui-ui-carousel-viewport">
+            <div class="krui-ui-carousel-track" style="transform: translateX({offset_px}px);"><slot/></div>
+        </div>
+    </section>
+</template>
+
+<template name="CarouselItem" title="" subtitle="" onclick="" id="" class="">
+    <section id="{id}" class="krui-ui-carousel-item {class}" onclick="{onclick}">
+        <if test="{title != ''}"><span class="krui-ui-card-title">{title}</span></if>
+        <if test="{subtitle != ''}"><span class="krui-ui-card-sub">{subtitle}</span></if>
+        <slot/>
+    </section>
+</template>
+
+<template name="Dialog" open="{false}" title="" icon="" confirm_label="확인" dismiss_label="취소" on_confirm="" on_dismiss="" id="" class="">
+    <if test="{open}">
+        <section id="{id}" class="krui-ui-dialog-card {class}">
+            <div class="krui-ui-sheet-head">
+                <span class="krui-ui-dialog-title-row">
+                    <slot name="icon"/>
+                    <if test="{icon != ''}"><span>{icon}</span></if>
+                    <span class="krui-ui-dialog-title">{title}</span>
+                </span>
+            </div>
+            <div class="krui-ui-card-body"><slot/></div>
+            <div class="krui-ui-dialog-actions">
+                <slot name="actions"/>
+                <if test="{dismiss_label != ''}">
+                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
+                </if>
+                <if test="{confirm_label != ''}">
+                    <button type="button" class="krui-ui-btn krui-ui-btn-filled" onclick="{on_confirm}">{confirm_label}</button>
+                </if>
+            </div>
+        </section>
+    </if>
+</template>
+
+<template name="BottomSheet" open="{false}" title="" dismiss_label="닫기" on_dismiss="" id="" class="">
+    <if test="{open}">
+        <section id="{id}" class="krui-ui-sheet {class}">
+            <div class="krui-ui-sheet-handle-row"><div class="krui-ui-sheet-handle"></div></div>
+            <div class="krui-ui-sheet-head">
+                <span class="krui-ui-sheet-title">{title}</span>
+                <if test="{dismiss_label != ''}">
+                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
+                </if>
+            </div>
+            <div class="krui-ui-card-body"><slot/></div>
+        </section>
+    </if>
+</template>
+
+<template name="SideSheet" open="{false}" title="" position="end" dismiss_label="닫기" on_dismiss="" id="" class="">
+    <if test="{open}">
+        <section id="{id}" class="krui-ui-sheet krui-ui-side-{position} {class}">
+            <div class="krui-ui-sheet-head">
+                <span class="krui-ui-sheet-title">{title}</span>
+                <if test="{dismiss_label != ''}">
+                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
+                </if>
+            </div>
+            <div class="krui-ui-card-body"><slot/></div>
+            <div class="krui-ui-card-actions"><slot name="actions"/></div>
+        </section>
+    </if>
+</template>

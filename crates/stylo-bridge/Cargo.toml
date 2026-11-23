@@ -1,0 +1,23 @@
+[package]
+name = "krui-stylo-bridge"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+description = "Isolated Stylo + stylo_taffy CSS engine bridge for KRui (single owner of CSS parsing, cascading, invalidation, and Taffy 0.15 style adaptation)"
+
+[dependencies]
+krui-style = { workspace = true }
+style = { package = "stylo", version = "0.22.0" }
+stylo_atoms = "0.22.0"
+stylo_dom = "0.22.0"
+stylo_static_prefs = "0.22.0"
+stylo_taffy = "0.3.0-beta.4"
+stylo_traits = "0.22.0"
+selectors = "0.41.0"
+web_atoms = "0.3.0"
+taffy = { workspace = true }
+cssparser = "0.38"
+euclid = "0.22"
+app_units = "0.7"
+url = "2.5"

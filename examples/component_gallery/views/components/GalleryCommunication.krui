@@ -1,0 +1,151 @@
+<div class="gallery-section">
+    <if test="{controller.active_doc_page == 2}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Badges convey dynamic counts or small status dots on navigation icons and buttons</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Large badges display numeric counts while small dot badges indicate unread availability</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <Badge id="badge-counter-demo" text="{controller.unread_text}">
+                    <Button id="badge-bump-btn" variant="tonal" onclick="{controller.bump_badge()}">알림 배지 +1 ({controller.unread_count})</Button>
+                </Badge>
+                <Badge id="badge-dot-demo" dot="{true}">
+                    <Button variant="outlined" onclick="{controller.bump_badge()}">실시간 연결됨</Button>
+                </Badge>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 12}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Loading and progress indicators communicate ongoing system status without layout jitter</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Circular progress runs via 120Hz GPU transform rotation with 0 Taffy relayout</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-duo-grid">
+                <div class="m3-stage-surface-box">
+                    <LinearProgress id="linear-progress-demo" value_px="{controller.progress_px}" track_width="220" label="{controller.progress_label}" />
+                    <progress id="micl-native-progress" class="micl-progress" value="64" max="100"></progress>
+                    <div class="gallery-row">
+                        <Button variant="outlined" onclick="{controller.step_progress(false)}">-20px</Button>
+                        <Button variant="filled" onclick="{controller.step_progress(true)}">+20px</Button>
+                    </div>
+                </div>
+                <div class="m3-stage-surface-box">
+                    <if test="{controller.spinner_running}">
+                        <div id="circular-progress-spinner" class="micl-spinner-rot"></div>
+                    <else>
+                        <div id="circular-progress-paused" class="micl-spinner-idle"></div>
+                    </if>
+                    <span class="gallery-note">Pure CSS @keyframes 120Hz (0 relayout)</span>
+                    <Button id="spinner-toggle-btn" variant="outlined" onclick="{controller.toggle_spinner()}">스피너 회전 일시정지/재개</Button>
+                </div>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 34}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Indeterminate loading indicators express an active wait state with smooth continuous rotation</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-row-center">
+                <if test="{controller.spinner_running}">
+                    <div id="circular-progress-spinner" class="micl-spinner-rot"></div>
+                <else>
+                    <div id="circular-progress-paused" class="micl-spinner-idle"></div>
+                </if>
+                <span class="gallery-note">Indeterminate pure CSS @keyframes spinner</span>
+                <Button id="spinner-toggle-btn" variant="outlined" onclick="{controller.toggle_spinner()}">일시정지 / 재개</Button>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 35}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Linear and circular progress indicators show determinate task completion or busy state</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-duo-grid">
+                <div class="m3-stage-surface-box">
+                    <LinearProgress id="linear-progress-demo" value_px="{controller.progress_px}" track_width="220" label="{controller.progress_label}" />
+                    <div class="gallery-row">
+                        <Button variant="outlined" onclick="{controller.step_progress(false)}">-20px</Button>
+                        <Button variant="filled" onclick="{controller.step_progress(true)}">+20px</Button>
+                    </div>
+                </div>
+                <div class="m3-stage-surface-box">
+                    <if test="{controller.spinner_running}">
+                        <div id="circular-progress-spinner" class="micl-spinner-rot"></div>
+                    <else>
+                        <div id="circular-progress-paused" class="micl-spinner-idle"></div>
+                    </if>
+                    <span class="gallery-note">Determinate + pure CSS @keyframes spinner</span>
+                </div>
+            </div>
+        </div>
+
+    <else-if test="{controller.active_doc_page == 19}">
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Snackbars provide brief updates about app processes without blocking user input</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Starts dismissed until explicitly triggered on this doc page</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-col-center">
+                <Button id="reopen-snackbar-btn" variant="filled" onclick="{controller.reopen_snackbar()}">Show snackbar</Button>
+                <Snackbar id="snackbar-demo" open="{controller.snackbar.open}" message="{controller.snackbar.message}" action_label="{controller.snackbar.action_label}" on_action="{controller.snackbar.trigger_action()}" on_dismiss="{controller.snackbar.dismiss()}" />
+            </div>
+        </div>
+
+    <else>
+        <div class="m3-bullet-list">
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Plain tooltips label icon-only or compact controls on hover or keyboard focus</span>
+            </div>
+            <div class="m3-bullet-item">
+                <IconCheckCircle class="m3-bullet-icon" />
+                <span class="m3-bullet-text">Rich tooltips provide detailed context, supporting copy, and an optional action button</span>
+            </div>
+        </div>
+
+        <div class="m3-cards-stage">
+            <div class="m3-stage-duo-grid">
+                <div class="m3-stage-surface-box">
+                    <Button id="plain-tooltip-btn" variant="outlined" title="Top-Layer(clip: None) 네이티브 호버 툴팁입니다">Hover for plain tooltip</Button>
+                </div>
+                <div class="m3-stage-surface-box">
+                    <Tooltip id="rich-tooltip-demo" text="Fast-Path 합성 안내" supporting="transform과 opacity 변경은 Taffy 레이아웃을 다시 계산하지 않고 합성 단계만 갱신합니다." action_label="닫기" open="{controller.rich_tooltip_open}" on_action="{controller.toggle_rich_tooltip()}">
+                        <Button id="rich-tooltip-trigger" slot="anchor" variant="tonal" onclick="{controller.toggle_rich_tooltip()}">리치 툴팁 열기/닫기</Button>
+                    </Tooltip>
+                </div>
+            </div>
+        </div>
+    </if>
+</div>

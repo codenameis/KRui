@@ -1,0 +1,135 @@
+[package]
+name = "krui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "KRui — A free, performance-first, cross-platform Rust GUI framework with compile-time HTML+CSS"
+default-run = "krui-showcase"
+
+[[bin]]
+name = "krui-showcase"
+path = "src/main.rs"
+
+[[bin]]
+name = "krui-bench"
+path = "src/bin/krui-bench.rs"
+
+[[example]]
+name = "component_gallery"
+path = "examples/component_gallery/main.rs"
+
+[features]
+default = []
+preview = ["dep:krui-preview", "krui-winit/preview", "krui-core/preview", "krui-patterns/preview", "krui-macros/preview", "krui-style/preview"]
+
+[dependencies]
+krui-core = { workspace = true }
+krui-winit = { workspace = true }
+krui-patterns = { workspace = true }
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+krui-macros = { workspace = true }
+krui-layout = { workspace = true }
+krui-text = { workspace = true }
+krui-a11y = { workspace = true }
+krui-renderer = { workspace = true }
+krui-preview = { workspace = true, optional = true }
+accesskit = { workspace = true }
+pollster = { workspace = true }
+wgpu = { workspace = true }
+winit = { workspace = true }
+tokio = { workspace = true }
+image = { workspace = true }
+
+[dev-dependencies]
+krui-cli = { workspace = true }
+krui-compiler = { workspace = true }
+krui-preview = { workspace = true }
+syn = { workspace = true }
+
+[workspace]
+resolver = "2"
+members = [
+    ".",
+    "crates/signals",
+    "crates/style",
+    "crates/stylo-bridge",
+    "crates/compiler",
+    "crates/macros",
+    "crates/layout",
+    "crates/text",
+    "crates/a11y",
+    "crates/core",
+    "crates/renderer",
+    "crates/winit",
+    "crates/patterns",
+    "crates/preview",
+    "crates/cli",
+    "crates/android-ffi",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+authors = ["KRui Contributors"]
+repository = "https://github.com/krui-rs/krui"
+rust-version = "1.91"
+
+[workspace.dependencies]
+krui-signals = { path = "crates/signals" }
+krui-style = { path = "crates/style" }
+krui-stylo-bridge = { path = "crates/stylo-bridge" }
+krui-compiler = { path = "crates/compiler" }
+krui-macros = { path = "crates/macros" }
+krui-layout = { path = "crates/layout" }
+krui-text = { path = "crates/text" }
+krui-a11y = { path = "crates/a11y" }
+krui-core = { path = "crates/core" }
+krui-renderer = { path = "crates/renderer" }
+krui-winit = { path = "crates/winit" }
+krui-patterns = { path = "crates/patterns" }
+krui-preview = { path = "crates/preview" }
+krui-cli = { path = "crates/cli" }
+krui = { path = "." }
+
+# External pinned dependencies (Section 6: minimal, auditable, pure-Rust preferred)
+taffy = { version = "0.15", default-features = false, features = ["std", "taffy_tree", "flexbox", "flexbox_balance", "grid", "block_layout", "content_size", "calc", "detailed_layout_info"] }
+cosmic-text = "0.12.1"
+swash = "0.1.19"
+accesskit = "0.17.1"
+tiny-skia = "0.11.4"
+lyon_tessellation = "1.0.15"
+lyon_path = "1.0.6"
+wgpu = "23.0.1"
+winit = "0.30.8"
+pollster = "0.4.0"
+bytemuck = { version = "1.21.0", features = ["derive"] }
+proc-macro2 = "1.0.92"
+quote = "1.0.38"
+syn = { version = "2.0.90", features = ["full", "extra-traits", "visit"] }
+unicode-bidi = "0.3.18"
+unicode-segmentation = "1.12.0"
+arboard = "3.4.1"
+serde = { version = "1.0", features = ["derive"] }
+postcard = { version = "1.1", features = ["use-std"] }
+cssparser = "0.37.0"
+softbuffer = "0.4.8"
+accesskit_winit = "0.23.1"
+slotmap = "1.0"
+tokio = { version = "1.53", features = ["rt-multi-thread", "sync", "time", "net", "io-util"] }
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+svgtypes = "0.15"
+jni = "0.21"
+
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = "symbols"

@@ -1,0 +1,98 @@
+/* Zone 2: Secondary Component Drawer (`aside.mdc-drawer` in `reference/README.md`) */
+
+.m3-doc-drawer {
+    display: flex;
+    flex-direction: column;
+    width: var(--md-site-drawer-width);
+    flex-shrink: 0;
+    height: 100%;
+    padding: var(--md-site-drawer-padding);
+    gap: 2px;
+    border-radius: 0px var(--md-sys-shape-corner-large) var(--md-sys-shape-corner-large) 0px;
+    background-color: var(--md-site-rail-bg);
+    overflow-y: scroll;
+    scrollbar-width: thin;
+}
+
+.m3-drawer-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--md-site-drawer-item-height);
+    padding: 0px var(--md-site-drawer-item-px);
+    border-radius: var(--krui-nav-indicator-radius);
+    border: 0px solid transparent;
+    background-color: transparent;
+    color: var(--md-site-inactive-fg);
+    font-size: var(--md-sys-typescale-title-small-size);
+    line-height: var(--md-sys-typescale-title-medium-line-height);
+    font-weight: 500;
+    text-align: left;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), color 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-drawer-btn:hover {
+    background-color: var(--krui-state-hover-overlay);
+}
+
+.m3-drawer-btn.m3-drawer-btn-true {
+    background-color: var(--md-site-active-pill-bg);
+    color: var(--md-site-active-pill-fg);
+    font-weight: 600;
+}
+
+.m3-drawer-btn.m3-drawer-btn-true:hover {
+    background-color: var(--md-site-active-pill-bg);
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+
+.m3-drawer-caret {
+    width: 20px;
+    height: 20px;
+    color: var(--md-site-inactive-fg);
+    flex-shrink: 0;
+}
+
+.m3-drawer-sub-group {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-left: var(--md-site-drawer-sub-indent);
+}
+
+.m3-drawer-sub-btn {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-start;
+    width: 100%;
+    min-height: var(--md-site-drawer-item-height);
+    padding: 0px var(--md-site-drawer-item-px);
+    border-radius: var(--krui-nav-indicator-radius);
+    border: 0px solid transparent;
+    background-color: transparent;
+    color: var(--md-site-inactive-fg);
+    font-size: var(--md-sys-typescale-title-small-size);
+    line-height: var(--md-sys-typescale-title-medium-line-height);
+    font-weight: 500;
+    text-align: left;
+    transition: background-color 180ms cubic-bezier(0.2, 0, 0, 1), color 150ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.m3-drawer-sub-btn:hover {
+    background-color: var(--krui-state-hover-overlay);
+    color: var(--krui-text);
+}
+
+.m3-drawer-sub-btn.m3-drawer-sub-btn-true {
+    background-color: var(--md-site-active-pill-bg);
+    color: var(--md-site-active-pill-fg);
+    font-weight: 600;
+}
+
+.m3-drawer-sub-btn.m3-drawer-sub-btn-true:hover {
+    background-color: var(--md-site-active-pill-bg);
+    background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}

@@ -1,0 +1,7 @@
+disallowed-methods = [
+    { path = "krui_style::color::Color::rgb", reason = "Hardcoded RGB colors are forbidden in krui-layout" },
+    { path = "krui_style::color::Color::rgba", reason = "Hardcoded RGBA colors are forbidden in krui-layout" },
+]
+disallowed-types = [
+    { path = "krui_style::theme::ThemePreset", allow-invalid = true, reason = "krui-layout must remain completely decoupled from ThemePreset" },
+]

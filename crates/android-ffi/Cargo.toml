@@ -1,0 +1,22 @@
+[package]
+name = "krui-android-ffi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Safe JNI + Kotlin host bridge and lifecycle controller for KRui on Android"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+krui-core = { workspace = true }
+krui-renderer = { workspace = true }
+jni = { workspace = true }
+krui-preview = { workspace = true, optional = true }
+krui-compiler = { workspace = true, optional = true }
+
+[features]
+default = []
+preview = ["krui-core/preview", "dep:krui-preview", "dep:krui-compiler"]

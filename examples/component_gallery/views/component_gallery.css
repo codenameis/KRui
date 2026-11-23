@@ -1,0 +1,256 @@
+/* ==========================================================================
+ * component_gallery Base & Responsive Shell Stylesheet
+ * Paired with `styles/{rail,drawer,doc_page,toc,home,overview}.css` grounded
+ * in `reference/README.md` tokens.
+ * ========================================================================== */
+
+@layer preset {
+    *, *::before, *::after {
+        box-sizing: border-box;
+    }
+
+    h1, h2, h3, p, span, label, button, input, textarea, select, li {
+        font-family: var(--krui-font-family);
+    }
+
+    h1 {
+        font-size: var(--md-sys-typescale-title-large-size);
+        font-weight: bold;
+        color: var(--krui-text);
+    }
+
+    h2 {
+        font-size: var(--md-sys-typescale-title-medium-size);
+        font-weight: bold;
+        color: var(--krui-heading-color);
+    }
+
+    h3 {
+        font-size: var(--md-sys-typescale-title-small-size);
+        font-weight: bold;
+        color: var(--krui-text-muted);
+    }
+
+    p {
+        font-size: var(--md-sys-typescale-body-medium-size);
+        color: var(--krui-text-muted);
+    }
+
+    span {
+        font-size: var(--md-sys-typescale-body-medium-size);
+    }
+
+    label {
+        align-items: center;
+        gap: 6px;
+        font-size: var(--md-sys-typescale-body-medium-size);
+        color: var(--krui-text);
+    }
+
+    button {
+        justify-content: center;
+        align-items: center;
+        padding: 8px 18px;
+        background-color: var(--krui-accent);
+        color: var(--krui-accent-fg);
+        border-radius: var(--krui-btn-radius);
+        border-style: solid;
+        border-width: var(--krui-border-width);
+        border-color: var(--krui-accent-border);
+        font-size: var(--md-sys-typescale-label-large-size);
+        font-weight: bold;
+        text-box: trim-both cap alphabetic;
+    }
+
+    button:hover {
+        background-color: var(--krui-accent-hover);
+    }
+
+    button:active {
+        background-color: var(--krui-accent-active);
+    }
+
+    button:focus-visible {
+        outline-width: var(--krui-focus-ring-width);
+        outline-offset: var(--krui-focus-ring-offset);
+        outline-color: var(--krui-focus-ring-color);
+    }
+
+    button:disabled {
+        background-color: var(--krui-disabled-bg);
+        color: var(--krui-disabled-fg);
+        border-color: var(--krui-disabled-border);
+        opacity: 0.78;
+    }
+
+    input, textarea, select {
+        padding: 8px 14px;
+        background-color: var(--krui-input-bg);
+        color: var(--krui-text);
+        border-radius: var(--krui-input-radius);
+        border-style: solid;
+        border-width: var(--krui-border-width);
+        border-color: var(--krui-input-border);
+        border-bottom-style: solid;
+        border-bottom-width: 1px;
+        border-bottom-color: var(--krui-input-bottom-border);
+        font-size: var(--md-sys-typescale-body-medium-size);
+    }
+
+    input[type="checkbox"], input[type="radio"] {
+        padding: 0px;
+        border-bottom-width: var(--krui-border-width);
+        border-bottom-color: var(--krui-input-border);
+    }
+
+    select {
+        padding-right: 32px;
+    }
+
+    input:hover, textarea:hover, select:hover {
+        background-color: var(--krui-input-hover-bg);
+    }
+
+    input:focus, textarea:focus, select:focus {
+        background-color: var(--krui-input-focus-bg);
+        border-bottom-width: var(--krui-input-focus-bottom-width);
+        border-bottom-color: var(--krui-input-focus-bottom-color);
+    }
+
+    input:focus-visible, textarea:focus-visible, select:focus-visible {
+        outline-width: var(--krui-focus-ring-width);
+        outline-offset: var(--krui-focus-ring-offset);
+        outline-color: var(--krui-focus-ring-color);
+    }
+
+    input:checked {
+        background-color: var(--krui-accent);
+        border-color: var(--krui-accent-border);
+        color: var(--krui-accent-fg);
+    }
+
+    input:invalid, textarea:invalid, select:invalid {
+        border-color: var(--krui-danger-border);
+    }
+
+    input:disabled, textarea:disabled, select:disabled {
+        background-color: var(--krui-disabled-bg);
+        color: var(--krui-disabled-fg);
+        border-color: var(--krui-disabled-border);
+        border-bottom-width: 0px;
+        opacity: 0.65;
+    }
+
+    ul {
+        display: flex;
+        flex-direction: column;
+        overflow: scroll;
+        padding: 8px;
+        gap: 6px;
+        background-color: var(--krui-bg);
+        border-radius: var(--krui-radius);
+        border-style: solid;
+        border-width: var(--krui-border-width);
+        border-color: var(--krui-border);
+    }
+
+    li {
+        padding: 7px 12px;
+        background-color: var(--krui-item-bg);
+        color: var(--krui-text);
+        border-radius: var(--krui-radius);
+        font-size: var(--md-sys-typescale-body-medium-size);
+    }
+}
+
+.gallery-shell {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: 100%;
+    background-color: var(--krui-surface);
+    color: var(--krui-text);
+    overflow: hidden;
+}
+
+.krui-ui-btn,
+.krui-ui-fab {
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.krui-ui-btn::before,
+.krui-ui-fab::before {
+    content: "";
+    position: absolute;
+    inset: 0px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.m3-icon {
+    width: var(--md-icon-size);
+    height: var(--md-icon-size);
+    flex-shrink: 0;
+}
+
+.m3-icon-sm {
+    width: var(--md-icon-size-sm);
+    height: var(--md-icon-size-sm);
+    flex-shrink: 0;
+}
+
+/* M3 Window Size Class: Expanded (840px .. 1199px) */
+@media (max-width: 1199px) {
+    .m3-doc-toc {
+        display: none;
+    }
+    .m3-doc-drawer {
+        width: var(--md-site-drawer-width-compact);
+    }
+    .m3-doc-canvas {
+        padding: 16px clamp(12px, 2vw, 24px);
+    }
+}
+
+/* M3 Window Size Class: Medium (600px .. 839px) */
+@media (max-width: 839px) {
+    .m3-doc-drawer {
+        display: none;
+    }
+    .m3-site-rail {
+        width: var(--md-site-rail-width-compact);
+    }
+    .m3-cards-trio-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+/* M3 Window Size Class: Compact (< 600px, Mobile PWA) */
+@media (max-width: 599px) {
+    .gallery-shell {
+        flex-direction: column;
+    }
+    .m3-site-rail {
+        display: none;
+    }
+    .m3-doc-drawer {
+        display: none;
+    }
+    .m3-compact-bottom-bar {
+        display: flex;
+    }
+    .m3-cards-trio-grid {
+        grid-template-columns: 1fr;
+    }
+    .m3-stage-duo-grid {
+        grid-template-columns: 1fr;
+    }
+    .m3-doc-page-title {
+        font-size: clamp(28px, 8vw, 45px);
+        line-height: clamp(34px, 9vw, 52px);
+    }
+}

@@ -1,0 +1,307 @@
+<div id="m3-components-overview" class="m3-overview-page">
+    <div class="m3-doc-page-header">
+        <h1 class="m3-doc-page-title">Components</h1>
+        <span class="m3-doc-page-summary">Components are interactive building blocks for creating a user interface, categorized by purpose.</span>
+    </div>
+
+    <div class="m3-overview-hero">
+        <div class="gallery-col">
+            <span class="m3-overview-card-title">Material Design 3 Component Architecture</span>
+            <span class="m3-overview-card-desc">47 shared KRui UI controls rendered with pure CSS theme packs (Material 3 · Tailwind v4 via F5-F6).</span>
+        </div>
+        <div class="m3-overview-hero-cluster">
+            <div class="m3-art-fab"><IconAdd /></div>
+            <div class="m3-art-fab-ext"><IconAutoAwesomeMosaic class="m3-icon-sm" /><span>M3 Expressive</span></div>
+            <div class="m3-art-circle-fill"><IconWidgets class="m3-icon-sm" /></div>
+        </div>
+    </div>
+
+    <span class="m3-overview-section-head">Buttons</span>
+    <div class="m3-overview-grid">
+        <button id="ov-card-common-buttons" class="m3-overview-card" onclick="{controller.select_doc_page(25)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-pill-row">
+                    <div class="m3-art-pill-fill"></div>
+                    <div class="m3-art-pill-outline"></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Common buttons</span>
+                <span class="m3-overview-card-desc">Buttons prompt most actions in a UI</span>
+            </div>
+        </button>
+        <button id="ov-card-extended-fab" class="m3-overview-card" onclick="{controller.select_doc_page(26)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-fab-ext"><IconAdd class="m3-icon-sm" /><span>Compose</span></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Extended FAB</span>
+                <span class="m3-overview-card-desc">Extended FABs take primary actions</span>
+            </div>
+        </button>
+        <button id="ov-card-fab" class="m3-overview-card" onclick="{controller.select_doc_page(27)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-fab"><IconAdd /></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">FAB</span>
+                <span class="m3-overview-card-desc">Floating action buttons for primary flows</span>
+            </div>
+        </button>
+        <button id="ov-card-icon-buttons" class="m3-overview-card" onclick="{controller.select_doc_page(29)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-pill-row">
+                    <div class="m3-art-circle-fill"><IconFavoriteFill class="m3-icon-sm" /></div>
+                    <div class="m3-art-circle-outline"><IconBookmark class="m3-icon-sm" /></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Icon buttons</span>
+                <span class="m3-overview-card-desc">Compact single-tap actions with icons</span>
+            </div>
+        </button>
+        <button id="ov-card-segmented-buttons" class="m3-overview-card" onclick="{controller.select_doc_page(30)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-seg-track">
+                    <div class="m3-art-seg-active"><IconCheck class="m3-icon-sm" /></div>
+                    <div class="m3-art-seg-idle"></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Segmented buttons</span>
+                <span class="m3-overview-card-desc">Select options or switch grouped views</span>
+            </div>
+        </button>
+        <button id="ov-card-split-buttons" class="m3-overview-card" onclick="{controller.select_doc_page(31)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-split-pair">
+                    <div class="m3-art-split-lead"></div>
+                    <div class="m3-art-split-drop"><IconArrowDropDown class="m3-icon-sm" /></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Split buttons</span>
+                <span class="m3-overview-card-desc">Primary action paired with menu dropdown</span>
+            </div>
+        </button>
+    </div>
+
+    <span class="m3-overview-section-head">Date &amp; time pickers</span>
+    <div class="m3-overview-grid">
+        <button id="ov-card-date-pickers" class="m3-overview-card" onclick="{controller.select_doc_page(32)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-surface-chip"><IconCalendarToday /></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Date pickers</span>
+                <span class="m3-overview-card-desc">Select calendar dates or ISO date ranges</span>
+            </div>
+        </button>
+        <button id="ov-card-time-pickers" class="m3-overview-card" onclick="{controller.select_doc_page(33)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-surface-chip"><IconSchedule /></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Time pickers</span>
+                <span class="m3-overview-card-desc">Select 12H or 24H times interactively</span>
+            </div>
+        </button>
+    </div>
+
+    <span class="m3-overview-section-head">Loading &amp; progress</span>
+    <div class="m3-overview-grid">
+        <button id="ov-card-loading-indicator" class="m3-overview-card" onclick="{controller.select_doc_page(34)}">
+            <div class="m3-overview-card-art">
+                <div class="micl-spinner-idle"></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Loading indicator</span>
+                <span class="m3-overview-card-desc">Visualize 120Hz zero-relayout waiting states</span>
+            </div>
+        </button>
+        <button id="ov-card-progress-indicators" class="m3-overview-card" onclick="{controller.select_doc_page(35)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-progress-track"><div class="m3-art-progress-fill"></div></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Progress indicators</span>
+                <span class="m3-overview-card-desc">Linear and circular progress tracks</span>
+            </div>
+        </button>
+    </div>
+
+    <span class="m3-overview-section-head">Navigation</span>
+    <div class="m3-overview-grid">
+        <button id="ov-card-nav-bar" class="m3-overview-card" onclick="{controller.select_doc_page(36)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-navbar">
+                    <div class="m3-art-nav-pill"></div>
+                    <div class="m3-art-nav-dot"></div>
+                    <div class="m3-art-nav-dot"></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Navigation bar</span>
+                <span class="m3-overview-card-desc">Switch primary views on compact screens</span>
+            </div>
+        </button>
+        <button id="ov-card-nav-drawer" class="m3-overview-card" onclick="{controller.select_doc_page(37)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-drawer-preview">
+                    <div class="m3-art-nav-pill"></div>
+                    <div class="m3-art-drawer-line"></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Navigation drawer</span>
+                <span class="m3-overview-card-desc">Ergonomic destination navigation column</span>
+            </div>
+        </button>
+        <button id="ov-card-nav-rail" class="m3-overview-card" onclick="{controller.select_doc_page(38)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-rail-preview">
+                    <div class="m3-art-nav-pill"></div>
+                    <div class="m3-art-nav-dot"></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Navigation rail</span>
+                <span class="m3-overview-card-desc">Compact navigation rail for desktop apps</span>
+            </div>
+        </button>
+    </div>
+
+    <span class="m3-overview-section-head">Sheets</span>
+    <div class="m3-overview-grid">
+        <button id="ov-card-bottom-sheets" class="m3-overview-card" onclick="{controller.select_doc_page(39)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-bottom-sheet"><div class="m3-art-sheet-handle"></div></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Bottom sheets</span>
+                <span class="m3-overview-card-desc">Supplementary panels anchored at bottom</span>
+            </div>
+        </button>
+        <button id="ov-card-side-sheets" class="m3-overview-card" onclick="{controller.select_doc_page(40)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-side-sheet"></div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Side sheets</span>
+                <span class="m3-overview-card-desc">Supplementary panels anchored on right</span>
+            </div>
+        </button>
+    </div>
+
+    <span class="m3-overview-section-head">All other components</span>
+    <div class="m3-overview-grid">
+        <button id="ov-card-app-bars" class="m3-overview-card" onclick="{controller.select_doc_page(1)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">App bars</span>
+                <span class="m3-overview-card-desc">Top and bottom bars for navigation and actions</span>
+            </div>
+        </button>
+        <button id="ov-card-badges" class="m3-overview-card" onclick="{controller.select_doc_page(2)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Badges</span>
+                <span class="m3-overview-card-desc">Small dots and numeric unread indicators</span>
+            </div>
+        </button>
+        <button id="ov-card-cards" class="m3-overview-card" onclick="{controller.select_doc_page(4)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Cards</span>
+                <span class="m3-overview-card-desc">Elevated, filled, and outlined containers</span>
+            </div>
+        </button>
+        <button id="ov-card-carousel" class="m3-overview-card" onclick="{controller.select_doc_page(5)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Carousel</span>
+                <span class="m3-overview-card-desc">Smooth horizontal zero-relayout browsing</span>
+            </div>
+        </button>
+        <button id="ov-card-checkbox" class="m3-overview-card" onclick="{controller.select_doc_page(6)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Checkbox</span>
+                <span class="m3-overview-card-desc">Select multiple items from a list</span>
+            </div>
+        </button>
+        <button id="ov-card-chips" class="m3-overview-card" onclick="{controller.select_doc_page(7)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Chips</span>
+                <span class="m3-overview-card-desc">Assist, filter, input, and suggestion chips</span>
+            </div>
+        </button>
+        <button id="ov-card-dialogs" class="m3-overview-card" onclick="{controller.select_doc_page(9)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Dialogs</span>
+                <span class="m3-overview-card-desc">Focused modal prompts with Top-Layer scrim</span>
+            </div>
+        </button>
+        <button id="ov-card-divider" class="m3-overview-card" onclick="{controller.select_doc_page(10)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Divider</span>
+                <span class="m3-overview-card-desc">Full-bleed, inset, and vertical lines</span>
+            </div>
+        </button>
+        <button id="ov-card-lists" class="m3-overview-card" onclick="{controller.select_doc_page(11)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Lists</span>
+                <span class="m3-overview-card-desc">Continuous vertical indexes of text &amp; icons</span>
+            </div>
+        </button>
+        <button id="ov-card-menus" class="m3-overview-card" onclick="{controller.select_doc_page(13)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Menus</span>
+                <span class="m3-overview-card-desc">Choices displayed on a temporary surface</span>
+            </div>
+        </button>
+        <button id="ov-card-radio" class="m3-overview-card" onclick="{controller.select_doc_page(15)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Radio button</span>
+                <span class="m3-overview-card-desc">Select a single option from a group</span>
+            </div>
+        </button>
+        <button id="ov-card-search" class="m3-overview-card" onclick="{controller.select_doc_page(16)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Search</span>
+                <span class="m3-overview-card-desc">Live catalog filtering with IME input</span>
+            </div>
+        </button>
+        <button id="ov-card-sliders" class="m3-overview-card" onclick="{controller.select_doc_page(18)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Sliders</span>
+                <span class="m3-overview-card-desc">Select values along a continuous track</span>
+            </div>
+        </button>
+        <button id="ov-card-snackbar" class="m3-overview-card" onclick="{controller.select_doc_page(19)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Snackbar</span>
+                <span class="m3-overview-card-desc">Brief process updates with undo actions</span>
+            </div>
+        </button>
+        <button id="ov-card-switch" class="m3-overview-card" onclick="{controller.select_doc_page(20)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Switch</span>
+                <span class="m3-overview-card-desc">Toggle selections with spring thumb motion</span>
+            </div>
+        </button>
+        <button id="ov-card-tabs" class="m3-overview-card" onclick="{controller.select_doc_page(21)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Tabs</span>
+                <span class="m3-overview-card-desc">Primary and secondary peer view switching</span>
+            </div>
+        </button>
+        <button id="ov-card-text-fields" class="m3-overview-card" onclick="{controller.select_doc_page(22)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Text fields</span>
+                <span class="m3-overview-card-desc">Filled &amp; Outlined IME text input controls</span>
+            </div>
+        </button>
+        <button id="ov-card-tooltips" class="m3-overview-card" onclick="{controller.select_doc_page(24)}">
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">Tooltips</span>
+                <span class="m3-overview-card-desc">Plain and rich Top-Layer helper labels</span>
+            </div>
+        </button>
+    </div>
+</div>
