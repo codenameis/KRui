@@ -64,7 +64,7 @@ h6 {
     font-weight: 600;
 }
 
-input, select, textarea {
+input, select, textarea, progress {
     appearance: auto;
 }
 

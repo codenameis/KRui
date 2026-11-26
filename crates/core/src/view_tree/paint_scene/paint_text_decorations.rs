@@ -139,6 +139,7 @@ fn push_selection_highlight_box(
         background_color: ctx.selection_bg,
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color,
         border_width,
         border_radius: 3.0,

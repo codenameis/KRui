@@ -93,10 +93,10 @@
 
         <div class="m3-cards-stage">
             <div class="m3-stage-surface-box">
-                <RadioField id="radio-plan-free" label="Standard" group="gallery_plan" value="free" bind_checked="{controller.plan_free}" />
+                <RadioField id="radio-plan-free" input_id="radio-plan-free-input" label="Standard" group="gallery_plan" value="free" bind_checked="{controller.plan_free}" />
                 <RadioField id="radio-plan-pro" label="Pro (권장)" group="gallery_plan" value="pro" bind_checked="{controller.plan_pro}" />
                 <RadioField id="radio-plan-ent" label="Enterprise" group="gallery_plan" value="enterprise" bind_checked="{controller.plan_ent}" />
-                <SelectField id="select-region-field" label="배포 리전" supporting="현재 리전 코드: {controller.select_region}" bind_value="{controller.select_region}">
+                <SelectField id="select-region-field" select_id="select-region-control" label="배포 리전" supporting="현재 리전 코드: {controller.select_region}" bind_value="{controller.select_region}">
                     <option value="kr">서울 (ap-northeast-2)</option>
                     <option value="jp">도쿄 (ap-northeast-1)</option>
                     <option value="us">오리건 (us-west-2)</option>
@@ -114,7 +114,7 @@
 
         <div class="m3-cards-stage">
             <div class="m3-stage-surface-box">
-                <SliderField id="slider-master-vol" label="마스터 볼륨" value_text="{controller.slider_label}" min="0" max="100" step="5" bind_value="{controller.slider_pct}" />
+                <SliderField id="slider-master-vol" input_id="slider-master-vol-input" label="마스터 볼륨" value_text="{controller.slider_label}" min="0" max="100" step="5" bind_value="{controller.slider_pct}" />
             </div>
         </div>
 
@@ -128,7 +128,7 @@
 
         <div class="m3-cards-stage">
             <div class="m3-stage-surface-box">
-                <Switch id="switch-dark-mode" label="고대비 미리보기" checked="{controller.switch_dark}" onclick="{controller.toggle_switch_dark()}" />
+                <Switch id="switch-dark-mode" thumb_id="switch-dark-thumb" label="고대비 미리보기" checked="{controller.switch_dark}" onclick="{controller.toggle_switch_dark()}" />
                 <Switch id="switch-haptic-mode" label="입력 포커스 하이라이트" checked="{controller.switch_haptic}" onclick="{controller.toggle_switch_haptic()}" />
             </div>
         </div>

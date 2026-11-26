@@ -171,6 +171,16 @@
     --krui-snackbar-fg: light-dark(#fafafa, #09090b);
     --krui-tooltip-bg: light-dark(#18181b, #27272a);
     --krui-tooltip-fg: #fafafa;
+
+    /* Tailwind v4 Motion Tokens (0-Relayout Theme Parity) */
+    --krui-motion-ease-enter: cubic-bezier(0, 0, 0.2, 1);
+    --krui-motion-ease-exit: cubic-bezier(0.4, 0, 1, 1);
+    --krui-motion-dialog-dur-enter: 200ms;
+    --krui-motion-dialog-dur-exit: 150ms;
+    --krui-motion-sheet-dur-enter: 250ms;
+    --krui-motion-sheet-dur-exit: 180ms;
+    --krui-motion-scrim-dur-enter: 200ms;
+    --krui-motion-scrim-dur-exit: 180ms;
 }
 
 /* Multi-layer Tailwind Ring + Elevation (`shadow-sm`) */
@@ -225,4 +235,9 @@
     opacity: 0;
     background-image: none;
     transition: 0s;
+}
+
+[data-theme="tailwind"] .tw-cq-panel {
+    background-color: var(--md-site-search-fab-bg);
+    box-shadow: var(--krui-shadow);
 }

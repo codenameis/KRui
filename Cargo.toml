@@ -9,22 +9,27 @@ default-run = "krui-showcase"
 [[bin]]
 name = "krui-showcase"
 path = "src/main.rs"
+required-features = ["desktop"]
 
 [[bin]]
 name = "krui-bench"
 path = "src/bin/krui-bench.rs"
+required-features = ["desktop"]
 
 [[example]]
 name = "component_gallery"
 path = "examples/component_gallery/main.rs"
+required-features = ["desktop"]
 
 [features]
-default = []
-preview = ["dep:krui-preview", "krui-winit/preview", "krui-core/preview", "krui-patterns/preview", "krui-macros/preview", "krui-style/preview"]
+default = ["desktop"]
+desktop = ["krui-renderer/gpu", "dep:krui-winit", "dep:krui-engine-host", "dep:krui-bevy", "dep:pollster", "dep:wgpu", "dep:winit"]
+kiosk = []
+preview = ["desktop", "dep:krui-preview", "krui-winit/preview", "krui-core/preview", "krui-patterns/preview", "krui-macros/preview", "krui-style/preview"]
 
 [dependencies]
 krui-core = { workspace = true }
-krui-winit = { workspace = true }
+krui-winit = { workspace = true, optional = true }
 krui-patterns = { workspace = true }
 krui-signals = { workspace = true }
 krui-style = { workspace = true }
@@ -33,17 +38,20 @@ krui-layout = { workspace = true }
 krui-text = { workspace = true }
 krui-a11y = { workspace = true }
 krui-renderer = { workspace = true }
+krui-engine-host = { workspace = true, optional = true }
+krui-bevy = { workspace = true, features = ["bevy-ecs"], optional = true }
 krui-preview = { workspace = true, optional = true }
 accesskit = { workspace = true }
-pollster = { workspace = true }
-wgpu = { workspace = true }
-winit = { workspace = true }
+pollster = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+winit = { workspace = true, optional = true }
 tokio = { workspace = true }
 image = { workspace = true }
 
 [dev-dependencies]
 krui-cli = { workspace = true }
 krui-compiler = { workspace = true }
+krui-engine-host = { workspace = true }
 krui-preview = { workspace = true }
 syn = { workspace = true }
 
@@ -66,6 +74,10 @@ members = [
     "crates/preview",
     "crates/cli",
     "crates/android-ffi",
+    "crates/kms",
+    "crates/engine-host",
+    "crates/bevy",
+    "crates/web-dom",
 ]
 
 [workspace.package]
@@ -86,11 +98,15 @@ krui-layout = { path = "crates/layout" }
 krui-text = { path = "crates/text" }
 krui-a11y = { path = "crates/a11y" }
 krui-core = { path = "crates/core" }
-krui-renderer = { path = "crates/renderer" }
+krui-renderer = { path = "crates/renderer", default-features = false }
 krui-winit = { path = "crates/winit" }
 krui-patterns = { path = "crates/patterns" }
 krui-preview = { path = "crates/preview" }
 krui-cli = { path = "crates/cli" }
+krui-kms = { path = "crates/kms" }
+krui-engine-host = { path = "crates/engine-host" }
+krui-bevy = { path = "crates/bevy" }
+krui-web = { path = "crates/web-dom" }
 krui = { path = "." }
 
 # External pinned dependencies (Section 6: minimal, auditable, pure-Rust preferred)
@@ -132,4 +148,12 @@ opt-level = 2
 opt-level = 3
 lto = "thin"
 codegen-units = 1
+strip = "symbols"
+
+[profile.kiosk]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+panic = "abort"
 strip = "symbols"

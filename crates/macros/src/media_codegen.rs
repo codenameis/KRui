@@ -12,7 +12,36 @@ use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use std::path::{Path, PathBuf};
 
+/// Generates dynamic-only media slot setup tokens (`<img>`, dynamic `<a href>`, `<svg>`) when
+/// static `link_href` was already emitted in `StaticNodeDesc`.
+pub(crate) fn emit_dynamic_media_slots(
+    node: &CompiledNode,
+    source_base_dir: Option<&Path>,
+    span: Span,
+    loop_vars: &[String],
+) -> Result<TokenStream2, syn::Error> {
+    let img_stmt = emit_img_src_slot(node, source_base_dir, span, loop_vars)?;
+    let has_dyn_link = node
+        .link_href
+        .iter()
+        .any(|p| matches!(p, CompiledTextPart::Dynamic { .. }));
+    let link_stmt = if has_dyn_link {
+        emit_interpolated_slot(
+            &node.link_href,
+            span,
+            format_ident!("set_link_href"),
+            format_ident!("bind_dynamic_link_href"),
+            loop_vars,
+        )?
+    } else {
+        quote! {}
+    };
+    let svg_stmt = emit_svg_template_slot(node);
+    Ok(quote! { #img_stmt #link_stmt #svg_stmt })
+}
+
 /// Generates media slot setup tokens (`<img>`, `<a href>`, `<svg>`) for an element node.
+#[allow(dead_code)]
 pub(crate) fn emit_media_slots(
     node: &CompiledNode,
     source_base_dir: Option<&Path>,

@@ -6,51 +6,85 @@
 
 #![forbid(unsafe_code)]
 
+#[cfg(feature = "gpu")]
 mod blur_pass;
+#[cfg(feature = "gpu")]
 mod canvas_cache;
+#[cfg(feature = "gpu")]
 mod dual_atlas;
+#[cfg(feature = "gpu")]
 mod gpu_context;
+#[cfg(feature = "gpu")]
+mod gradient_lut_cache;
+#[cfg(feature = "gpu")]
 mod image_cache;
+#[cfg(feature = "gpu")]
 mod presenter;
+mod radii;
+#[cfg(feature = "gpu")]
 mod sdf_instance;
+#[cfg(feature = "gpu")]
 mod sdf_instance_aux;
+#[cfg(feature = "gpu")]
 mod tessellate;
+#[cfg(feature = "gpu")]
 mod tessellate_aa;
+#[cfg(feature = "gpu")]
+mod tessellate_canvas_grad;
+#[cfg(feature = "gpu")]
 mod tessellate_primitives;
 mod tiny_skia_backend;
+#[cfg(feature = "gpu")]
 mod wgpu_backend;
+#[cfg(feature = "gpu")]
 mod wgpu_compositor;
+#[cfg(feature = "gpu")]
 mod wgpu_compositor_emit;
+#[cfg(feature = "gpu")]
 mod wgpu_compositor_exec;
+#[cfg(feature = "gpu")]
 mod wgpu_compositor_media;
+#[cfg(feature = "gpu")]
+mod wgpu_compositor_wave4;
+#[cfg(feature = "gpu")]
 mod wgpu_pipeline;
 
 use std::collections::HashMap;
+#[cfg(feature = "gpu")]
 use std::sync::Arc;
 
+#[cfg(feature = "gpu")]
 pub use canvas_cache::CanvasMeshCache;
+#[cfg(feature = "gpu")]
 pub use dual_atlas::{
     AtlasPackError, DualGlyphAtlas, GlyphSlot, COLOR_ATLAS_LAYERS, DUAL_ATLAS_SIZE,
     MASK_ATLAS_LAYERS,
 };
+#[cfg(feature = "gpu")]
 pub use gpu_context::GpuContext;
 pub use krui_core::{
-    ActiveBackendKind, CanvasCommand, CanvasContext2D, CanvasDraw, CanvasFillRule, CanvasLineCap,
-    CanvasLineJoin, CanvasRedrawMode, DecodedImage, DrawPrimitive, ExtensibleEvent,
-    ExternalTextureId, FrameRenderStats, GpuResourceLimits, ImageId, ImageSource, PaintScene,
-    PathSegment, RenderBackendPreference, Size,
+    ActiveBackendKind, CanvasCommand, CanvasContext2D, CanvasDraw, CanvasFillRule, CanvasGradient,
+    CanvasGradientStop, CanvasLineCap, CanvasLineJoin, CanvasRedrawMode, CanvasTextAlign,
+    DecodedImage, DrawPrimitive, ExtensibleEvent, ExternalTextureId, FrameRenderStats,
+    GpuResourceLimits, ImageId, ImageSource, PaintScene, PathSegment, RenderBackendPreference,
+    Size,
 };
+#[cfg(feature = "gpu")]
 pub use presenter::WindowSurfacePresenter;
+#[cfg(feature = "gpu")]
 pub use sdf_instance::SdfQuadInstance;
+#[cfg(feature = "gpu")]
 pub use tessellate::{
     tessellate_scene_for_surface, tessellate_scene_for_surface_batched,
     tessellate_scene_for_surface_with_scale_batched, tessellate_scene_to_mesh,
     tessellate_scene_with_atlas, GpuDrawBatch, GpuVertex,
 };
-pub use tiny_skia_backend::TinySkiaRenderer;
+pub use tiny_skia_backend::{convert_rgba8_to_rgb565_le_dithered, TinySkiaRenderer};
+#[cfg(feature = "gpu")]
 pub use wgpu_backend::WgpuRenderer;
 
 pub const ATLAS_SIZE: u32 = 1024;
+pub(crate) const MAX_LAYER_POOL_DEPTH: usize = 16;
 
 fn hash_glyph_mask(w: u32, h: u32, alpha_mask: &[u8]) -> u64 {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
@@ -229,6 +263,7 @@ pub trait RendererBackend {
     fn backend_kind(&self) -> ActiveBackendKind;
 
     /// Returns the shared `Arc<GpuContext>` when backed by `wgpu`, or `None` on CPU fallback.
+    #[cfg(feature = "gpu")]
     fn gpu_context(&self) -> Option<Arc<GpuContext>> {
         None
     }
@@ -272,6 +307,7 @@ impl AdaptiveRenderer {
             RenderBackendPreference::ForceTinySkia | RenderBackendPreference::CpuFallback => {
                 Box::new(TinySkiaRenderer::new(width, height, limits))
             }
+            #[cfg(feature = "gpu")]
             RenderBackendPreference::ForceWgpu => {
                 let wgpu_renderer =
                     WgpuRenderer::try_new(width, height, limits).ok_or_else(|| {
@@ -279,6 +315,14 @@ impl AdaptiveRenderer {
                     })?;
                 Box::new(wgpu_renderer)
             }
+            #[cfg(not(feature = "gpu"))]
+            RenderBackendPreference::ForceWgpu => {
+                return Err(
+                    "ForceWgpu requested, but `krui-renderer` was built without the `gpu` feature"
+                        .to_string(),
+                );
+            }
+            #[cfg(feature = "gpu")]
             RenderBackendPreference::Auto => {
                 if let Some(wgpu_renderer) = WgpuRenderer::try_new(width, height, limits) {
                     Box::new(wgpu_renderer)
@@ -286,6 +330,8 @@ impl AdaptiveRenderer {
                     Box::new(TinySkiaRenderer::new(width, height, limits))
                 }
             }
+            #[cfg(not(feature = "gpu"))]
+            RenderBackendPreference::Auto => Box::new(TinySkiaRenderer::new(width, height, limits)),
         };
 
         Ok(Self { backend })
@@ -293,6 +339,7 @@ impl AdaptiveRenderer {
 
     /// Creates a GPU-backed `AdaptiveRenderer` sharing an existing [`GpuContext`] without
     /// allocating an offscreen framebuffer until [`Self::render_scene`] is explicitly called.
+    #[cfg(feature = "gpu")]
     pub fn from_shared_gpu_context(
         context: Arc<GpuContext>,
         width: u32,
@@ -331,6 +378,7 @@ impl AdaptiveRenderer {
     }
 
     /// Returns the shared `Arc<GpuContext>` if the active backend is `WgpuRenderer`.
+    #[cfg(feature = "gpu")]
     pub fn gpu_context(&self) -> Option<Arc<GpuContext>> {
         self.backend.gpu_context()
     }

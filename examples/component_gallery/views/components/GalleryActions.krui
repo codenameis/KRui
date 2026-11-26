@@ -63,9 +63,9 @@
                             </MenuItem>
                         </SplitButton>
                         <div id="micl-connected-group" class="micl-btn-group">
-                            <button id="micl-seg-day" onclick="{controller.set_density(0)}">Day</button>
-                            <button id="micl-seg-week" onclick="{controller.set_density(1)}">Week</button>
-                            <button id="micl-seg-month" onclick="{controller.set_density(2)}">Month</button>
+                            <button id="micl-seg-day" class="micl-seg-selected-{controller.density_mode == 0}" onclick="{controller.set_density(0)}">Day</button>
+                            <button id="micl-seg-week" class="micl-seg-selected-{controller.density_mode == 1}" onclick="{controller.set_density(1)}">Week</button>
+                            <button id="micl-seg-month" class="micl-seg-selected-{controller.density_mode == 2}" onclick="{controller.set_density(2)}">Month</button>
                         </div>
                     </div>
                     <div class="m3-step-badge-wrap"><div class="m3-step-badge"><span>2</span></div></div>
@@ -190,6 +190,10 @@
                     </FabMenuItem>
                 </FabMenu>
             </div>
+        </div>
+
+        <div class="m3-cards-legend">
+            <div class="m3-legend-row"><div class="m3-step-badge"><span>1</span></div><span class="m3-legend-text">{controller.status_banner}</span></div>
         </div>
 
     <else-if test="{controller.active_doc_page == 29}">

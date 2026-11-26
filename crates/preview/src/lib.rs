@@ -27,6 +27,7 @@ pub mod protocol;
 mod pseudo_mount;
 mod select_slots;
 mod slots;
+mod slots_events;
 /// Stylesheet diff detection for in-place CSS hot-patching.
 pub mod style_patch;
 /// File-system watcher for live `.krui` and `.css` reload loops.

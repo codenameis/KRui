@@ -72,11 +72,15 @@
 .krui-ui-navdrawer {
     display: flex;
     flex-direction: column;
+    min-width: 260px;
     gap: 6px;
     padding: 12px;
     border-radius: var(--krui-sheet-radius);
     background-color: var(--krui-card);
     border: 0px solid transparent;
+}
+.krui-ui-navdrawer > .krui-ui-bar-title {
+    padding: 4px 14px;
 }
 .krui-ui-nav-item {
     display: flex;
@@ -101,6 +105,9 @@
 }
 .krui-ui-nav-item:hover {
     background-image: linear-gradient(var(--krui-state-hover-overlay), var(--krui-state-hover-overlay));
+}
+.krui-ui-nav-item:active {
+    background-image: linear-gradient(var(--krui-state-pressed-overlay), var(--krui-state-pressed-overlay));
 }
 .krui-ui-nav-item.krui-ui-selected-true {
     background-color: var(--krui-secondary-bg);

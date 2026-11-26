@@ -7,11 +7,17 @@
 //   - 헤드리스 120프레임 검증: `cargo run --example component_gallery -- --headless`
 
 #![forbid(unsafe_code)]
+#![cfg_attr(
+    all(target_os = "windows", not(debug_assertions)),
+    windows_subsystem = "windows"
+)]
 
 mod controller;
 mod geometry_gates;
+mod interaction_gates;
 mod runner;
 mod screenshots;
+mod viewport3d;
 
 pub(crate) use controller::GalleryController;
 pub(crate) use runner::{build_gallery_session, WINDOW_HEIGHT, WINDOW_WIDTH};

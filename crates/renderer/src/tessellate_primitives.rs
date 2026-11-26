@@ -39,6 +39,33 @@ pub(crate) fn tessellate_canvas_cmd(
     stroke_tess: &mut StrokeTessellator,
     mesh: &mut VertexBuffers<GpuVertex, u32>,
 ) {
+    match *cmd {
+        CanvasCommand::FillGradient {
+            ref segments,
+            fill_rule,
+            ref gradient,
+            alpha,
+        } => {
+            crate::tessellate_canvas_grad::tessellate_canvas_gradient_fill(
+                segments,
+                fill_rule,
+                gradient,
+                alpha,
+                phys_tx,
+                opacity,
+                (phys_w, phys_h),
+                fill_tess,
+                mesh,
+            );
+            return;
+        }
+        CanvasCommand::SetTransform(_)
+        | CanvasCommand::PushClip { .. }
+        | CanvasCommand::PopClip
+        | CanvasCommand::DrawText { .. }
+        | CanvasCommand::DrawImage { .. } => return,
+        _ => {}
+    }
     match resolve_canvas_cmd_style(cmd) {
         CanvasCmdStyle::Fill(rule, color) => {
             let path = build_canvas_cmd_path(cmd, phys_tx);
@@ -119,6 +146,12 @@ fn build_canvas_cmd_path(cmd: &CanvasCommand, tx: Affine2) -> LyonPath {
         }
         CanvasCommand::FillPath { ref segments, .. }
         | CanvasCommand::StrokePath { ref segments, .. } => build_custom_lyon_path(segments, tx),
+        CanvasCommand::SetTransform(_)
+        | CanvasCommand::PushClip { .. }
+        | CanvasCommand::PopClip
+        | CanvasCommand::FillGradient { .. }
+        | CanvasCommand::DrawText { .. }
+        | CanvasCommand::DrawImage { .. } => LyonPath::builder().build(),
     }
 }
 
@@ -352,54 +385,7 @@ pub(crate) fn push_transformed_textured_quad(
         .extend_from_slice(&[base, base + 1, base + 2, base, base + 2, base + 3]);
 }
 
-/// Center-parameterized arc starting point followed by `<= 4` cubic Bezier control-point triples.
-pub(crate) type ArcCubics = ((f32, f32), Vec<[(f32, f32); 3]>);
-
-/// Converts a center-parameterized elliptical arc into `<= 4` cubic Bezier segments.
-pub(crate) fn flatten_arc_to_cubics(
-    cx: f32,
-    cy: f32,
-    rx: f32,
-    ry: f32,
-    start_rad: f32,
-    sweep_rad: f32,
-    x_rot: f32,
-) -> ArcCubics {
-    let (rx, ry) = (rx.abs().max(1e-4), ry.abs().max(1e-4));
-    let (sin_r, cos_r) = x_rot.sin_cos();
-    let eval_pt = |ang: f32| {
-        let (sa, ca) = ang.sin_cos();
-        let (lx, ly) = (rx * ca, ry * sa);
-        (cx + cos_r * lx - sin_r * ly, cy + sin_r * lx + cos_r * ly)
-    };
-    let eval_tan = |ang: f32| {
-        let (sa, ca) = ang.sin_cos();
-        let (dx, dy) = (-rx * sa, ry * ca);
-        (cos_r * dx - sin_r * dy, sin_r * dx + cos_r * dy)
-    };
-    let start_pt = eval_pt(start_rad);
-    if sweep_rad.abs() <= 1e-5 {
-        return (start_pt, Vec::new());
-    }
-    let segs = ((sweep_rad.abs() / std::f32::consts::FRAC_PI_2).ceil() as usize).clamp(1, 4);
-    let dt = sweep_rad / segs as f32;
-    let alpha = (4.0 / 3.0) * (dt * 0.25).tan();
-    let mut cubics = Vec::with_capacity(segs);
-    for i in 0..segs {
-        let t0 = start_rad + i as f32 * dt;
-        let t1 = t0 + dt;
-        let p0 = eval_pt(t0);
-        let d0 = eval_tan(t0);
-        let p1 = eval_pt(t1);
-        let d1 = eval_tan(t1);
-        cubics.push([
-            (p0.0 + alpha * d0.0, p0.1 + alpha * d0.1),
-            (p1.0 - alpha * d1.0, p1.1 - alpha * d1.1),
-            p1,
-        ]);
-    }
-    (start_pt, cubics)
-}
+use crate::radii::flatten_arc_to_cubics;
 
 fn push_cubic_lyon(
     b: &mut lyon_path::path::Builder,

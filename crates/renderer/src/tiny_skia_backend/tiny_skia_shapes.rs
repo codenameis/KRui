@@ -1,9 +1,10 @@
 //! Circular-arc rounded paths, inset border rings, linear gradients,
 //! and `<canvas>` path helpers for `TinySkiaRenderer`.
 
-use crate::sdf_instance::effective_radii_4;
+use crate::radii::effective_radii_4;
 use krui_core::{
-    CanvasCommand, CanvasLineCap, CanvasLineJoin, DrawPrimitive, ResolvedRadialGradient,
+    CanvasCommand, CanvasLineCap, CanvasLineJoin, DrawPrimitive, ResolvedConicGradient,
+    ResolvedRadialGradient,
 };
 use krui_layout::LayoutRect;
 use krui_style::{Affine2, BoxShadow, Color, LinearGradient};
@@ -21,6 +22,7 @@ pub(super) struct StyledBoxSkiaArgs {
     pub background_color: Color,
     pub background_gradient: Option<LinearGradient>,
     pub radial_gradient: Option<ResolvedRadialGradient>,
+    pub conic_gradient: Option<ResolvedConicGradient>,
     pub border_color: Color,
     pub border_width: f32,
     pub corner_radii: [f32; 4],
@@ -41,6 +43,7 @@ impl StyledBoxSkiaArgs {
                 background_color,
                 background_gradient,
                 radial_gradient,
+                conic_gradient,
                 border_color,
                 border_width,
                 border_radius,
@@ -58,6 +61,7 @@ impl StyledBoxSkiaArgs {
                 background_color: *background_color,
                 background_gradient: *background_gradient,
                 radial_gradient: *radial_gradient,
+                conic_gradient: *conic_gradient,
                 border_color: *border_color,
                 border_width: *border_width,
                 corner_radii: effective_radii_4(*border_radius, *corner_radii),
@@ -99,29 +103,51 @@ pub(super) fn fill_gradient_skia(
     let half_proj = (dx.abs() * hw + dy.abs() * hh).max(1e-3);
     let (cx, cy) = (rect.x + hw, rect.y + hh);
     let p0 = tiny_skia::Point::from_xy(cx - dx * half_proj, cy - dy * half_proj);
-    let p1 = tiny_skia::Point::from_xy(cx + dx * half_proj, cy + dy * half_proj);
-    let [p0_s, p1_s, p2_s] = grad.stop_positions;
-    let mut stops = vec![tiny_skia::GradientStop::new(
-        p0_s.clamp(0.0, 1.0),
-        to_skia_color(grad.start_color, opacity),
-    )];
-    if let Some(col) = grad.mid_color {
+    let mut p1 = tiny_skia::Point::from_xy(cx + dx * half_proj, cy + dy * half_proj);
+    let mut stops = Vec::new();
+    if !grad.extra_stops.is_empty() {
+        grad.extra_stops.with_stops(|raw| {
+            let max_p = if grad.repeating {
+                raw.last().map_or(1.0, |s| s.position).clamp(1e-4, 1.0)
+            } else {
+                1.0
+            };
+            p1 = tiny_skia::Point::from_xy(
+                p0.x + (p1.x - p0.x) * max_p,
+                p0.y + (p1.y - p0.y) * max_p,
+            );
+            for s in raw {
+                stops.push(tiny_skia::GradientStop::new(
+                    (s.position / max_p).clamp(0.0, 1.0),
+                    to_skia_color(s.color, opacity),
+                ));
+            }
+        });
+    } else {
+        let [p0_s, p1_s, p2_s] = grad.stop_positions;
         stops.push(tiny_skia::GradientStop::new(
-            p1_s.clamp(0.0, 1.0),
-            to_skia_color(col, opacity),
+            p0_s.clamp(0.0, 1.0),
+            to_skia_color(grad.start_color, opacity),
+        ));
+        if let Some(col) = grad.mid_color {
+            stops.push(tiny_skia::GradientStop::new(
+                p1_s.clamp(0.0, 1.0),
+                to_skia_color(col, opacity),
+            ));
+        }
+        stops.push(tiny_skia::GradientStop::new(
+            p2_s.clamp(0.0, 1.0),
+            to_skia_color(grad.end_color, opacity),
         ));
     }
-    stops.push(tiny_skia::GradientStop::new(
-        p2_s.clamp(0.0, 1.0),
-        to_skia_color(grad.end_color, opacity),
-    ));
-    if let Some(shader) = tiny_skia::LinearGradient::new(
-        p0,
-        p1,
-        stops,
-        tiny_skia::SpreadMode::Pad,
-        tiny_skia::Transform::identity(),
-    ) {
+    let spread = if grad.repeating {
+        tiny_skia::SpreadMode::Repeat
+    } else {
+        tiny_skia::SpreadMode::Pad
+    };
+    if let Some(shader) =
+        tiny_skia::LinearGradient::new(p0, p1, stops, spread, tiny_skia::Transform::identity())
+    {
         let paint = tiny_skia::Paint {
             shader,
             anti_alias: true,
@@ -175,7 +201,7 @@ pub(super) fn append_round_rect_4_subpath(
     h: f32,
     radii: [f32; 4],
 ) {
-    let [tl, tr, br, bl] = crate::sdf_instance::normalize_radii_4(w, h, radii);
+    let [tl, tr, br, bl] = crate::radii::normalize_radii_4(w, h, radii);
     if tl <= 0.05 && tr <= 0.05 && br <= 0.05 && bl <= 0.05 {
         pb.move_to(x, y);
         pb.line_to(x + w, y);
@@ -274,6 +300,17 @@ pub(super) fn paint_styled_box_surfaces_skia(
             &outer_path,
             a.rect,
             rg,
+            a.opacity,
+            skia_tx,
+            mask,
+        );
+    }
+    if let Some(cg) = a.conic_gradient {
+        super::tiny_skia_conic::fill_conic_gradient_skia(
+            pixmap,
+            &outer_path,
+            a.rect,
+            cg,
             a.opacity,
             skia_tx,
             mask,

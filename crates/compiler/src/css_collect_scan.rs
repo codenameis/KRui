@@ -92,7 +92,7 @@ fn is_container_at_rule(prelude: &str) -> bool {
             || starts_with_ci(prelude, "@starting-style"))
 }
 
-fn skip_ws_and_comments_len(s: &str) -> usize {
+pub(crate) fn skip_ws_and_comments_len(s: &str) -> usize {
     let mut i = 0;
     while i < s.len() {
         if let Some(ch) = s[i..].chars().next() {
@@ -124,7 +124,7 @@ fn scope_selector_list(scope: &str, prelude: &str) -> String {
     out
 }
 
-fn split_top_level_commas(s: &str) -> Vec<&str> {
+pub(crate) fn split_top_level_commas(s: &str) -> Vec<&str> {
     let bytes = s.as_bytes();
     let (mut parts, mut start, mut i) = (Vec::new(), 0usize, 0usize);
     let (mut pdepth, mut bdepth, mut quote) = (0usize, 0usize, None::<u8>);

@@ -122,10 +122,13 @@ fn collect_focusable_subtree(inner: &ViewTreeInner, node_id: NodeId, out: &mut V
     let Some(n) = inner.node(node_id) else {
         return;
     };
-    if n.is_anchor() || n.style.layout.display == DisplayMode::None {
+    if n.is_anchor()
+        || n.style.layout.display == DisplayMode::None
+        || (n.is_pointer_events_none() && n.style.paint.opacity <= 0.0)
+    {
         return;
     }
-    if !n.is_disabled() && n.role.is_focusable() {
+    if !n.is_visibility_hidden() && !n.is_disabled() && n.role.is_focusable() {
         out.push(A11yId::from(node_id).0);
     }
     for &child_id in &n.children {

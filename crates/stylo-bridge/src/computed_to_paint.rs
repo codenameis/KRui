@@ -3,8 +3,8 @@
 
 use app_units::Au;
 use krui_style::{
-    BoxShadow, Color, CornerRadii, DisplayMode, Edges, ObjectFit, OverflowMode, PaintStyle,
-    PositionMode, ScrollbarWidth, ShadowStack, UserSelect,
+    BoxShadow, Color, CornerRadii, CursorStyle, DisplayMode, Edges, ObjectFit, OverflowMode,
+    PaintStyle, PositionMode, ScrollbarWidth, ShadowStack, UserSelect,
 };
 use style::color::{AbsoluteColor, ColorSpace};
 use style::properties::longhands::box_sizing::computed_value::T as StyloBoxSizing;
@@ -22,8 +22,11 @@ use style::values::generics::ui::ScrollbarColor as StyloScrollbarColor;
 use style::values::specified::border::BorderStyle;
 use style::values::specified::box_::{Appearance, DisplayInside, DisplayOutside, PositionProperty};
 use style::values::specified::outline::OutlineStyle;
-use style::values::specified::ui::{PointerEvents, UserSelect as StyloUserSelect};
+use style::values::specified::ui::{
+    CursorKind as StyloCursorKind, PointerEvents, UserSelect as StyloUserSelect,
+};
 
+use crate::computed_to_clip_path::extract_clip_path;
 use crate::computed_to_gradient::extract_gradients;
 use crate::computed_to_transform::extract_transforms;
 use crate::computed_to_transitions::{extract_animations, extract_transition_spec};
@@ -156,6 +159,20 @@ fn extract_effects(style: &ComputedValues, current_color: &AbsoluteColor, paint:
             break;
         }
     }
+
+    for filter in &*effects.filter.0 {
+        match filter {
+            Filter::Blur(r) => paint.filter.blur_px += r.0.px().max(0.0),
+            Filter::Brightness(v) => paint.filter.brightness *= v.0.max(0.0),
+            Filter::Contrast(v) => paint.filter.contrast *= v.0.max(0.0),
+            Filter::Grayscale(v) => paint.filter.grayscale = v.0.clamp(0.0, 1.0),
+            Filter::Invert(v) => paint.filter.invert = v.0.clamp(0.0, 1.0),
+            Filter::Opacity(v) => paint.filter.opacity *= v.0.clamp(0.0, 1.0),
+            Filter::Saturate(v) => paint.filter.saturate *= v.0.max(0.0),
+            Filter::Sepia(v) => paint.filter.sepia = v.0.clamp(0.0, 1.0),
+            Filter::HueRotate(_) | Filter::DropShadow(_) | Filter::Url(_) => {}
+        }
+    }
 }
 
 fn extract_ui_paint(style: &ComputedValues, current_color: &AbsoluteColor, paint: &mut PaintStyle) {
@@ -164,6 +181,7 @@ fn extract_ui_paint(style: &ComputedValues, current_color: &AbsoluteColor, paint
     let inh_ui = style.get_inherited_ui();
     paint.appearance_none = box_s.appearance == Appearance::None;
     paint.user_select = map_user_select(ui.user_select);
+    paint.cursor = map_cursor_kind(inh_ui.cursor.keyword);
     paint.object_fit = map_object_fit(style.get_position().object_fit);
 
     match &inh_ui.caret_color.0 {
@@ -214,12 +232,14 @@ pub(crate) fn extract_paint_style(style: &ComputedValues) -> PaintStyle {
     let imgs = extract_gradients(style, &current_color);
     paint.background_gradient = imgs.linear;
     paint.radial_gradient = imgs.radial;
+    paint.conic_gradient = imgs.conic;
     paint.bg_size_scale = imgs.bg_size_scale;
     paint.bg_position = imgs.bg_position;
 
     extract_borders(style, &current_color, &mut paint);
     extract_effects(style, &current_color, &mut paint);
     extract_ui_paint(style, &current_color, &mut paint);
+    paint.clip_path = extract_clip_path(style);
     paint
 }
 
@@ -266,6 +286,44 @@ fn map_object_fit(o: StyloObjectFit) -> ObjectFit {
         StyloObjectFit::Cover => ObjectFit::Cover,
         StyloObjectFit::None => ObjectFit::None,
         StyloObjectFit::ScaleDown => ObjectFit::ScaleDown,
+    }
+}
+
+fn map_cursor_kind(k: StyloCursorKind) -> CursorStyle {
+    match k {
+        StyloCursorKind::Auto => CursorStyle::Auto,
+        StyloCursorKind::Default | StyloCursorKind::ContextMenu => CursorStyle::Default,
+        StyloCursorKind::None => CursorStyle::None,
+        StyloCursorKind::Pointer => CursorStyle::Pointer,
+        StyloCursorKind::Text | StyloCursorKind::VerticalText => CursorStyle::Text,
+        StyloCursorKind::Crosshair => CursorStyle::Crosshair,
+        StyloCursorKind::Move => CursorStyle::Move,
+        StyloCursorKind::Grab => CursorStyle::Grab,
+        StyloCursorKind::Grabbing => CursorStyle::Grabbing,
+        StyloCursorKind::EResize | StyloCursorKind::WResize | StyloCursorKind::EwResize => {
+            CursorStyle::EwResize
+        }
+        StyloCursorKind::NResize | StyloCursorKind::SResize | StyloCursorKind::NsResize => {
+            CursorStyle::NsResize
+        }
+        StyloCursorKind::NeResize | StyloCursorKind::SwResize | StyloCursorKind::NeswResize => {
+            CursorStyle::NeswResize
+        }
+        StyloCursorKind::NwResize | StyloCursorKind::SeResize | StyloCursorKind::NwseResize => {
+            CursorStyle::NwseResize
+        }
+        StyloCursorKind::ColResize => CursorStyle::ColResize,
+        StyloCursorKind::RowResize => CursorStyle::RowResize,
+        StyloCursorKind::NotAllowed | StyloCursorKind::NoDrop => CursorStyle::NotAllowed,
+        StyloCursorKind::Wait => CursorStyle::Wait,
+        StyloCursorKind::Progress => CursorStyle::Progress,
+        StyloCursorKind::ZoomIn => CursorStyle::ZoomIn,
+        StyloCursorKind::ZoomOut => CursorStyle::ZoomOut,
+        StyloCursorKind::Help => CursorStyle::Help,
+        StyloCursorKind::Copy => CursorStyle::Copy,
+        StyloCursorKind::Alias => CursorStyle::Alias,
+        StyloCursorKind::Cell => CursorStyle::Cell,
+        StyloCursorKind::AllScroll => CursorStyle::AllScroll,
     }
 }
 

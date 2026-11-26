@@ -11,7 +11,7 @@ const OP = {
   KEY_DOWN: 0x08,
   IME_PREEDIT: 0x09,
   IME_COMMIT: 0x0a,
-  SET_THEME: 0x0b,
+  SET_COLOR_SCHEME: 0x0b,
   SET_DEVICE_FRAME: 0x0c,
   SET_OVERLAY: 0x0d,
   RESTART: 0x0e,
@@ -113,8 +113,8 @@ function encodeWebviewCommand(msg) {
     }
     case "imeCommit":
       return { opcode: OP.IME_COMMIT, body: Buffer.from(String(msg.text || ""), "utf8") };
-    case "setTheme":
-      return { opcode: OP.SET_THEME, body: Buffer.from(String(msg.slug || "fluent"), "utf8") };
+    case "setColorScheme":
+      return { opcode: OP.SET_COLOR_SCHEME, body: Buffer.from(String(msg.slug || "system"), "utf8") };
     case "setDeviceFrame":
       return { opcode: OP.SET_DEVICE_FRAME, body: Buffer.from(String(msg.slug || "none"), "utf8") };
     case "setOverlay": {

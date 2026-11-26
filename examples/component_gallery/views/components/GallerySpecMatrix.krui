@@ -1,0 +1,22 @@
+<Card variant="outlined" title="M3 Token Specification Matrix" subtitle="현재 컴포넌트에 바인딩된 Color · Shape · Typography · Elevation CSS 토큰">
+    <div class="gallery-col">
+        <div class="m3-subroute-bar">
+            <button id="spec-filter-0" class="m3-subroute-pill m3-subroute-pill-{controller.w4.spec_filter_group == 0}" onclick="{controller.set_spec_filter_group(0)}">All</button>
+            <button id="spec-filter-1" class="m3-subroute-pill m3-subroute-pill-{controller.w4.spec_filter_group == 1}" onclick="{controller.set_spec_filter_group(1)}">Color</button>
+            <button id="spec-filter-2" class="m3-subroute-pill m3-subroute-pill-{controller.w4.spec_filter_group == 2}" onclick="{controller.set_spec_filter_group(2)}">Shape</button>
+            <button id="spec-filter-3" class="m3-subroute-pill m3-subroute-pill-{controller.w4.spec_filter_group == 3}" onclick="{controller.set_spec_filter_group(3)}">Typography</button>
+            <button id="spec-filter-4" class="m3-subroute-pill m3-subroute-pill-{controller.w4.spec_filter_group == 4}" onclick="{controller.set_spec_filter_group(4)}">Spacing / Elevation</button>
+        </div>
+
+        <div id="m3-spec-matrix-table" class="m3-spec-table">
+            <for each="{row in controller.w4.spec_rows}" key="{row.id}">
+                <div class="m3-spec-row">
+                    <span class="m3-spec-badge">{row.group}</span>
+                    <span class="m3-spec-token">{row.token}</span>
+                    <span class="m3-spec-val">{row.value}</span>
+                    <span class="m3-spec-role">{row.role}</span>
+                </div>
+            </for>
+        </div>
+    </div>
+</Card>

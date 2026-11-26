@@ -1,8 +1,11 @@
 //! Visual paint, compositing, shadow, gradient, and pseudo-state style types.
 
 use crate::affine::{Affine2, Transform2D};
+use crate::clip_path::ClipShape;
 use crate::color::Color;
+use crate::filter::CssFilterEffect;
 use crate::gradient_radial::{RadialCoord, RadialGradient};
+use crate::gradient_stops::{ConicGradient, GradientStopsRef};
 use crate::keyframes::AnimationListRef;
 use crate::layout_types::{CornerRadii, Edges, LayoutStyle};
 use crate::shadow_stack::ShadowStack;
@@ -214,6 +217,10 @@ pub struct LinearGradient {
     pub mid_color: Option<Color>,
     /// Normalized stop offsets `[start, mid, end]` in `0.0..=1.0`.
     pub stop_positions: [f32; 3],
+    /// Full stop list when > 3 stops or repeating linear gradient is authored.
+    pub extra_stops: GradientStopsRef,
+    /// `true` for `repeating-linear-gradient(...)`.
+    pub repeating: bool,
 }
 
 impl Default for LinearGradient {
@@ -224,6 +231,8 @@ impl Default for LinearGradient {
             end_color: Color::TRANSPARENT,
             mid_color: None,
             stop_positions: [0.0, 0.5, 1.0],
+            extra_stops: GradientStopsRef::Empty,
+            repeating: false,
         }
     }
 }
@@ -238,6 +247,8 @@ impl LinearGradient {
             end_color,
             mid_color: None,
             stop_positions: [0.0, 0.5, 1.0],
+            extra_stops: GradientStopsRef::Empty,
+            repeating: false,
         }
     }
 }
@@ -322,8 +333,14 @@ pub struct PaintStyle {
     pub transition: TransitionSpec,
     /// Frosted-glass backdrop blur radius in logical pixels.
     pub backdrop_blur_px: f32,
+    /// CSS `filter` pipeline effect applied across this element's subtree.
+    pub filter: CssFilterEffect,
+    /// Optional CSS `clip-path` (`polygon()`, `path()`, `circle()`, `ellipse()`, `inset()`).
+    pub clip_path: Option<ClipShape>,
     /// User text-selection policy.
     pub user_select: UserSelect,
+    /// Computed CSS `cursor` property (`Auto` preserves semantic cursor fallback).
+    pub cursor: crate::cursor::CursorStyle,
     /// Replaced element (`<img>` / `ExternalTexture`) object-fit mode.
     pub object_fit: ObjectFit,
     /// Explicit CSS `caret-color` (`None` = `auto`, using theme caret token unless `caret_uses_current_color` is set).
@@ -350,6 +367,8 @@ pub struct PaintStyle {
     pub provides_inherited_text_color: bool,
     /// Optional CSS `radial-gradient(...)` fill (supports pointer-bound coordinates).
     pub radial_gradient: Option<RadialGradient>,
+    /// Optional CSS `conic-gradient(...)` fill (supports pointer-bound coordinates).
+    pub conic_gradient: Option<ConicGradient>,
     /// Optional CSS `background-size` scale factors `(scale_x, scale_y)`.
     pub bg_size_scale: Option<(f32, f32)>,
     /// Optional CSS `background-position` center/tile offset coordinates.
@@ -472,7 +491,10 @@ impl Default for PaintStyle {
             secondary_shadow: None,
             transition: TransitionSpec::NONE,
             backdrop_blur_px: 0.0,
+            filter: CssFilterEffect::IDENTITY,
+            clip_path: None,
             user_select: UserSelect::Auto,
+            cursor: crate::cursor::CursorStyle::Auto,
             object_fit: ObjectFit::Fill,
             caret_color: None,
             caret_uses_current_color: false,
@@ -486,6 +508,7 @@ impl Default for PaintStyle {
             inherits_text_color: false,
             provides_inherited_text_color: false,
             radial_gradient: None,
+            conic_gradient: None,
             bg_size_scale: None,
             bg_position: None,
             appearance_none: false,

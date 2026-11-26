@@ -9,16 +9,22 @@
 pub mod affine;
 pub mod box_edges;
 pub mod class_patch;
+pub mod clip_path;
 pub mod color;
+pub mod cursor;
 pub mod easing;
+pub mod filter;
 pub mod font;
 pub mod font_face;
 pub mod gradient_radial;
+pub mod gradient_stops;
 pub mod grid;
+pub mod homography3d;
 pub mod html_tag;
 pub mod keyframes;
 pub mod layout_types;
 pub mod paint_types;
+pub mod profile;
 pub mod rich_span;
 pub mod shadow_stack;
 pub mod standalone_transform;
@@ -37,17 +43,29 @@ pub use box_edges::{
     UA_SLIDER_TRACK_COLOR, UA_TOOLTIP_BG_COLOR, UA_TOOLTIP_FG_COLOR,
 };
 pub use class_patch::{LayoutPatchOp, PaintPatchOp, TextPatchOp};
+pub use clip_path::{
+    ClipCoord, ClipFillRule, ClipPathCmd, ClipPathCmdsRef, ClipPolygonRef, ClipRadius, ClipShape,
+};
 pub use color::Color;
+pub use cursor::CursorStyle;
 pub use easing::{LinearCurveRef, LinearStop, StepPosition, TransitionCurve};
+pub use filter::CssFilterEffect;
 pub use font::FontFamilyStack;
 pub use font_face::{
     FontContainerFormat, FontFaceMetricsOverride, FontFaceRule, FontFaceSource, FontStyleSlope,
     UnicodeRange,
 };
 pub use gradient_radial::{resolve_radial_geometry, PointerCoordPair, RadialCoord, RadialGradient};
+pub use gradient_stops::{
+    rasterize_lut_rgba8, sample_premul_rgba, ConicGradient, GradientStop, GradientStopsRef,
+};
 pub use grid::{
     AutoRepeatMode, GridAutoFlow, GridLinePair, GridMaxTrack, GridMinTrack, GridPlacementAtom,
     GridTrack, GridTrackList, MAX_GRID_TRACKS,
+};
+pub use homography3d::{
+    compute_projective_quad, inverse_project_point, mat4_has_perspective, mat4_perspective_origin,
+    ProjectiveQuad,
 };
 pub use html_tag::HtmlTag;
 pub use keyframes::{
@@ -59,6 +77,10 @@ pub use layout_types::{
     JustifyContent, LayoutStyle, OverflowMode, PositionMode,
 };
 pub use paint_types::{BoxShadow, LinearGradient, ObjectFit, PaintStyle, UserSelect};
+pub use profile::{
+    ColorDepthBits, DamageRect, DamageTrackingMode, DisplayShape, DynamicSlotId, RootProfileAttrs,
+    TierProfile,
+};
 pub use rich_span::{PseudoElementSpec, StyledTextSpan};
 pub use shadow_stack::{ShadowStack, MAX_BOX_SHADOW_LAYERS};
 pub use standalone_transform::{OriginAxis, StandaloneTransform, TranslateAxis};

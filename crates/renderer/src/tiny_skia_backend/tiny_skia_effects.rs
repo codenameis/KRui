@@ -164,21 +164,20 @@ impl ShadowNormRadii {
     fn from_ctx(ctx: &SkiaBoxEffectCtx<'_>, sh: BoxShadow) -> Self {
         let (hw, hh) = (0.5 * ctx.rect.width, 0.5 * ctx.rect.height);
         let bw = ctx.border_width;
-        let outer_box =
-            crate::sdf_instance::normalize_radii_4(2.0 * hw, 2.0 * hh, ctx.corner_radii);
+        let outer_box = crate::radii::normalize_radii_4(2.0 * hw, 2.0 * hh, ctx.corner_radii);
         let sh_hw = (hw + sh.spread_radius).max(0.0);
         let sh_hh = (hh + sh.spread_radius).max(0.0);
-        let outer_sh = crate::sdf_instance::normalize_radii_4(
+        let outer_sh = crate::radii::normalize_radii_4(
             2.0 * sh_hw,
             2.0 * sh_hh,
             ctx.corner_radii.map(|r| (r + sh.spread_radius).max(0.0)),
         );
         let (pad_hw, pad_hh) = ((hw - bw).max(0.0), (hh - bw).max(0.0));
         let raw_pad_r = ctx.corner_radii.map(|r| (r - bw).max(0.0));
-        let pad = crate::sdf_instance::normalize_radii_4(2.0 * pad_hw, 2.0 * pad_hh, raw_pad_r);
+        let pad = crate::radii::normalize_radii_4(2.0 * pad_hw, 2.0 * pad_hh, raw_pad_r);
         let cut_hw = (pad_hw - sh.spread_radius).max(0.0);
         let cut_hh = (pad_hh - sh.spread_radius).max(0.0);
-        let cut = crate::sdf_instance::normalize_radii_4(
+        let cut = crate::radii::normalize_radii_4(
             2.0 * cut_hw,
             2.0 * cut_hh,
             raw_pad_r.map(|r| (r - sh.spread_radius).max(0.0)),
@@ -354,10 +353,10 @@ pub(super) fn eval_outer_shadow_cov(
     blur: f32,
     aa: f32,
 ) -> f32 {
-    let box_nr = crate::sdf_instance::normalize_radii_4(2.0 * hw, 2.0 * hh, radii);
+    let box_nr = crate::radii::normalize_radii_4(2.0 * hw, 2.0 * hh, radii);
     let sh_hw = (hw + sh.spread_radius).max(0.0);
     let sh_hh = (hh + sh.spread_radius).max(0.0);
-    let sh_nr = crate::sdf_instance::normalize_radii_4(
+    let sh_nr = crate::radii::normalize_radii_4(
         2.0 * sh_hw,
         2.0 * sh_hh,
         radii.map(|r| (r + sh.spread_radius).max(0.0)),
@@ -379,10 +378,10 @@ pub(super) fn eval_inset_shadow_cov(
 ) -> f32 {
     let (pad_hw, pad_hh) = ((hw - bw).max(0.0), (hh - bw).max(0.0));
     let raw_pad_r = radii.map(|r| (r - bw).max(0.0));
-    let pad_nr = crate::sdf_instance::normalize_radii_4(2.0 * pad_hw, 2.0 * pad_hh, raw_pad_r);
+    let pad_nr = crate::radii::normalize_radii_4(2.0 * pad_hw, 2.0 * pad_hh, raw_pad_r);
     let cut_hw = (pad_hw - sh.spread_radius).max(0.0);
     let cut_hh = (pad_hh - sh.spread_radius).max(0.0);
-    let cut_nr = crate::sdf_instance::normalize_radii_4(
+    let cut_nr = crate::radii::normalize_radii_4(
         2.0 * cut_hw,
         2.0 * cut_hh,
         raw_pad_r.map(|r| (r - sh.spread_radius).max(0.0)),

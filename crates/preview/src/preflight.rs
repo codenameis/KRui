@@ -300,42 +300,29 @@ fn validate_paint_and_layout_slots(
     Ok(())
 }
 
-fn validate_click_slot(
-    click_expr: &TemplateExpr,
+fn validate_event_slot(
+    expr: &TemplateExpr,
     registry: &dyn Registry,
     source_path: Option<&std::path::Path>,
+    slot_name: &str,
+    allow_pointer: bool,
+    allow_wheel: bool,
 ) -> Result<(), CompileError> {
-    let val =
-        validate_template_expr(click_expr, registry).map_err(|e| to_compile_err(e, source_path))?;
-    match click_expr {
-        TemplateExpr::Path(_) => {
-            if !matches!(val, Value::Command(_)) {
-                return Err(to_compile_err(
-                    EvalError::TypeError(format!("`onclick` path requires Command, got {val:?}")),
-                    source_path,
-                ));
-            }
-        }
-        TemplateExpr::Call { .. } => {
-            if !matches!(val, Value::Command(_) | Value::Unit) {
-                return Err(to_compile_err(
-                    EvalError::TypeError(format!(
-                        "`onclick` call requires Command or `()` return, got {val:?}"
-                    )),
-                    source_path,
-                ));
-            }
-        }
-        _ => {
-            return Err(to_compile_err(
-                EvalError::TypeError(
-                    "`onclick` requires a Command path or method call".to_string(),
-                ),
-                source_path,
-            ));
-        }
-    }
-    Ok(())
+    let val = validate_template_expr(expr, registry).map_err(|e| to_compile_err(e, source_path))?;
+    let msg = match expr {
+        TemplateExpr::Path(_) => match val {
+            Value::Command(_) => return Ok(()),
+            Value::PointerHandler(_) if allow_pointer => return Ok(()),
+            Value::WheelHandler(_) if allow_wheel => return Ok(()),
+            _ => format!("`{slot_name}` path requires handler or Command, got {val:?}"),
+        },
+        TemplateExpr::Call { .. } => match val {
+            Value::Command(_) | Value::Unit => return Ok(()),
+            _ => format!("`{slot_name}` call requires Command or `()` return, got {val:?}"),
+        },
+        _ => format!("`{slot_name}` requires a handler, Command path, or method call"),
+    };
+    Err(to_compile_err(EvalError::TypeError(msg), source_path))
 }
 
 fn validate_event_and_binding_slots(
@@ -357,9 +344,6 @@ fn validate_event_and_binding_slots(
         &node.on_click,
         &node.on_focus,
         &node.on_blur,
-        &node.on_pointer_down,
-        &node.on_pointer_up,
-        &node.on_pointer_move,
         &node.on_scroll,
         &node.on_submit,
         &node.on_reset,
@@ -367,7 +351,20 @@ fn validate_event_and_binding_slots(
     .into_iter()
     .flatten()
     {
-        validate_click_slot(action_expr, registry, source_path)?;
+        validate_event_slot(action_expr, registry, source_path, "event", false, false)?;
+    }
+    for ptr_expr in [
+        &node.on_pointer_down,
+        &node.on_pointer_up,
+        &node.on_pointer_move,
+    ]
+    .into_iter()
+    .flatten()
+    {
+        validate_event_slot(ptr_expr, registry, source_path, "onpointer*", true, false)?;
+    }
+    if let Some(wheel_expr) = &node.on_wheel {
+        validate_event_slot(wheel_expr, registry, source_path, "onwheel", false, true)?;
     }
     validate_two_way_and_handler_slots(node, registry, source_path)
 }

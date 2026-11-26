@@ -210,6 +210,10 @@ pub struct CompiledNode {
     pub on_pointer_down: Option<TemplateExpr>,
     pub on_pointer_up: Option<TemplateExpr>,
     pub on_pointer_move: Option<TemplateExpr>,
+    #[cfg_attr(feature = "preview", serde(default))]
+    pub on_context_menu: Option<TemplateExpr>,
+    #[cfg_attr(feature = "preview", serde(default))]
+    pub on_wheel: Option<TemplateExpr>,
     pub on_scroll: Option<TemplateExpr>,
     pub on_input: Option<TemplateExpr>,
     pub on_change: Option<TemplateExpr>,
@@ -283,6 +287,8 @@ impl CompiledNode {
             on_pointer_down: None,
             on_pointer_up: None,
             on_pointer_move: None,
+            on_context_menu: None,
+            on_wheel: None,
             on_scroll: None,
             on_input: None,
             on_change: None,

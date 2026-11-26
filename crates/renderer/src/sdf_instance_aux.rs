@@ -116,6 +116,7 @@ impl SdfQuadInstance {
             background_color: Color::TRANSPARENT,
             background_gradient: None,
             radial_gradient: None,
+            conic_gradient: None,
             border_color: Color::TRANSPARENT,
             border_width: 0.0,
             border_radius,
@@ -141,6 +142,7 @@ impl SdfQuadInstance {
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn composite_layer(
         clip: Option<LayoutRect>,
         clip_radius: f32,
@@ -148,6 +150,7 @@ impl SdfQuadInstance {
         local_clip: Option<(LayoutRect, [f32; 4], Affine2)>,
         drawn_bounds: Option<[f32; 4]>,
         opacity: f32,
+        filter: krui_style::CssFilterEffect,
         sf: SurfaceFrameTransform,
     ) -> Option<Self> {
         let drawn = drawn_bounds?;
@@ -182,20 +185,34 @@ impl SdfQuadInstance {
         if x1 <= x0 || y1 <= y0 {
             return None;
         }
+        let has_mat = filter.has_color_matrix();
+        let m = filter.to_color_matrix_4x5();
         Some(Self {
             screen_bounds: [x0, y0, x1, y1],
             center_and_vp,
             inv_linear,
             box_geom,
             clip_geom,
-            color_a: [1.0; 4],
-            color_b: [0.0; 4],
-            grad_start: [0.0; 4],
-            grad_end: [0.0; 4],
+            color_a: if has_mat {
+                [m[0][0], m[0][1], m[0][2], m[0][4]]
+            } else {
+                [1.0; 4]
+            },
+            color_b: if has_mat {
+                [m[1][0], m[1][1], m[1][2], m[1][4]]
+            } else {
+                [0.0; 4]
+            },
+            grad_start: if has_mat {
+                [m[2][0], m[2][1], m[2][2], m[2][4]]
+            } else {
+                [0.0; 4]
+            },
+            grad_end: [m[3][3], 0.0, 0.0, 0.0],
             uv_rect: [0.0; 4],
             shadow_params: [0.0; 4],
             extra_params: [opacity.clamp(0.0, 1.0), clip_r_phys, 0.0, local_mask_flag],
-            flags: [KIND_SAMPLE_AUX_TEX, 0, 0, 0],
+            flags: [KIND_SAMPLE_AUX_TEX, u32::from(has_mat), 0, 0],
             corner_radii,
             clip_radii,
         })
@@ -255,6 +272,7 @@ fn prepare_local_layer_clip(
         background_color: Color::TRANSPARENT,
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color: Color::TRANSPARENT,
         border_width: 0.0,
         border_radius: 0.0,

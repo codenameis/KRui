@@ -5,6 +5,7 @@ pub mod dom;
 pub mod ime;
 pub mod input;
 pub mod paint_scene;
+pub mod static_ir;
 pub mod style_bridge;
 
 pub use controls::{a11y, forms, select_popup};
@@ -13,9 +14,12 @@ pub use dom::{bindings, control_flow, media_nodes, node};
 pub(crate) use dom::{lifecycle::unmount_node_subtree, sparse_tables};
 #[cfg(feature = "preview")]
 pub use dom::{preview_inspect, preview_remount};
-pub use ime::{cursor_nav, ime_host, text_edit};
+pub use ime::{cursor_nav, hangul_automaton, ime_host, text_edit};
 pub(crate) use ime::{grapheme, ime_actions, text_selection_granularity};
-pub use input::{events, focus_pointer, hit_test, key_routing, pointer_capture, scroll, touch};
+pub use input::{
+    events, focus_pointer, hit_test, key_routing, pointer_capture, pointer_events, pointer_types,
+    scroll, spatial_focus, touch, touch_calib,
+};
 pub(crate) use input::{focus_transition, hit_test_geom};
 pub use paint_scene::paint;
 pub(crate) use paint_scene::{
@@ -23,8 +27,8 @@ pub(crate) use paint_scene::{
     stacking, tooltip_paint,
 };
 pub(crate) use style_bridge::{
-    clip_shape, content_box, keyframes_driver, layout_modes, pointer_vars, pseudo_sync,
-    transitions, transitions_layout,
+    clip_path_resolve, clip_shape, content_box, keyframes_driver, layout_modes, pointer_vars,
+    pseudo_sync, transitions, transitions_layout,
 };
 pub use style_bridge::{insets, sync};
 
@@ -32,6 +36,7 @@ pub use a11y::{A11yId, A11Y_ID_OFFSET};
 pub use control_flow::BranchMountFn;
 pub use form_submit::ButtonKind;
 pub use grapheme::TextEditSnapshot;
+pub use hangul_automaton::{Hangul2BulsikAutomaton, HangulStep};
 pub use ime_host::{
     utf16_to_utf8_offset, utf16_to_utf8_range, utf8_to_utf16_offset, utf8_to_utf16_range,
     EditingState, EditorActionKind, ImeEvent, InputKind, TextInputHost,
@@ -45,16 +50,25 @@ pub use node::{
     ClickBinding, ClickTarget, FocusOrigin, HoveredCursorKind, ImeState, InputTarget, NodeId,
     ViewFragment,
 };
+pub use pointer_events::{
+    prevent_default_wheel, PointerButton, PointerEvent, PointerHandler, PointerTarget, WheelEvent,
+    WheelHandler, WheelTarget,
+};
 #[cfg(feature = "preview")]
 pub use preview_inspect::InspectedNodeInfo;
 #[cfg(feature = "preview")]
 pub use preview_remount::{normalize_preview_path_key, PreviewSavedNodes, SavedPreviewNode};
+pub use spatial_focus::{next_spatial_focus, FocusableCandidate, SpatialNavDirection};
 pub use touch::{TouchPhaseKind, TOUCH_SLOP_PX};
+pub use touch_calib::{CalibrationPair, TouchCalibrationMatrix};
 
 use krui_a11y::AccessibilityEngine;
 use krui_layout::LayoutEngine;
 use krui_signals::{FrameClock, Scope, Signal};
-use krui_style::{ColorScheme, ColorSchemePreference, CompiledStyle, ReducedMotionPreference};
+use krui_style::{
+    ColorDepthBits, ColorScheme, ColorSchemePreference, CompiledStyle, DisplayShape,
+    ReducedMotionPreference, RootProfileAttrs, TierProfile,
+};
 use krui_stylo_bridge::{
     DeviceConfig, StyleSheetHandle, StyloDomMutation, StyloNodeId, StyloStyleEngine,
 };
@@ -107,6 +121,7 @@ pub(crate) struct ViewTreeInner {
     pub(crate) embedded_fonts: HashMap<String, Arc<[u8]>>,
     pub(crate) scale_factor: f32,
     pub(crate) paint_dirty: bool,
+    pub(crate) damage_tracker: paint_scene::damage_tracker::DamageTracker,
     pub(crate) viewport_insets: insets::ViewportInsets,
     pub(crate) touch: touch::TouchTracker,
     pub(crate) animations_paused: bool,
@@ -211,6 +226,7 @@ impl ViewTree {
                 embedded_fonts: HashMap::new(),
                 scale_factor: 1.0,
                 paint_dirty: true,
+                damage_tracker: paint_scene::damage_tracker::DamageTracker::default(),
                 viewport_insets: insets::ViewportInsets::default(),
                 touch: touch::TouchTracker::default(),
                 animations_paused: false,
@@ -445,6 +461,45 @@ impl ViewTree {
                 .map(|e| e.cursor_char_idx)
                 .unwrap_or(0),
         )
+    }
+
+    /// Updates CSS viewport dimensions, DPR, and media-query state on the Stylo engine.
+    pub fn set_root_attribute(&mut self, name: &str, value: Option<&str>) {
+        let mut inner = self.inner.borrow_mut();
+        let root_sid = inner.stylo_doc_root;
+        inner
+            .stylo
+            .apply_mutation(StyloDomMutation::SetSingleAttribute {
+                node: root_sid,
+                name: name.to_string(),
+                value: value.map(str::to_string),
+            });
+        inner.stylo_dirty = true;
+        inner.paint_dirty = true;
+    }
+
+    /// Synchronizes host tier, display silhouette, color depth, and reduced-motion attributes onto `:root`.
+    pub fn apply_root_profile_attrs(&mut self, attrs: RootProfileAttrs) {
+        let tier_val = match attrs.tier {
+            TierProfile::FullGpu => "gpu",
+            TierProfile::CpuKiosk => "cpu",
+        };
+        let shape_val = match attrs.shape {
+            DisplayShape::Rectangular => "rect",
+            DisplayShape::Round => "round",
+        };
+        let depth_val = match attrs.color_depth {
+            ColorDepthBits::Bpp24OrMore => "24",
+            ColorDepthBits::Bpp16Rgb565 => "16",
+        };
+        self.set_root_attribute("data-krui-tier", Some(tier_val));
+        self.set_root_attribute("data-krui-shape", Some(shape_val));
+        self.set_root_attribute("data-krui-color-depth", Some(depth_val));
+        self.set_reduced_motion_preference(if attrs.reduced_motion {
+            ReducedMotionPreference::Reduce
+        } else {
+            ReducedMotionPreference::NoPreference
+        });
     }
 
     /// Programmatically sets accessibility/keyboard focus to `node_id` if it is alive, focusable, and enabled.

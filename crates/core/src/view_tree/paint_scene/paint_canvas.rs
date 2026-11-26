@@ -63,26 +63,15 @@ pub(crate) fn emit_node_canvas_primitives(
     if inner.node(node_id).is_none() {
         return;
     }
-    let Some(commands) = inner
-        .sparse
-        .canvases
-        .get(&node_id)
-        .map(|cv| cv.canvas_commands.clone())
-    else {
-        return;
-    };
-
-    if !commands.is_empty() {
-        scene.primitives.push(DrawPrimitive::CanvasBatch {
-            viewport: world_rect,
-            clip: clip.rect,
-            clip_radius: clip.max_radius(),
-            clip_radii: clip.radii,
-            transform: effective_transform,
-            opacity: effective_opacity,
-            commands,
-        });
-    }
+    crate::view_tree::paint_scene::paint_canvas_rich::emit_canvas_commands_to_scene(
+        inner,
+        node_id,
+        world_rect,
+        clip,
+        effective_transform,
+        effective_opacity,
+        scene,
+    );
 }
 
 fn push_indicator_rect(
@@ -147,30 +136,7 @@ pub(crate) fn emit_control_indicator_primitives(
             emit_checkbox_indicator(world_rect, cb, clip, tf, op, mark_color, scene);
         }
         SemanticRole::RadioButton if node.is_checked() => {
-            let diam = (cb.width.min(cb.height) * 0.78).max(2.0);
-            let rect = LayoutRect {
-                x: cb.x + (cb.width - diam) * 0.5,
-                y: cb.y + (cb.height - diam) * 0.5,
-                width: diam,
-                height: diam,
-            };
-            let dot_color = if has_checked_bg && paint.author_accent_color {
-                push_indicator_rect(
-                    scene,
-                    world_rect,
-                    clip,
-                    tf,
-                    op,
-                    paint.resolve_accent_color(),
-                    paint.effective_corner_radii().max_radius(),
-                );
-                paint.resolve_accent_foreground()
-            } else if !has_checked_bg || paint.author_accent_color {
-                paint.resolve_accent_color()
-            } else {
-                paint.text_color
-            };
-            push_indicator_rect(scene, rect, clip, tf, op, dot_color, diam * 0.5);
+            emit_radio_indicator(world_rect, cb, has_checked_bg, clip, tf, op, paint, scene);
         }
         SemanticRole::Slider => {
             let bounds = inner
@@ -181,7 +147,75 @@ pub(crate) fn emit_control_indicator_primitives(
         SemanticRole::ComboBox => {
             emit_combo_chevron(world_rect, clip, tf, op, paint.text_color, scene);
         }
-        _ => {}
+        _ => emit_progress_indicator(inner, node_id, cb, clip, tf, op, paint, scene),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_radio_indicator(
+    world_rect: LayoutRect,
+    cb: LayoutRect,
+    has_checked_bg: bool,
+    clip: ClipState,
+    tf: Affine2,
+    op: f32,
+    paint: &PaintStyle,
+    scene: &mut PaintScene,
+) {
+    let diam = (cb.width.min(cb.height) * 0.78).max(2.0);
+    let rect = LayoutRect {
+        x: cb.x + (cb.width - diam) * 0.5,
+        y: cb.y + (cb.height - diam) * 0.5,
+        width: diam,
+        height: diam,
+    };
+    let dot_color = if has_checked_bg && paint.author_accent_color {
+        push_indicator_rect(
+            scene,
+            world_rect,
+            clip,
+            tf,
+            op,
+            paint.resolve_accent_color(),
+            paint.effective_corner_radii().max_radius(),
+        );
+        paint.resolve_accent_foreground()
+    } else if !has_checked_bg || paint.author_accent_color {
+        paint.resolve_accent_color()
+    } else {
+        paint.text_color
+    };
+    push_indicator_rect(scene, rect, clip, tf, op, dot_color, diam * 0.5);
+}
+
+#[allow(clippy::too_many_arguments)]
+fn emit_progress_indicator(
+    inner: &ViewTreeInner,
+    node_id: NodeId,
+    cb: LayoutRect,
+    clip: ClipState,
+    tf: Affine2,
+    op: f32,
+    paint: &PaintStyle,
+    scene: &mut PaintScene,
+) {
+    if let Some(ratio) = crate::view_tree::semantics::progress_fill_ratio(inner, node_id) {
+        let fill_w = cb.width * ratio;
+        if fill_w > 0.5 {
+            let fill_rect = LayoutRect {
+                width: fill_w,
+                ..cb
+            };
+            push_indicator_rect(
+                scene,
+                fill_rect,
+                clip,
+                tf,
+                op,
+                paint.resolve_accent_color(),
+                paint.effective_corner_radii().max_radius(),
+            );
+        }
     }
 }
 
@@ -439,5 +473,46 @@ pub(crate) fn pad_aabb_for_box_shadow(aabb: LayoutRect, shadow: Option<BoxShadow
         y: aabb.y - pad_top,
         width: aabb.width + pad_left + pad_right,
         height: aabb.height + pad_top + pad_bottom,
+    }
+}
+
+pub(super) fn emit_node_indicator_or_canvas_primitives(
+    inner: &mut ViewTreeInner,
+    f: &crate::view_tree::paint::NodePaintFrame,
+    is_canvas: bool,
+    scene: &mut PaintScene,
+) {
+    emit_control_indicator_primitives(
+        inner,
+        f.node_id,
+        f.world_rect,
+        &f.layout,
+        f.clip,
+        f.effective_transform,
+        f.effective_opacity,
+        &f.effective_paint,
+        scene,
+    );
+    emit_node_media_primitives(
+        inner,
+        f.node_id,
+        &f.layout,
+        f.world_rect,
+        f.clip,
+        f.effective_transform,
+        f.effective_opacity,
+        &f.effective_paint,
+        scene,
+    );
+    if is_canvas {
+        emit_node_canvas_primitives(
+            inner,
+            f.node_id,
+            f.world_rect,
+            f.clip,
+            f.effective_transform,
+            f.effective_opacity,
+            scene,
+        );
     }
 }

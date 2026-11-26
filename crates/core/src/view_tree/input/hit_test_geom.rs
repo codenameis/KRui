@@ -1,12 +1,32 @@
 //! Rounded-corner SDF hit-test containment, clip-shape point checks, and layout rect propagation.
 
-use crate::view_tree::clip_shape::{normalize_radii_4_core, ClipState};
+use crate::view_tree::clip_shape::{compute_padding_box_clip, normalize_radii_4_core, ClipState};
 use crate::view_tree::events::compute_max_scroll_y;
 use crate::view_tree::scroll::compute_max_scroll_x;
 use crate::view_tree::{NodeId, ViewTreeInner};
 use krui_a11y::SemanticRole;
 use krui_layout::LayoutRect;
-use krui_style::{DisplayMode, PositionMode};
+use krui_style::{Affine2, DisplayMode, LayoutStyle, PaintStyle, PositionMode};
+
+/// Returns `true` when `pt` falls inside the padding box clip rect when `clips_self` is active.
+pub(crate) fn point_inside_node_clip_pad(
+    pt: (f32, f32),
+    clips_self: bool,
+    world_rect: LayoutRect,
+    eff_paint: &PaintStyle,
+    layout: &LayoutStyle,
+    eff_transform: Affine2,
+) -> bool {
+    if !clips_self {
+        return true;
+    }
+    let (pad_rect, pad_radii) = compute_padding_box_clip(world_rect, eff_paint, layout);
+    let Some(inv) = eff_transform.inverse() else {
+        return false;
+    };
+    let (lx, ly) = inv.transform_point(pt.0, pt.1);
+    point_inside_rounded_rect(lx, ly, pad_rect, pad_radii)
+}
 
 /// Returns `true` when local coordinate `(px, py)` lies inside `rect` including its 4 rounded corners.
 pub(crate) fn point_inside_rounded_rect(

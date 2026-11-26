@@ -172,7 +172,7 @@ fn h1_examples_syn_ast_gate_probe_cleanup_and_docs_conformance() {
     let readme = fs::read_to_string(root.join("README.md")).unwrap();
     let agents = fs::read_to_string(root.join("AGENTS.md")).unwrap();
     assert!(
-        readme.contains("226/229") && agents.contains("226/229"),
-        "README.md and AGENTS.md must state measured Tailwind v4 conformance (226/229)"
+        readme.contains("229/229") && agents.contains("229/229"),
+        "README.md and AGENTS.md must state measured Tailwind v4 conformance (229/229)"
     );
 }

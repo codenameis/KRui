@@ -21,6 +21,8 @@ use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 use std::sync::Arc;
 
+const AUTHOR_LAYER_ORDER_PRELUDE: &str = "@layer preset, component;";
+
 impl ViewTree {
     /// Registers an additional author CSS stylesheet and schedules a Stylo restyle pass.
     pub fn add_author_stylesheet(&mut self, css: &str) -> StyleSheetHandle {
@@ -43,6 +45,12 @@ impl ViewTree {
         for h in old {
             let _ = inner.stylo.remove_stylesheet(h);
         }
+        if !sheets.is_empty() {
+            let order_h = inner
+                .stylo
+                .add_stylesheet(StyleSheetOrigin::Author, AUTHOR_LAYER_ORDER_PRELUDE);
+            inner.doc_sheet_handles.push(order_h);
+        }
         for s in sheets {
             let h = inner.stylo.add_stylesheet(StyleSheetOrigin::Author, s);
             inner.doc_sheet_handles.push(h);
@@ -59,6 +67,12 @@ impl ViewTree {
         let mut inner = self.inner.borrow_mut();
         inner.stylo.clear_author_stylesheets();
         inner.doc_sheet_handles.clear();
+        if !sheets.is_empty() {
+            let order_h = inner
+                .stylo
+                .add_stylesheet(StyleSheetOrigin::Author, AUTHOR_LAYER_ORDER_PRELUDE);
+            inner.doc_sheet_handles.push(order_h);
+        }
         for s in sheets {
             let h = inner.stylo.add_stylesheet(StyleSheetOrigin::Author, s);
             inner.doc_sheet_handles.push(h);
@@ -126,7 +140,12 @@ impl ViewTree {
     pub fn set_reduced_motion_preference(&mut self, pref: ReducedMotionPreference) {
         let mut inner = self.inner.borrow_mut();
         if inner.reduced_motion_pref != pref {
+            let prev_eff = inner.effective_reduced_motion();
             inner.reduced_motion_pref = pref;
+            let next_eff = inner.effective_reduced_motion();
+            if next_eff != prev_eff {
+                sync_reduced_motion_root_attr(&mut inner, next_eff);
+            }
             inner.paint_dirty = true;
         }
     }
@@ -135,7 +154,12 @@ impl ViewTree {
     pub fn set_os_reduced_motion(&mut self, reduced: bool) {
         let mut inner = self.inner.borrow_mut();
         if inner.os_reduced_motion != reduced {
+            let prev_eff = inner.effective_reduced_motion();
             inner.os_reduced_motion = reduced;
+            let next_eff = inner.effective_reduced_motion();
+            if next_eff != prev_eff {
+                sync_reduced_motion_root_attr(&mut inner, next_eff);
+            }
             inner.paint_dirty = true;
         }
     }
@@ -288,6 +312,18 @@ impl ViewTree {
         inner.paint_dirty = true;
         node_id
     }
+}
+
+pub(crate) fn sync_reduced_motion_root_attr(inner: &mut ViewTreeInner, reduced: bool) {
+    let root_sid = inner.stylo_doc_root;
+    inner
+        .stylo
+        .apply_mutation(StyloDomMutation::SetSingleAttribute {
+            node: root_sid,
+            name: "data-krui-motion".to_string(),
+            value: reduced.then(|| "reduce".to_string()),
+        });
+    inner.stylo_dirty = true;
 }
 
 impl ViewTreeInner {

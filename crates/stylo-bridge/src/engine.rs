@@ -19,6 +19,10 @@ use style::thread_state::{self, ThreadState};
 use style::traversal::DomTraversal;
 use style::traversal_flags::TraversalFlags;
 
+use crate::container_queries::{
+    clear_container_caches, preprocess_container_rules, sync_container_node,
+    RegisteredContainerQuery,
+};
 use crate::device::{build_device, init_stylo_prefs, DiagnosticCollector, NoopPainters};
 use crate::dom_node::{build_traverse_arena, link_traverse_arena, RecalcStyleOnly, StyloDocument};
 use crate::dom_store::StyloDom;
@@ -48,6 +52,8 @@ pub struct StyloStyleEngine {
     pub(crate) lazy_pseudos_dirty: bool,
     diagnostics: Mutex<Vec<CssDiagnostic>>,
     next_sheet_id: u64,
+    next_cq_id: u32,
+    container_queries: Vec<RegisteredContainerQuery>,
     unstyled_sheet: Option<StyleSheetHandle>,
     pub(crate) config: DeviceConfig,
     base_url: UrlExtraData,
@@ -72,6 +78,8 @@ impl StyloStyleEngine {
             lazy_pseudos_dirty: true,
             diagnostics: Mutex::new(Vec::new()),
             next_sheet_id: 1,
+            next_cq_id: 1,
+            container_queries: Vec::new(),
             unstyled_sheet: None,
             config,
             base_url,
@@ -121,28 +129,50 @@ impl StyloStyleEngine {
         }
     }
 
+    /// Returns `true` if any registered stylesheet defines `@container` size queries.
+    #[must_use]
+    pub fn has_container_queries(&self) -> bool {
+        !self.container_queries.is_empty()
+    }
+
     /// Updates a node's laid-out container box size (CSS px) for `@container` size queries.
+    ///
+    /// Returns `true` if the container size or matched query state changed and scheduled descendant restyling.
     pub fn set_container_size(
         &mut self,
         node: StyloNodeId,
-        width: Option<f32>,
-        height: Option<f32>,
-    ) {
-        self.dom.set_container_size(node, width, height);
+        width_px: Option<f32>,
+        height_px: Option<f32>,
+    ) -> bool {
+        let cv = self.computed_values(node);
+        sync_container_node(
+            &mut self.dom,
+            &mut self.snapshots,
+            &self.stylist,
+            &self.container_queries,
+            cv.as_deref(),
+            (node, width_px, height_px),
+        )
     }
 
     /// Adds a stylesheet at User-Agent or Author origin and returns its stable handle.
     pub fn add_stylesheet(&mut self, origin: StyleSheetOrigin, css: &str) -> StyleSheetHandle {
-        let sheet = self.parse_stylesheet(origin, css);
-        let guard = self.dom.shared_lock.read();
-        self.stylist.append_stylesheet(sheet.clone(), &guard);
         let handle = StyleSheetHandle(self.next_sheet_id);
         self.next_sheet_id += 1;
+        let (rewritten, new_cq) = preprocess_container_rules(css, handle.0, &mut self.next_cq_id);
+        let sheet = self.parse_stylesheet(origin, &rewritten);
+        let guard = self.dom.shared_lock.read();
+        self.stylist.append_stylesheet(sheet.clone(), &guard);
+        drop(guard);
         self.sheets.push(RegisteredSheet {
             handle,
             origin,
             sheet,
         });
+        if !new_cq.is_empty() {
+            self.container_queries.extend(new_cq);
+            clear_container_caches(&mut self.dom, &mut self.snapshots, &[]);
+        }
         self.dom.mark_all_dirty();
         self.lazy_pseudos_dirty = true;
         handle
@@ -154,7 +184,9 @@ impl StyloStyleEngine {
             return false;
         };
         let origin = self.sheets[pos].origin;
-        let next_sheet = self.parse_stylesheet(origin, css);
+        let removed_ids = self.remove_container_queries_for_sheet(handle.0);
+        let (rewritten, new_cq) = preprocess_container_rules(css, handle.0, &mut self.next_cq_id);
+        let next_sheet = self.parse_stylesheet(origin, &rewritten);
         let next_same_origin = self.sheets[pos + 1..]
             .iter()
             .find(|entry| entry.origin == origin)
@@ -168,7 +200,13 @@ impl StyloStyleEngine {
         } else {
             self.stylist.append_stylesheet(next_sheet.clone(), &guard);
         }
+        drop(guard);
         self.sheets[pos].sheet = next_sheet;
+        let cq_changed = !removed_ids.is_empty() || !new_cq.is_empty();
+        self.container_queries.extend(new_cq);
+        if cq_changed {
+            clear_container_caches(&mut self.dom, &mut self.snapshots, &removed_ids);
+        }
         self.dom.mark_all_dirty();
         self.lazy_pseudos_dirty = true;
         true
@@ -183,11 +221,28 @@ impl StyloStyleEngine {
         if self.unstyled_sheet == Some(handle) {
             self.unstyled_sheet = None;
         }
+        let removed_ids = self.remove_container_queries_for_sheet(handle.0);
+        if !removed_ids.is_empty() {
+            clear_container_caches(&mut self.dom, &mut self.snapshots, &removed_ids);
+        }
         let guard = self.dom.shared_lock.read();
         self.stylist.remove_stylesheet(entry.sheet, &guard);
         self.dom.mark_all_dirty();
         self.lazy_pseudos_dirty = true;
         true
+    }
+
+    fn remove_container_queries_for_sheet(&mut self, sheet_id: u64) -> Vec<u32> {
+        let mut removed = Vec::new();
+        self.container_queries.retain(|q| {
+            if q.sheet_id == sheet_id {
+                removed.push(q.id);
+                false
+            } else {
+                true
+            }
+        });
+        removed
     }
 
     /// Toggles the minimal unstyled UA stylesheet (`krui://preset/unstyled`).

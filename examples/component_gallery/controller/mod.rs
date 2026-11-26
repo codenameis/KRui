@@ -1,13 +1,17 @@
 //! Material Design 3 6개 카테고리 · 47개 기본 컴포넌트 갤러리 컨트롤러.
 
+pub mod canvas_studio;
 pub mod handlers;
 pub mod rows;
 pub mod sections;
+pub mod spec_matrix;
 pub mod theme_state;
+pub mod viewport3d_ctrl;
 
 use handlers::{
-    action_name_for_code, density_name_for_code, fab_action_name, nav_menu_name, split_mode_name,
-    theme_name_for_index,
+    action_name_for_code, density_name_for_code, fab_action_name, nav_menu_name,
+    progress_pct_from_px, split_mode_name, theme_name_for_index, PROGRESS_MAX_PX, PROGRESS_MIN_PX,
+    PROGRESS_STEP_PX,
 };
 use krui::*;
 pub use rows::SearchCatalogRow;
@@ -15,6 +19,7 @@ pub use sections::{
     default_doc_page_for_category, doc_page_meta, section_banner_for_index,
     OnboardingGuideController,
 };
+pub use spec_matrix::{build_spec_rows, Wave4RoutesController};
 
 const INIT_BANNER: &str = "Material 3 기준 · 6개 카테고리 47개 기본 컴포넌트 준비 완료";
 const INIT_SNACK_MSG: &str = "기본 스낵바 알림이 표시되었습니다.";
@@ -97,6 +102,8 @@ pub struct GalleryController {
     pub unread_text: Computed<String>,
     /// LinearProgress 채움 폭 (`20.0..=220.0`).
     pub progress_px: Signal<f32>,
+    /// LinearProgress 백분율 정수 (`0..=100`, `<progress value>`용).
+    pub progress_pct: Computed<i32>,
     /// LinearProgress 백분율 레이블.
     pub progress_label: Signal<String>,
     /// CircularProgress 회전 애니메이션 활성 여부.
@@ -123,6 +130,8 @@ pub struct GalleryController {
     pub bottom_nav_idx: Signal<i32>,
     /// NavigationDrawer 활성 인덱스 (`0..=2`).
     pub drawer_idx: Signal<i32>,
+    /// 모달 `NavigationDrawer` 오버레이 열림 여부.
+    pub modal_drawer_open: Signal<bool>,
     /// Tabs 활성 인덱스 (`0..=2`).
     pub active_tab: Signal<i32>,
     /// Menu 열림 여부.
@@ -175,6 +184,8 @@ pub struct GalleryController {
     pub search_results: Signal<Vec<SearchCatalogRow>>,
     /// SearchBar `<input oninput="...">`용 `InputCommand`.
     pub on_search_input_cmd: InputCommand,
+    /// Wave 4 `/specs` 필터 · `/styles` · `/foundations` 하위 라우트 컨트롤러.
+    pub w4: Wave4RoutesController,
 }
 
 #[controller]
@@ -197,6 +208,7 @@ impl GalleryController {
             this.active_category.set(c);
             this.active_doc_page.set(doc);
             this.active_doc_tab.set(0);
+            this.w4.refresh_for_page(doc);
             this.status_banner.set(section_banner_for_index(3, c));
         });
     }
@@ -211,6 +223,7 @@ impl GalleryController {
             this.active_category.set(cat);
             this.active_doc_page.set(p);
             this.active_doc_tab.set(0);
+            this.w4.refresh_for_page(p);
             this.status_banner.set(format!("Components / {title}"));
         });
     }
@@ -218,6 +231,14 @@ impl GalleryController {
     /// 문서 상단 피일 탭(`0=Overview, 1=Specs, 2=Guidelines, 3=Accessibility`)을 전환합니다.
     pub fn set_doc_tab(&self, tab: i32) {
         self.active_doc_tab.set(tab.clamp(0, 3));
+    }
+
+    /// Specs 탭 토큰 매트릭스 그룹 필터(`0..=4`)를 변경합니다.
+    pub fn set_spec_filter_group(&self, group: i32) {
+        let g = group.clamp(0, 4);
+        let p = self.active_doc_page.get_untracked();
+        self.w4.spec_filter_group.set(g);
+        self.w4.spec_rows.set(build_spec_rows(p, g));
     }
 
     /// Material 3 Light(`#FEF7FF`) / Dark(`#141218`) 색채 스킴을 토글합니다.
@@ -243,17 +264,7 @@ impl GalleryController {
 
     /// 모션 및 컴포지터 전환 일시정지(Reduced motion)를 토글합니다.
     pub fn toggle_animations_paused(&self) {
-        let next = !self.animations_paused.get_untracked();
-        let this = self.clone();
-        batch(move || {
-            this.animations_paused.set(next);
-            let msg = if next {
-                "모션 일시정지됨 (Reduced motion)"
-            } else {
-                "모션 재생 중"
-            };
-            this.status_banner.set(msg.to_string());
-        });
+        self.animations_paused.update(|v| *v = !*v);
     }
 
     /// 전역 `SearchView` 모달 오버레이를 엽니다.
@@ -274,8 +285,6 @@ impl GalleryController {
         batch(move || {
             this.theme_index.set(clamped);
             this.theme_name.set(name.to_string());
-            this.status_banner
-                .set(format!("순수 CSS 테마 전환: {name}"));
         });
     }
 
@@ -345,12 +354,18 @@ impl GalleryController {
 
     /// `LinearProgress` 폭을 ±20px 증감합니다 (`20..=220px`).
     pub fn step_progress(&self, increase: bool) {
-        let delta_px = if increase { 20.0 } else { -20.0 };
-        let next = (self.progress_px.get_untracked() + delta_px).clamp(20.0, 220.0);
-        let pct = ((next / 220.0) * 100.0).round() as i32;
+        let delta_px = if increase {
+            PROGRESS_STEP_PX
+        } else {
+            -PROGRESS_STEP_PX
+        };
+        let next =
+            (self.progress_px.get_untracked() + delta_px).clamp(PROGRESS_MIN_PX, PROGRESS_MAX_PX);
+        let pct = progress_pct_from_px(next);
         self.progress_px.set(next);
-        self.progress_label
-            .set(format!("진행률 {pct}% ({next:.0} / 220px)"));
+        self.progress_label.set(format!(
+            "진행률 {pct}% ({next:.0} / {PROGRESS_MAX_PX:.0}px)"
+        ));
     }
 
     /// `CircularProgress` 회전 애니메이션을 일시정지/재개합니다.
@@ -405,7 +420,17 @@ impl GalleryController {
 
     /// `NavigationDrawerItem`을 선택합니다.
     pub fn set_drawer_item(&self, idx: i32) {
-        self.drawer_idx.set(idx);
+        self.apply_set_drawer_item(idx, false);
+    }
+
+    /// 모달 `NavigationDrawer` 오버레이 열림 상태를 설정합니다.
+    pub fn set_modal_drawer_open(&self, open: bool) {
+        self.modal_drawer_open.set(open);
+    }
+
+    /// 모달 `NavigationDrawerItem`을 선택하고 서랍을 닫습니다.
+    pub fn pick_modal_drawer_item(&self, idx: i32) {
+        self.apply_set_drawer_item(idx, true);
     }
 
     /// `Tabs` 활성 탭을 변경합니다.
@@ -471,15 +496,41 @@ impl GalleryController {
             .set("날짜 변경이 취소되었습니다.".to_string());
     }
 
-    /// `SearchView`에서 선택한 컴포넌트 카테고리로 바로 이동합니다.
-    pub fn open_search_item(&self, cat_idx: i32) {
+    /// `SearchView`에서 선택한 컴포넌트 문서 페이지(`doc_page`)로 바로 이동합니다.
+    pub fn open_search_item(&self, doc_page: i32) {
         self.search_open.set(false);
         self.search_overlay_open.set(false);
-        self.select_category(cat_idx);
+        self.select_doc_page(doc_page);
+    }
+
+    /// BottomSheet에서 현재 테마 토큰 JSON 내보내기 상태를 기록하고 시트를 닫습니다.
+    pub fn copy_theme_tokens(&self) {
+        self.apply_copy_theme_tokens();
+    }
+
+    /// 열려 있는 최상위 모달·시트·메뉴·리치 툴팁 중 하나를 닫고 닫힘 여부를 반환합니다 (`Escape`용).
+    pub fn dismiss_top_overlay(&self) -> bool {
+        self.apply_dismiss_top_overlay()
     }
 
     /// `SearchBar` 검색어를 비웁니다.
     pub fn clear_search(&self) {
         self.apply_search("");
+    }
+
+    /// `Develop → 2D Canvas Studio (Canva)` 화면으로 바로 이동합니다.
+    pub fn open_canvas_studio(&self) {
+        self.active_section.set(4);
+        self.w4.studio.set_develop_subroute(1);
+        self.status_banner
+            .set("2D Canvas Studio (Canva) 열림".to_string());
+    }
+
+    /// `Develop → 3D Viewport (Raw wgpu / Bevy ECS)` 화면으로 바로 이동합니다.
+    pub fn open_viewport_3d(&self) {
+        self.active_section.set(4);
+        self.w4.studio.set_develop_subroute(2);
+        self.status_banner
+            .set("3D Viewport (Raw wgpu / Bevy ECS) 열림".to_string());
     }
 }

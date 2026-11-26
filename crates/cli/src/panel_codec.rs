@@ -3,7 +3,6 @@
 
 use std::io::{Read, Write};
 use std::net::TcpStream;
-use std::time::{Duration, Instant};
 
 pub use crate::panel_json::{
     format_building_json, format_compile_error_json, format_compile_ok_json,
@@ -37,6 +36,8 @@ pub const OP_CMD_KEY_DOWN: u8 = 0x08;
 pub const OP_CMD_IME_PREEDIT: u8 = 0x09;
 /// Editor -> Server opcode: committed IME or printable UTF-8 text.
 pub const OP_CMD_IME_COMMIT: u8 = 0x0A;
+/// Editor -> Server opcode: override pure-CSS `ColorSchemePreference` (`system|light|dark`).
+pub const OP_CMD_SET_COLOR_SCHEME: u8 = 0x0B;
 /// Editor -> Server opcode: switch active `DeviceFramePreset` or desktop mode.
 pub const OP_CMD_SET_DEVICE_FRAME: u8 = 0x0C;
 /// Editor -> Server opcode: toggle diagnostic overlay (`relayout`, `fps`, `hit`).
@@ -51,8 +52,6 @@ pub const OP_CMD_BUFFER_UPDATE: u8 = 0x10;
 pub const OP_CMD_BUFFER_SAVED: u8 = 0x11;
 /// Editor -> Server opcode: gracefully close panel bridge and preview child.
 pub const OP_CMD_SHUTDOWN: u8 = 0xFF;
-
-const WRITE_DEADLINE_MS: u64 = 500;
 
 /// Decoded command sent from an IDE host to `krui serve --panel`.
 #[derive(Clone, Debug, PartialEq)]
@@ -95,6 +94,8 @@ pub enum PanelEditorCmd {
     },
     /// Committed IME or printable character text.
     ImeCommit { text: String },
+    /// Overrides CSS `@media (prefers-color-scheme)` (`"system"`, `"light"`, or `"dark"`).
+    SetColorScheme { slug: String },
     /// Switches device bezel preset (`none`, `iphone-15`, `pixel-8`, `rpi-800x480`).
     SetDeviceFrame { slug: String },
     /// Toggles a debug overlay (`relayout`, `fps`, `hit`).
@@ -116,6 +117,8 @@ pub enum PanelEditorCmd {
 pub struct PanelSocketConn {
     stream: TcpStream,
     read_buf: Vec<u8>,
+    write_buf: Vec<u8>,
+    write_offset: usize,
 }
 
 impl PanelSocketConn {
@@ -126,6 +129,8 @@ impl PanelSocketConn {
         Ok(Self {
             stream,
             read_buf: Vec::new(),
+            write_buf: Vec::new(),
+            write_offset: 0,
         })
     }
 
@@ -166,33 +171,44 @@ impl PanelSocketConn {
         Ok(None)
     }
 
-    /// Writes a pre-framed `[u32 LE len][u8 opcode][payload]` packet reliably to the socket.
-    pub fn send_raw_packet(&mut self, packet: &[u8]) -> std::io::Result<()> {
-        let mut written = 0usize;
-        let deadline = Instant::now() + Duration::from_millis(WRITE_DEADLINE_MS);
-        while written < packet.len() {
-            match self.stream.write(&packet[written..]) {
+    /// Flushes queued outbound bytes without blocking on full kernel socket send buffers.
+    pub fn flush_pending_writes(&mut self) -> std::io::Result<()> {
+        while self.write_offset < self.write_buf.len() {
+            match self.stream.write(&self.write_buf[self.write_offset..]) {
                 Ok(0) => {
                     return Err(std::io::Error::new(
                         std::io::ErrorKind::WriteZero,
                         "Panel client write returned 0",
                     ));
                 }
-                Ok(n) => written += n,
+                Ok(n) => self.write_offset += n,
                 Err(e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
-                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
-                    if Instant::now() >= deadline {
-                        return Err(std::io::Error::new(
-                            std::io::ErrorKind::TimedOut,
-                            "Panel client write timed out",
-                        ));
-                    }
-                    std::thread::sleep(Duration::from_micros(200));
-                }
+                Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => break,
                 Err(e) => return Err(e),
             }
         }
+        if self.write_offset >= self.write_buf.len() {
+            self.write_buf.clear();
+            self.write_offset = 0;
+        } else if self.write_offset >= 65_536 {
+            self.write_buf.drain(..self.write_offset);
+            self.write_offset = 0;
+        }
         Ok(())
+    }
+
+    /// Enqueues a pre-framed `[u32 LE len][u8 opcode][payload]` packet and flushes non-blockingly.
+    pub fn send_raw_packet(&mut self, packet: &[u8]) -> std::io::Result<()> {
+        self.flush_pending_writes()?;
+        let pending = self.write_buf.len().saturating_sub(self.write_offset);
+        if pending.saturating_add(packet.len()) > MAX_PANEL_PACKET_BYTES * 2 {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::WriteZero,
+                "Panel client outbound write buffer full",
+            ));
+        }
+        self.write_buf.extend_from_slice(packet);
+        self.flush_pending_writes()
     }
 }
 
@@ -298,6 +314,9 @@ fn decode_text_cmd(opcode: u8, payload: &[u8]) -> Result<PanelEditorCmd, String>
 
 fn decode_control_cmd(opcode: u8, payload: &[u8]) -> Result<PanelEditorCmd, String> {
     match opcode {
+        OP_CMD_SET_COLOR_SCHEME => Ok(PanelEditorCmd::SetColorScheme {
+            slug: read_utf8(payload)?,
+        }),
         OP_CMD_SET_DEVICE_FRAME => Ok(PanelEditorCmd::SetDeviceFrame {
             slug: read_utf8(payload)?,
         }),

@@ -1,9 +1,7 @@
 //! Desktop `winit` window event loop (`EventLoop::<KruiWinitEvent>`), `UiWaker` registration,
 //! `softbuffer` CPU fallback presenter, and live `accesskit_winit::Adapter` integration.
 
-use crate::ime_adapter::{
-    ime_event_from_winit, sync_window_ime_cursor_area_cached_with_offset, WinitImeStateCache,
-};
+use crate::ime_adapter::{ime_event_from_winit, WinitImeStateCache};
 #[cfg(feature = "preview")]
 use crate::preview;
 use crate::session::EngineSession;
@@ -21,7 +19,7 @@ use krui_core::{GpuResourceLimits, HoveredCursorKind, Mods};
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
-use winit::dpi::{LogicalSize, PhysicalSize};
+use winit::dpi::LogicalSize;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
 use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
@@ -75,6 +73,7 @@ pub fn run_app_window_with_hooks<H: WindowEventHooks>(
         is_window_focused: true,
         mods: Mods::default(),
         current_cursor_kind: HoveredCursorKind::Default,
+        pointer_lock_active: false,
         ime_cache: WinitImeStateCache::default(),
         epoch: now,
         last_frame: now,
@@ -104,6 +103,7 @@ pub(crate) struct StandardWindowHost<H: WindowEventHooks> {
     pub(crate) is_window_focused: bool,
     pub(crate) mods: Mods,
     pub(crate) current_cursor_kind: HoveredCursorKind,
+    pub(crate) pointer_lock_active: bool,
     pub(crate) ime_cache: WinitImeStateCache,
     pub(crate) epoch: Instant,
     pub(crate) last_frame: Instant,
@@ -136,55 +136,6 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
         self.sync_and_redraw();
     }
 
-    fn current_ime_content_origin(&self) -> (f32, f32) {
-        #[cfg(feature = "preview")]
-        {
-            self.hot_reloader
-                .as_ref()
-                .and_then(|w| w.device_frame())
-                .map_or((0.0, 0.0), |f| f.content_origin())
-        }
-        #[cfg(not(feature = "preview"))]
-        {
-            (0.0, 0.0)
-        }
-    }
-
-    fn sync_ime_only(&mut self) {
-        let offset = self.current_ime_content_origin();
-        if let Some(win) = &self.window {
-            sync_window_ime_cursor_area_cached_with_offset(
-                win,
-                &self.session.tree,
-                &mut self.ime_cache,
-                offset,
-            );
-        }
-    }
-
-    pub(crate) fn sync_and_redraw(&mut self) {
-        self.sync_ime_only();
-        if let Some(win) = &self.window {
-            win.request_redraw();
-        }
-    }
-
-    fn apply_resize(&mut self, width: u32, height: u32) {
-        if width > 0 && height > 0 {
-            let logical =
-                PhysicalSize::new(width, height).to_logical::<u32>(self.session.scale_factor);
-            self.session.width = logical.width.max(1);
-            self.session.height = logical.height.max(1);
-            let _ = self
-                .session
-                .tree
-                .sync_viewport_and_media(self.session.width as f32, self.session.height as f32);
-            if let Some(presenter) = &mut self.presenter {
-                presenter.resize(width, height);
-            }
-        }
-    }
-
     fn handle_key_pressed(&mut self, event: KeyEvent) {
         self.last_caret_activity = Instant::now();
         let key_info = key_info_from_winit(&event);
@@ -198,6 +149,7 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
         let _ = self
             .session
             .handle_key_down(&key_info, self.mods, event.repeat);
+        self.sync_window_cursor_and_pointer_lock();
         self.sync_and_redraw();
     }
 
@@ -246,6 +198,7 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
             let build_us = frame_start.elapsed().as_micros();
             watcher.decorate_paint_scene(&self.session.tree, &mut scene, build_us);
         }
+        self.hooks.on_before_present(&mut self.session, dt);
         if let Some(presenter) = &mut self.presenter {
             let _ = presenter.present_scene(&scene);
         } else {
@@ -376,16 +329,9 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
             phys_size.height.max(1),
             GpuResourceLimits::default(),
         );
-        let offset = self.current_ime_content_origin();
-        sync_window_ime_cursor_area_cached_with_offset(
-            &arc_win,
-            &self.session.tree,
-            &mut self.ime_cache,
-            offset,
-        );
-        arc_win.request_redraw();
         self.a11y_adapter = Some(a11y_adapter);
         self.window = Some(arc_win);
+        self.sync_and_redraw();
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
@@ -541,6 +487,17 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
             }
             WindowEvent::RedrawRequested => self.handle_redraw(),
             _ => {}
+        }
+    }
+
+    fn device_event(
+        &mut self,
+        _: &ActiveEventLoop,
+        _: winit::event::DeviceId,
+        ev: winit::event::DeviceEvent,
+    ) {
+        if let winit::event::DeviceEvent::MouseMotion { delta: (dx, dy) } = ev {
+            self.handle_device_mouse_motion(dx, dy);
         }
     }
 }

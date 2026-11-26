@@ -6,7 +6,8 @@ license.workspace = true
 description = "Desktop winit window host, event loop, arboard clipboard, EngineSession, and live preview watcher for KRui"
 
 [features]
-default = []
+default = ["gpu"]
+gpu = ["krui-renderer/gpu", "dep:wgpu"]
 preview = ["dep:krui-preview", "krui-core/preview", "krui-style/preview"]
 
 [dependencies]
@@ -20,4 +21,5 @@ accesskit = { workspace = true }
 accesskit_winit = { workspace = true }
 arboard = { workspace = true }
 softbuffer = { workspace = true }
+wgpu = { workspace = true, optional = true }
 winit = { workspace = true }

@@ -1,5 +1,6 @@
 //! World bounding box hit-testing, pointer hover/drag tracking, and layout rect propagation.
 
+use crate::view_tree::clip_path_resolve::{point_in_resolved_clip_path, resolve_clip_path};
 use crate::view_tree::clip_shape::{
     compute_padding_box_clip, intersect_clip_states, resolve_node_visibility, ClipState,
 };
@@ -138,28 +139,7 @@ pub(crate) fn node_contains_screen_point(
     x: f32,
     y: f32,
 ) -> bool {
-    let Some(n) = inner.node(node_id) else {
-        return false;
-    };
-    let is_focused =
-        inner.a11y_engine.focused_id() == Some(A11yId::from(node_id).0) && !n.is_disabled();
-    let raw_paint = resolve_node_paint_state(inner, node_id, n, n.is_disabled(), is_focused);
-    let eff_paint = inner.active_transition_paint(node_id, raw_paint);
-    let (eff_transform, world_rect, clip_state) =
-        effective_node_world_matrix_rect_and_clip_state(inner, node_id);
-    if !point_inside_clip(x, y, clip_state) {
-        return false;
-    }
-    let Some(inv) = eff_transform.inverse() else {
-        return false;
-    };
-    let (lx, ly) = inv.transform_point(x, y);
-    point_inside_rounded_rect(
-        lx,
-        ly,
-        world_rect,
-        eff_paint.effective_corner_radii().to_array(),
-    )
+    crate::view_tree::paint_scene::paint_3d_hit::node_contains_point_3d(inner, node_id, x, y)
 }
 
 /// Finds the topmost interactive or selectable node containing `(x, y)` in reverse paint order.
@@ -238,10 +218,12 @@ pub(crate) fn compute_node_hit_geometry(
     if eff_opacity <= 0.0 {
         return None;
     }
-    let is_shielding = eff_paint.background_color.a > 0
-        || eff_paint.background_gradient.is_some()
-        || eff_paint.radial_gradient.is_some()
-        || eff_paint.backdrop_blur_px > 0.0;
+    let is_shielding = !n.is_pointer_events_none()
+        && !n.is_visibility_hidden()
+        && (eff_paint.background_color.a > 0
+            || eff_paint.background_gradient.is_some()
+            || eff_paint.radial_gradient.is_some()
+            || eff_paint.backdrop_blur_px > 0.0);
     let mut world_rect = n.world_rect;
     world_rect.x -= scroll_offset.0;
     world_rect.y -= scroll_offset.1;
@@ -288,6 +270,12 @@ pub(crate) fn resolve_self_or_occluded_hit(
     if !point_inside_clip(x, y, clip_state) {
         return child_occluded.map(PointerHit::Occluded);
     }
+    if let Some(cp) = eff_paint.clip_path {
+        let resolved = resolve_clip_path(cp, world_rect, eff_transform);
+        if !point_in_resolved_clip_path(x, y, &resolved) {
+            return child_occluded.map(PointerHit::Occluded);
+        }
+    }
     let Some(inv) = eff_transform.inverse() else {
         return child_occluded.map(PointerHit::Occluded);
     };
@@ -333,7 +321,7 @@ pub(crate) fn node_matches_role(
 ) -> bool {
     let pointer_blocked = n.is_pointer_events_none() || n.is_visibility_hidden();
     match filter {
-        HitFilter::AnyVisible => !n.is_visibility_hidden(),
+        HitFilter::AnyVisible => !pointer_blocked,
         HitFilter::Scrollable => !pointer_blocked && is_scroll,
         HitFilter::Interactive => !pointer_blocked && is_interactive_node(inner, n, node_id),
         HitFilter::Hover => !pointer_blocked,

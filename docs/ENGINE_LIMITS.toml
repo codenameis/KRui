@@ -1,0 +1,33 @@
+# Engine Representation & Rendering Limits (Shared Across Native Targets)
+# These limits apply to PaintScene / renderer expression regardless of target tier.
+# Conformance-tested W3C/Tailwind features belong in tests/fixtures/real_css/KNOWN_GAPS.toml when failing.
+
+[[limit]]
+id = "conic_gradient"
+scope = "all_native"
+status = "implemented"
+summary = "CSS conic-gradient() + repeating-conic-gradient() supported via 256x1 gradient LUT in PaintScene, WGSL SDF shader, TinySkia, and CSS transitions"
+
+[[limit]]
+id = "multi_stop_gradient_approximation"
+scope = "all_native"
+status = "implemented"
+summary = "Arbitrary stop counts and repeating linear/radial gradients supported via 256x1 premultiplied LUT rows in TinySkia and WgpuRenderer"
+
+[[limit]]
+id = "perspective_3d_affine_projection"
+scope = "all_native"
+status = "implemented"
+summary = "4x4 projective homography (perspective, perspective-origin, backface-visibility, preserve-3d Z-sort, inverse-projected hit testing); preserve-3d uses painter's-order center_z sorting without BSP polygon splitting"
+
+[[limit]]
+id = "complex_clip_path"
+scope = "all_native"
+status = "implemented"
+summary = "Arbitrary clip-path polygon()/path()/circle()/ellipse()/inset() supported via TinySkia Mask, Wgpu Depth24PlusStencil8 stencil pass, and hit-test containment"
+
+[[limit]]
+id = "frame_primitive_cap"
+scope = "all_native"
+status = "guardrail"
+summary = "GpuResourceLimits::max_draw_commands_per_frame defaults to 16,384; excess primitives are clamped and counted in FrameRenderStats"

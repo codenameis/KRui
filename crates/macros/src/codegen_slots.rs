@@ -130,6 +130,17 @@ fn emit_layout_eval_mutator(slot: &LayoutSlot) -> TokenStream2 {
     }
 }
 
+pub(crate) fn emit_dynamic_inline_style_binding(
+    node: &CompiledNode,
+    span: Span,
+    loop_vars: &[String],
+) -> Result<TokenStream2, syn::Error> {
+    if node.dynamic_inline_style_parts.is_empty() {
+        return Ok(quote! {});
+    }
+    emit_inline_style_binding(node, span, loop_vars)
+}
+
 pub(crate) fn emit_inline_style_binding(
     node: &CompiledNode,
     span: Span,
@@ -173,18 +184,12 @@ fn is_boolean_html_attr(name: &str) -> bool {
     )
 }
 
-pub(crate) fn emit_static_and_dynamic_attr_bindings(
+pub(crate) fn emit_dynamic_attr_bindings(
     node: &CompiledNode,
     span: Span,
     loop_vars: &[String],
-) -> Result<TokenStream2, syn::Error> {
+) -> Result<Vec<TokenStream2>, syn::Error> {
     let mut stmts = Vec::new();
-    if let Some(ref ct) = node.custom_tag {
-        stmts.push(quote! { __tree.set_custom_tag(__node_id, #ct); });
-    }
-    for (k, v) in &node.static_attrs {
-        stmts.push(quote! { __tree.set_node_attr(__node_id, #k, #v); });
-    }
     for binding in &node.dynamic_attrs {
         let name = &binding.name;
         let is_bool = is_boolean_html_attr(name);
@@ -221,5 +226,22 @@ pub(crate) fn emit_static_and_dynamic_attr_bindings(
             });
         }});
     }
+    Ok(stmts)
+}
+
+#[allow(dead_code)]
+pub(crate) fn emit_static_and_dynamic_attr_bindings(
+    node: &CompiledNode,
+    span: Span,
+    loop_vars: &[String],
+) -> Result<TokenStream2, syn::Error> {
+    let mut stmts = Vec::new();
+    if let Some(ref ct) = node.custom_tag {
+        stmts.push(quote! { __tree.set_custom_tag(__node_id, #ct); });
+    }
+    for (k, v) in &node.static_attrs {
+        stmts.push(quote! { __tree.set_node_attr(__node_id, #k, #v); });
+    }
+    stmts.extend(emit_dynamic_attr_bindings(node, span, loop_vars)?);
     Ok(quote! { #(#stmts)* })
 }

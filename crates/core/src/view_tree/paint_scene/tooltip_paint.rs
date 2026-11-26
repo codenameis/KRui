@@ -67,6 +67,7 @@ pub(crate) fn emit_hover_tooltip_overlay(
         background_color: bg,
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color: UA_POPUP_BORDER_COLOR,
         border_width: TOOLTIP_BORDER_WIDTH_PX,
         border_radius: TOOLTIP_CORNER_RADIUS_PX,

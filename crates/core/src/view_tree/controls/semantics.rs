@@ -402,6 +402,30 @@ pub(crate) fn take_forwarded_label_click(
     inner.listeners(tid)?.on_click.clone()
 }
 
+/// Returns the clamped `0.0..=1.0` fill ratio for an HTML5 `<progress>` element, if applicable.
+pub(crate) fn progress_fill_ratio(inner: &ViewTreeInner, node_id: NodeId) -> Option<f32> {
+    let n = inner.node(node_id).filter(|n| {
+        n.alive()
+            && !n.is_anchor()
+            && n.flags
+                .contains(crate::view_tree::sparse_tables::NodeFlags::IS_PROGRESS)
+    })?;
+    let max_val = node_attr_value(inner, node_id, "max")
+        .and_then(|s| s.trim().parse::<f32>().ok())
+        .filter(|v| v.is_finite() && *v > 0.0)
+        .unwrap_or(1.0);
+    let raw_str = if !n.text.trim().is_empty() {
+        Some(n.text.trim())
+    } else {
+        node_attr_value(inner, node_id, "value").map(str::trim)
+    };
+    let ratio = raw_str
+        .and_then(|s| s.parse::<f32>().ok())
+        .filter(|v| v.is_finite())
+        .map_or(0.0, |v| (v / max_val).clamp(0.0, 1.0));
+    Some(ratio)
+}
+
 impl ViewTree {
     /// Opens `<dialog>` `dialog_id` in non-modal normal flow (`dialog.show()`).
     pub fn show_dialog(&mut self, dialog_id: NodeId) -> bool {

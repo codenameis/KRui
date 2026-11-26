@@ -252,7 +252,10 @@ fn review_reg_06_deep_nested_push_layer_overflow_stack_integrity() {
             clip_radius: 0.0,
             clip_radii: [0.0; 4],
             local_clip: None,
+            clip_path: None,
+            perspective: None,
             opacity: 0.95,
+            filter: krui_style::CssFilterEffect::IDENTITY,
         });
     }
     scene.primitives.push(DrawPrimitive::StyledBox {
@@ -265,6 +268,7 @@ fn review_reg_06_deep_nested_push_layer_overflow_stack_integrity() {
         background_color: Color::rgba(40, 140, 240, 255),
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color: Color::TRANSPARENT,
         border_width: 0.0,
         border_radius: 8.0,

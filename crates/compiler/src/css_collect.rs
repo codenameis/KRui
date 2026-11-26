@@ -6,8 +6,11 @@ use crate::css_collect_scan::{
     find_matching_paren, find_top_level_semicolon, is_ws_or_quote_or_paren, starts_with_ci,
     wrap_component_scope,
 };
+use crate::css_media_rewrite::rewrite_prefers_reduced_motion_css;
+use crate::css_profile_lint::collect_css_profile_warnings;
 use crate::source_loader::{read_text_with_virtual, resolve_path_with_virtual, VirtualBufferMap};
-use crate::CompileError;
+use crate::{CompileError, CompileWarning};
+use krui_style::TierProfile;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -15,6 +18,9 @@ use std::path::{Path, PathBuf};
 #[derive(Default)]
 pub(crate) struct CollectedStylesheets {
     pub(crate) unstyled: bool,
+    pub(crate) target_profile: Option<TierProfile>,
+    pub(crate) preserve_raw_media_queries: bool,
+    pub(crate) css_warnings: Vec<CompileWarning>,
     pub(crate) component_sheets: Vec<String>,
     pub(crate) author_sheets: Vec<String>,
     pub(crate) embedded_font_files: Vec<(String, PathBuf)>,
@@ -88,7 +94,12 @@ impl CollectedStylesheets {
         let base_dir = file.and_then(Path::parent);
         let with_imports =
             expand_imports(self, (full_source, base_offset, css), file, base_dir, vbufs)?;
-        Ok(rewrite_font_face_urls(self, &with_imports, base_dir))
+        collect_css_profile_warnings(&with_imports, self.target_profile, &mut self.css_warnings);
+        let with_fonts = rewrite_font_face_urls(self, &with_imports, base_dir);
+        Ok(rewrite_prefers_reduced_motion_css(
+            &with_fonts,
+            self.preserve_raw_media_queries,
+        ))
     }
 
     fn register_embedded_font(&mut self, resolved: PathBuf) -> String {

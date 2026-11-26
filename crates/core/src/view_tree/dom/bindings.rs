@@ -515,4 +515,29 @@ impl ViewTree {
             self.inner.borrow_mut().push_effect(node_id, effect);
         }
     }
+
+    /// Marks a compiler-generated wrapper for a mixed-inline text run so `:nth-child` excludes it
+    /// by backing it with a true Stylo DOM Text node instead of a `<span>` element.
+    pub fn mark_synthetic_text_run(&mut self, node_id: NodeId) {
+        let mut inner = self.inner.borrow_mut();
+        let Some((old_sid, parent, non_empty)) = inner.node_mut(node_id).map(|node| {
+            node.set_synthetic_text_run(true);
+            (node.stylo_node, node.parent, !node.text.trim().is_empty())
+        }) else {
+            return;
+        };
+        if let Some(prev) = old_sid {
+            inner.stylo_to_view.remove(&prev);
+            inner
+                .stylo
+                .apply_mutation(krui_stylo_bridge::StyloDomMutation::DisposeSubtree(prev));
+        }
+        let text_sid = inner.stylo.alloc_text(non_empty);
+        if let Some(node) = inner.node_mut(node_id) {
+            node.stylo_node = Some(text_sid);
+        }
+        inner.stylo_to_view.insert(text_sid, node_id);
+        crate::view_tree::sync::sync_stylo_children_for_container(&mut inner, parent);
+        inner.stylo_dirty = true;
+    }
 }

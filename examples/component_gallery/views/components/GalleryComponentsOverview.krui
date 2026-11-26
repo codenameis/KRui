@@ -48,6 +48,18 @@
                 <span class="m3-overview-card-desc">Floating action buttons for primary flows</span>
             </div>
         </button>
+        <button id="ov-card-fab-menu" class="m3-overview-card" onclick="{controller.select_doc_page(28)}">
+            <div class="m3-overview-card-art">
+                <div class="m3-art-pill-row">
+                    <div class="m3-art-fab"><IconAdd /></div>
+                    <div class="m3-art-circle-outline"><IconWidgets class="m3-icon-sm" /></div>
+                </div>
+            </div>
+            <div class="m3-overview-card-body">
+                <span class="m3-overview-card-title">FAB menu</span>
+                <span class="m3-overview-card-desc">Expandable speed-dial contextual actions</span>
+            </div>
+        </button>
         <button id="ov-card-icon-buttons" class="m3-overview-card" onclick="{controller.select_doc_page(29)}">
             <div class="m3-overview-card-art">
                 <div class="m3-art-pill-row">

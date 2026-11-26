@@ -1,0 +1,44 @@
+<div class="gallery-section">
+    <div class="m3-subroute-bar">
+        <button id="foundations-sub-0" class="m3-subroute-pill m3-subroute-pill-{controller.w4.foundations_subroute == 0}" onclick="{controller.w4.set_foundations_subroute(0)}">Layout</button>
+        <button id="foundations-sub-1" class="m3-subroute-pill m3-subroute-pill-{controller.w4.foundations_subroute == 1}" onclick="{controller.w4.set_foundations_subroute(1)}">Interaction</button>
+        <button id="foundations-sub-2" class="m3-subroute-pill m3-subroute-pill-{controller.w4.foundations_subroute == 2}" onclick="{controller.w4.set_foundations_subroute(2)}">Accessibility</button>
+        <button id="foundations-sub-3" class="m3-subroute-pill m3-subroute-pill-{controller.w4.foundations_subroute == 3}" onclick="{controller.w4.set_foundations_subroute(3)}">Design Tokens</button>
+    </div>
+
+    <if test="{controller.w4.foundations_subroute == 0}">
+        <Card variant="elevated" title="Foundations · Adaptive Layout &amp; Window Size Classes" subtitle="Taffy CSS Grid/Flex · Compact (<600px) / Medium (600..839px) / Expanded (>=840px)">
+            <div class="gallery-col">
+                <span class="m3-hero-sub">화면 너비에 따라 Navigation Rail과 Bottom Bar, 카드 열 개수(1열/2열/3열)가 `@media (max-width)` 순수 CSS로 전환됩니다.</span>
+                <span class="m3-hero-sub">컴포지터 Fast-Path 애니메이션(transform, opacity, gradient, clip-path)은 120Hz 프레임 중 Taffy relayout 0회를 유지합니다.</span>
+            </div>
+        </Card>
+    <else-if test="{controller.w4.foundations_subroute == 1}">
+        <Card variant="elevated" title="Foundations · Native IME &amp; Zero-Relayout Motion" subtitle="W3C cubic-bezier · 조합 소유권(ime_target) · 포인터 물결">
+            <div class="gallery-col">
+                <span class="m3-hero-sub">한국어·일본어·영어 IME 조합 상태는 `ime_target`이 소유하여 포커스 전환 중에도 조합 글자를 유실하지 않습니다.</span>
+                <div class="gallery-row">
+                    <Button variant="filled" onclick="{controller.select_category(5)}">IME 입력 데모</Button>
+                    <Button variant="tonal" onclick="{controller.toggle_animations_paused()}">모션 일시정지 토글</Button>
+                </div>
+            </div>
+        </Card>
+    <else-if test="{controller.w4.foundations_subroute == 2}">
+        <Card variant="elevated" title="Foundations · AccessKit &amp; High Contrast Semantics" subtitle="WAI-ARIA 역할 · 키보드 내비게이션 · prefers-reduced-motion">
+            <div class="gallery-col">
+                <span class="m3-hero-sub">모든 대화형 위젯은 AccessKit 트리 역할(`Button`, `CheckBox`, `TextInput`, `Dialog`)과 포커스 링(`3px`)을 노출합니다.</span>
+                <span class="m3-hero-sub">`prefers-reduced-motion` 또는 일시정지 토글 활성화 시 전환 애니메이션이 즉시 스냅 처리됩니다.</span>
+            </div>
+        </Card>
+    <else>
+        <Card variant="elevated" title="Foundations · Cascading Design Token Layers" subtitle="krui://preset/unstyled + @layer + @property + [data-theme]">
+            <div class="gallery-col">
+                <span class="m3-hero-sub">Material 3(`--md-sys-*`)와 Tailwind v4(`--krui-*`) 테마가 동일한 무스타일 DOM 위에서 CSS 변수 캐스케이드만으로 교체됩니다.</span>
+                <div class="gallery-row">
+                    <Button variant="filled" onclick="{controller.select_theme(0)}">Material 3</Button>
+                    <Button variant="outlined" onclick="{controller.select_theme(1)}">Tailwind v4</Button>
+                </div>
+            </div>
+        </Card>
+    </if>
+</div>

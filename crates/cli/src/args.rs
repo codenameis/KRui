@@ -298,11 +298,12 @@ pub fn resolve_effective_target(opts: &ServeOptions) -> (Option<String>, PathBuf
         );
     };
     let normalized = raw.to_string_lossy().replace('\\', "/");
-    let is_component = raw
-        .parent()
-        .and_then(|p| p.file_name())
-        .and_then(|n| n.to_str())
-        == Some("components");
+    let is_component = matches!(
+        raw.parent()
+            .and_then(|p| p.file_name())
+            .and_then(|n| n.to_str()),
+        Some("components" | "icons")
+    );
     let is_showcase_nav = normalized.ends_with("src/views/showcase_nav.krui");
     if is_component || is_showcase_nav {
         return (

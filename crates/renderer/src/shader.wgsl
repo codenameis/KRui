@@ -103,7 +103,7 @@ fn vs_main(in: SdfInstanceInput) -> SdfVaryings {
     } else {
         out.shadow_params = in.shadow_params;
     }
-    if in.flags.z == 3u {
+    if in.flags.z == 3u || in.flags.z == 5u || in.flags.z == 6u || (in.flags.x == KIND_SAMPLE_AUX_TEX && in.flags.w == 1u) {
         out.extra = in.extra_params;
     } else {
         out.extra = vec4<f32>(in.extra_params.y, grad_dir.x, grad_dir.y, in.extra_params.w);
@@ -171,6 +171,19 @@ fn eval_clip_coverage(screen_pos: vec2<f32>, clip_geom: vec4<f32>, clip_radii: v
     return smoothstep(0.5, -0.5, d_clip);
 }
 
+fn sample_gradient_lut(t: f32) -> vec4<f32> {
+    let u = mix(0.5 / 256.0, 255.5 / 256.0, clamp(t, 0.0, 1.0));
+    return textureSampleLevel(t_aux, s_linear, vec2<f32>(u, 0.5), 0.0);
+}
+
+fn wrap_grad_t(t_raw: f32, max_pos: f32, repeating: u32) -> f32 {
+    let norm = t_raw / max(max_pos, 1e-4);
+    if repeating != 0u {
+        return fract(norm);
+    }
+    return clamp(norm, 0.0, 1.0);
+}
+
 fn eval_styled_box(in: SdfVaryings, local_p: vec2<f32>, aa: f32) -> vec4<f32> {
     let half_size = in.box_geom.xy;
     let bw = in.box_geom.w;
@@ -190,6 +203,23 @@ fn eval_styled_box(in: SdfVaryings, local_p: vec2<f32>, aa: f32) -> vec4<f32> {
         let t = clamp((dist - p0) / span, 0.0, 1.0);
         let grad_pm = mix(to_premul(in.grad_start), to_premul(in.grad_end), t);
         fill_pm = over_premul(grad_pm, fill_pm);
+    } else if in.flags.z == 4u {
+        let dir = in.extra.yz;
+        let half_proj = max(abs(dir.x) * half_size.x + abs(dir.y) * half_size.y, 1e-4);
+        let t_raw = clamp(0.5 + dot(local_p, dir) / (2.0 * half_proj), 0.0, 1.0);
+        let t = wrap_grad_t(t_raw, in.uv_bounds.x, in.flags.w);
+        fill_pm = over_premul(sample_gradient_lut(t), fill_pm);
+    } else if in.flags.z == 5u {
+        let d = (local_p - in.uv_bounds.xy) / max(in.uv_bounds.zw, vec2<f32>(1e-3, 1e-3));
+        let t = wrap_grad_t(length(d), in.extra.z, in.flags.w);
+        fill_pm = over_premul(sample_gradient_lut(t), fill_pm);
+    } else if in.flags.z == 6u {
+        let d = local_p - in.uv_bounds.xy;
+        let theta = atan2(d.x, -d.y) - in.extra.z;
+        let turn = theta / 6.28318530718;
+        let norm = turn - floor(turn);
+        let t = wrap_grad_t(norm, in.uv_bounds.z, in.flags.w);
+        fill_pm = over_premul(sample_gradient_lut(t), fill_pm);
     } else if in.flags.z != 0u {
         let dir = in.extra.yz;
         let half_proj = max(abs(dir.x) * half_size.x + abs(dir.y) * half_size.y, 1e-4);
@@ -289,6 +319,18 @@ fn pm_srgb_to_linear(pm: vec4<f32>) -> vec4<f32> {
     return vec4<f32>(lin * pm.a, pm.a);
 }
 
+fn apply_color_matrix_if_needed(in: SdfVaryings, pm: vec4<f32>) -> vec4<f32> {
+    if in.flags.y != 0u && pm.a > 1e-5 {
+        let straight = clamp(pm.rgb / pm.a, vec3<f32>(0.0), vec3<f32>(1.0));
+        let r_out = clamp(dot(in.color_a.xyz, straight) + in.color_a.w, 0.0, 1.0);
+        let g_out = clamp(dot(in.color_b.xyz, straight) + in.color_b.w, 0.0, 1.0);
+        let b_out = clamp(dot(in.grad_start.xyz, straight) + in.grad_start.w, 0.0, 1.0);
+        let a_out = clamp(pm.a * in.grad_end.x, 0.0, 1.0);
+        return vec4<f32>(vec3<f32>(r_out, g_out, b_out) * a_out, a_out);
+    }
+    return pm;
+}
+
 fn eval_sdf_fragment(in: SdfVaryings) -> vec4<f32> {
     let screen_pos = in.pos_and_local.xy;
     let local_p = in.pos_and_local.zw;
@@ -332,13 +374,33 @@ fn eval_sdf_fragment(in: SdfVaryings) -> vec4<f32> {
             }
         }
     } else if kind == KIND_SAMPLE_AUX_TEX {
-        var mask = 1.0;
-        if in.extra.w > 0.5 {
-            let d_box = sd_round_rect_4(local_p, in.box_geom.xy, in.corner_radii);
-            mask = smoothstep(aa, -aa, d_box);
-        }
-        if mask > 0.0 {
-            pm = textureSampleLevel(t_aux, s_linear, in.uv_and_scale.xy, 0.0) * mask;
+        if in.flags.w == 1u {
+            let src_w = in.shadow_params.z * screen_pos.x + in.shadow_params.w * screen_pos.y + in.extra.y;
+            if src_w > 1e-4 {
+                let sx = (in.uv_bounds.x * screen_pos.x + in.uv_bounds.y * screen_pos.y + in.uv_bounds.z) / src_w;
+                let sy = (in.uv_bounds.w * screen_pos.x + in.shadow_params.x * screen_pos.y + in.shadow_params.y) / src_w;
+                let src_px = vec2<f32>(sx, sy);
+                let d_src = sd_round_rect_4(src_px - in.box_geom.xy, in.box_geom.zw, vec4<f32>(0.0));
+                let mask = smoothstep(0.5, -0.5, d_src);
+                if mask > 0.0 {
+                    pm = apply_color_matrix_if_needed(
+                        in,
+                        textureSampleLevel(t_aux, s_linear, src_px * in.extra.zw, 0.0) * mask,
+                    );
+                }
+            }
+        } else {
+            var mask = 1.0;
+            if in.extra.w > 0.5 {
+                let d_box = sd_round_rect_4(local_p, in.box_geom.xy, in.corner_radii);
+                mask = smoothstep(aa, -aa, d_box);
+            }
+            if mask > 0.0 {
+                pm = apply_color_matrix_if_needed(
+                    in,
+                    textureSampleLevel(t_aux, s_linear, in.uv_and_scale.xy, 0.0) * mask,
+                );
+            }
         }
     } else if kind == KIND_IMAGE_TEX {
         let half_size = in.box_geom.xy;

@@ -131,7 +131,7 @@ fn blend_blurred_backdrop_aabb(
     let pw = pixmap.width() as i32;
     let (hw, hh) = (0.5 * ctx.rect.width, 0.5 * ctx.rect.height);
     let (lcx, lcy) = (ctx.rect.x + hw, ctx.rect.y + hh);
-    let box_nr = crate::sdf_instance::normalize_radii_4(2.0 * hw, 2.0 * hh, ctx.corner_radii);
+    let box_nr = crate::radii::normalize_radii_4(2.0 * hw, 2.0 * hh, ctx.corner_radii);
     let max_r = box_nr.into_iter().fold(0.0_f32, f32::max);
     let (ihw, ihh) = (hw - max_r - aa * 2.0 - 1.0, hh - max_r - aa * 2.0 - 1.0);
     let mask_bytes = ctx.mask.map(|m| m.data());

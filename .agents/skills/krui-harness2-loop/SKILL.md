@@ -8,25 +8,25 @@ description: >-
 
 # KRui Harness² (Propose–Probe–Compose) Verification Skill
 
-이 스킬은 `AGENTS.md`(2026-10-25 개정판)의 **Propose–Probe–Compose** 작업 루프를 실행합니다.
+이 스킬은 `AGENTS.md`(2026-11-25 현행판)의 **Propose–Probe–Compose** 작업 루프를 실행합니다.
 
 ## 언제 사용하는가?
-- KRui 워크스페이스 크레이트(`signals`, `style`, `compiler`, `macros`, `layout`, `text`, `a11y`, `core`, `patterns`, `renderer`, `winit`, `preview`, `cli`, `android-ffi`, `krui`)를 수정·리팩토링할 때
+- KRui 워크스페이스 19개 크레이트(`signals`, `style`, `stylo-bridge`, `compiler`, `macros`, `layout`, `text`, `a11y`, `core`, `patterns`, `renderer`, `winit`, `kms`, `engine-host`, `web-dom`, `preview`, `cli`, `android-ffi`, `krui`)를 수정·리팩토링할 때
 - IME(한국어 조합, 조합 중 포커스 이동, 일본어 변환, 영어, AltGr), 화면 전환(`Scope` 및 `Effect` 해제), 레이아웃(Taffy 텍스트 측정), `Affine2` 행렬 히트테스트를 검증할 때
-- 릴리즈 프레임 예산(`krui-bench`) 및 아키텍처 패턴 예제(MVVM, MVC, Elm/Flux, MVI)의 헤드리스 다중 프레임 실행을 점검할 때
+- 릴리즈 프레임 예산(`krui-bench`) 및 `component_gallery` 헤드리스 다중 프레임 실행을 점검할 때
 
 ## 실행 단계 (Propose -> Probe -> Compose)
 
 ### Step 1: Propose (변경 후보와 데이터 흐름 수립)
-1. 바꿀 크레이트, **수정 예정 파일 목록(영향 반경 확인: 비-아키텍처 수정 `1~3`개 파일 원칙, `>= 5`개 파일 또는 크레이트 간 IR/API 변경은 사전 합의)**, 그리고 데이터 흐름(`DSL -> IR -> codegen/interpreter -> ViewTree -> Layout -> PaintScene -> Renderer`)을 먼저 적습니다.
+1. 바꿀 크레이트, **수정 예정 파일 목록(영향 반경 확인: 비-아키텍처 수정 `1~3`개 파일 원칙, `>= 5`개 파일 또는 크레이트 간 IR/API 변경은 사전 합의)**, 그리고 데이터 흐름(`DSL -> IR / static_ir -> codegen/interpreter -> ViewTree -> Stylo Bridge -> Layout -> PaintScene -> Renderer`)을 먼저 적습니다.
 2. `AGENTS.md`의 절대 규칙을 확인합니다:
-   - `#![forbid(unsafe_code)]` 준수
+   - `#![forbid(unsafe_code)]` 준수 (`android-ffi`, `stylo-bridge`만 `#![deny(unsafe_code)]` + 직접 `unsafe {}` 0줄)
    - 릴리즈 빌드에 파서(`krui-compiler`) 런타임 의존성 배제 (`cargo tree -p krui -e normal,no-proc-macro -i krui-compiler`)
-   - 조용한 무시 금지 (`CompileError`에 파일·줄·열 포함)
+   - 조용한 무시 금지 (HTML/바인딩 오류는 `CompileError`, 미지원 CSS 선언은 W3C 선언 drop + `Diagnostic`)
    - 매크로 파일 쓰기 금지 및 `include_bytes!` 추적
    - Fast-Path 불변식 (`transform`/`opacity` 변경 시 relayout 0회, 텍스트/크기 변경 시 relayout 정확히 1회)
    - 수명 관리 (100회 화면 전환 후 모든 런타임/Taffy/노드 카운트 `+0` 일치)
-   - CSS가 정답 (`core`/`renderer`에 `Color::rgb(` 하드코딩 및 RGB 휴리스틱 금지, 토큰 테이블로만 테마 전환)
+   - 순수 CSS가 정답 (`krui-stylo-bridge` 단일 CSS 계층; `core`/`renderer`에 `Color::rgb(` 하드코딩 및 RGB 휴리스틱 금지, `[data-theme]` 순수 CSS로만 테마 전환)
    - IME `ime_target` 고정 및 채널 기반 중복 제거
    - 작성 목표는 파일 500줄·함수 60줄 이하, 게이트 하드 완충선은 파일 560줄·함수 80줄 이하 (국소 버그 수정 중 억지 파일/함수 분할 금지)
 

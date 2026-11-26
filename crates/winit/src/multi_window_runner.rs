@@ -7,8 +7,8 @@ use crate::multi_window::{KruiMultiWindowEvent, ManagedWindow, MultiWindowApp, S
 use crate::session::EngineSession;
 use crate::softbuffer_presenter::DesktopWindowPresenter;
 use crate::window_helpers::{
-    compute_window_idle_control_flow, key_info_from_winit, mods_from_winit,
-    CARET_BLINK_IDLE_TIMEOUT, FRAME_PACE_120HZ,
+    apply_window_cursor, compute_window_idle_control_flow, key_info_from_winit, mods_from_winit,
+    pointer_button_from_winit, CARET_BLINK_IDLE_TIMEOUT, FRAME_PACE_120HZ,
 };
 use krui_core::{GpuResourceLimits, HoveredCursorKind, Mods};
 use krui_signals::{RuntimeId, UiWaker};
@@ -274,11 +274,9 @@ fn dispatch_managed_window_event(mw: &mut ManagedWindow, event: WindowEvent) {
             }
         }
         WindowEvent::MouseWheel { delta, .. } => handle_managed_wheel(mw, delta),
-        WindowEvent::MouseInput {
-            state,
-            button: MouseButton::Left,
-            ..
-        } => handle_managed_mouse_left(mw, state == ElementState::Pressed),
+        WindowEvent::MouseInput { state, button, .. } => {
+            handle_managed_mouse_button(mw, button, state == ElementState::Pressed);
+        }
         WindowEvent::Touch(touch) => mw.handle_touch(touch),
         WindowEvent::Focused(focused) => handle_managed_focus(mw, focused),
         WindowEvent::Ime(ime) => {
@@ -302,38 +300,46 @@ fn dispatch_managed_window_event(mw: &mut ManagedWindow, event: WindowEvent) {
 }
 
 fn handle_managed_wheel(mw: &mut ManagedWindow, delta: MouseScrollDelta) {
-    let dy = match delta {
-        MouseScrollDelta::LineDelta(_, y) => y * 28.0,
-        MouseScrollDelta::PixelDelta(p) => p.to_logical::<f32>(mw.session.scale_factor).y,
+    let (dx, dy) = match delta {
+        MouseScrollDelta::LineDelta(x, y) => (x * 28.0, y * 28.0),
+        MouseScrollDelta::PixelDelta(p) => {
+            let l = p.to_logical::<f32>(mw.session.scale_factor);
+            (l.x, l.y)
+        }
     };
     let (cx, cy) = mw.cursor_pos;
+    let mods = mw.mods;
     let tree = &mut mw.session.tree;
     if mw
         .session
         .reactive_session
-        .enter(|| tree.dispatch_scroll(cx, cy, dy))
+        .enter(|| tree.dispatch_wheel(cx, cy, dx, dy, mods))
     {
         mw.window.request_redraw();
     }
 }
 
-fn handle_managed_mouse_left(mw: &mut ManagedWindow, pressed: bool) {
+fn handle_managed_mouse_button(mw: &mut ManagedWindow, button: MouseButton, pressed: bool) {
+    let Some(ptr_btn) = pointer_button_from_winit(button) else {
+        return;
+    };
+    let (cx, cy) = mw.cursor_pos;
+    let mods = mw.mods;
+    let ms = mw.epoch.elapsed().as_millis() as u64;
+    if button == MouseButton::Left {
+        mw.is_left_mouse_down = pressed;
+    }
     if pressed {
-        mw.is_left_mouse_down = true;
         mw.last_caret_activity = Instant::now();
-        let ms = mw.epoch.elapsed().as_millis() as u64;
-        let (cx, cy) = mw.cursor_pos;
-        let mods = mw.mods;
-        let tree = &mut mw.session.tree;
-        mw.session
-            .reactive_session
-            .enter(|| tree.dispatch_pointer_down_with_mods_at_time(cx, cy, mods, ms));
-    } else {
-        mw.is_left_mouse_down = false;
-        let tree = &mut mw.session.tree;
-        mw.session
-            .reactive_session
-            .enter(|| tree.end_pointer_drag());
+    }
+    let tree = &mut mw.session.tree;
+    mw.session
+        .reactive_session
+        .enter(|| _ = tree.dispatch_pointer_button(cx, cy, ptr_btn, pressed, mods, ms));
+    let next_cursor = mw.session.tree.hovered_cursor_kind();
+    if next_cursor != mw.cursor_kind {
+        mw.cursor_kind = next_cursor;
+        apply_window_cursor(&mw.window, next_cursor, false);
     }
     mw.sync_and_redraw();
 }

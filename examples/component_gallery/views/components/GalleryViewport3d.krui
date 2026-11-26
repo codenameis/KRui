@@ -1,0 +1,31 @@
+<div class="gallery-col">
+    <Card variant="elevated" title="Dual 3D Viewport · Same Open Model (open_teapot.obj)" subtitle="{controller.w4.studio.model_stats}">
+        <div class="gallery-col">
+            <div class="dev-canvas-toolbar">
+                <button id="vp3d-mode-wgpu" class="m3-subroute-pill m3-subroute-pill-{controller.w4.studio.engine_mode == 0}" onclick="{controller.w4.studio.set_engine_mode(0)}">Raw wgpu (Direct 4x MSAA)</button>
+                <button id="vp3d-mode-bevy" class="m3-subroute-pill m3-subroute-pill-{controller.w4.studio.engine_mode == 1}" onclick="{controller.w4.studio.set_engine_mode(1)}">Bevy 0.15 ECS (krui-bevy)</button>
+                <button id="vp3d-toggle-spin" class="m3-subroute-pill m3-subroute-pill-{controller.w4.studio.auto_spin}" onclick="{controller.w4.studio.toggle_auto_spin()}">자동 회전</button>
+                <button id="vp3d-scale-down" class="m3-subroute-pill" onclick="{controller.w4.studio.scale_down()}">크기 -</button>
+                <button id="vp3d-scale-up" class="m3-subroute-pill" onclick="{controller.w4.studio.scale_up()}">크기 +</button>
+                <button id="vp3d-reset-cam" class="m3-subroute-pill" onclick="{controller.w4.studio.reset_camera()}">시점 초기화</button>
+            </div>
+
+            <div class="dev-3d-stage">
+                <div id="dev-3d-viewport-slot" class="dev-3d-slot"></div>
+                <div
+                    id="dev-3d-viewport-hit"
+                    class="dev-3d-hit"
+                    onpointerdown="{controller.w4.studio.on_3d_down}"
+                    onpointermove="{controller.w4.studio.on_3d_move}"
+                    onpointerup="{controller.w4.studio.on_3d_up}"
+                    onwheel="{controller.w4.studio.on_3d_wheel}"
+                ></div>
+            </div>
+
+            <div class="dev-3d-telemetry">
+                <span id="vp3d-camera-readout" class="m3-spec-token">{controller.w4.studio.camera_readout}</span>
+                <span id="vp3d-ecs-telemetry" class="m3-spec-role">{controller.w4.studio.ecs_telemetry}</span>
+            </div>
+        </div>
+    </Card>
+</div>

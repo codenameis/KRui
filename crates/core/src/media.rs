@@ -91,6 +91,12 @@ pub enum ImageSource {
     },
 }
 
+impl From<DecodedImage> for ImageSource {
+    fn from(image: DecodedImage) -> Self {
+        Self::Decoded(image)
+    }
+}
+
 impl ImageSource {
     /// Returns intrinsic pixel `(width, height)`.
     pub const fn intrinsic_dimensions(&self) -> (u32, u32) {

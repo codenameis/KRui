@@ -1,5 +1,8 @@
 # KRui W3C CSS 엔진 정합화 및 `m3.material.io` 갤러리 클론 원샷 보고서
 
+> **[아카이브 스냅샷 — 2026-11-17 E1–H1 완료 시점 보고서]**
+> 이후 Stylo `0.22.0` + Taffy `0.15.1` 통합으로 `real_css_conformance.rs`가 **229/229 (100.0%)** 에 도달했고 예제 경로가 [`examples/component_gallery`](../examples/component_gallery)로 통합되었습니다. 현행 상태는 [`../AGENTS.md`](../AGENTS.md)와 [`TODO.md`](TODO.md)를 참조하세요.
+
 - **작성 및 실측 일자**: `2026-11-17`
 - **기준 체크포인트**: `efae2f5` (`chore: checkpoint before CSS engine + M3 gallery one-shot`)
 - **최종 구현 커밋**: `deba504` (`chore(H1): replace fake Tailwind CSS, enforce syn AST gate across examples, and align docs with measured conformance`)

@@ -32,6 +32,7 @@ impl NodeFlags {
     pub(crate) const IS_SYNTHETIC_TEXT_RUN: u16 = 1 << 8;
     pub(crate) const VISIBILITY_HIDDEN: u16 = 1 << 9;
     pub(crate) const POINTER_EVENTS_NONE: u16 = 1 << 10;
+    pub(crate) const IS_PROGRESS: u16 = 1 << 11;
 
     #[inline]
     pub(crate) const fn contains(self, mask: u16) -> bool {
@@ -111,9 +112,11 @@ pub(crate) struct EventListeners {
     pub(crate) on_click: Option<Rc<dyn Fn()>>,
     pub(crate) on_focus: Option<Rc<dyn Fn()>>,
     pub(crate) on_blur: Option<Rc<dyn Fn()>>,
-    pub(crate) on_pointer_down: Option<Rc<dyn Fn(f32, f32)>>,
-    pub(crate) on_pointer_up: Option<Rc<dyn Fn(f32, f32)>>,
-    pub(crate) on_pointer_move: Option<Rc<dyn Fn(f32, f32)>>,
+    pub(crate) on_pointer_down: Option<Rc<dyn Fn(crate::view_tree::PointerEvent)>>,
+    pub(crate) on_pointer_up: Option<Rc<dyn Fn(crate::view_tree::PointerEvent)>>,
+    pub(crate) on_pointer_move: Option<Rc<dyn Fn(crate::view_tree::PointerEvent)>>,
+    pub(crate) on_context_menu: Option<Rc<dyn Fn(crate::view_tree::PointerEvent)>>,
+    pub(crate) on_wheel: Option<Rc<dyn Fn(crate::view_tree::WheelEvent) -> bool>>,
     pub(crate) on_scroll: Option<Rc<dyn Fn()>>,
     pub(crate) on_input: Option<Rc<dyn Fn(String)>>,
     pub(crate) on_change: Option<Rc<dyn Fn(String)>>,
@@ -129,6 +132,8 @@ impl EventListeners {
             || self.on_pointer_down.is_some()
             || self.on_pointer_up.is_some()
             || self.on_pointer_move.is_some()
+            || self.on_context_menu.is_some()
+            || self.on_wheel.is_some()
     }
 }
 

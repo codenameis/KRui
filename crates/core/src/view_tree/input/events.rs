@@ -14,6 +14,7 @@ use crate::view_tree::key_routing::{
 use crate::view_tree::media_nodes::invoke_post_activation_actions;
 use crate::view_tree::node::{sync_node_text_context, FocusOrigin};
 use crate::view_tree::pointer_capture::SelectionGranularity;
+use crate::view_tree::pointer_events::{build_pointer_event_for_node, PointerButton};
 pub(crate) use crate::view_tree::scroll::compute_max_scroll_y;
 pub use crate::view_tree::scroll::{KEYBOARD_SCROLL_LINE_STEP_PX, KEYBOARD_SCROLL_PAGE_FRACTION};
 use crate::view_tree::select_popup::{close_select_popup, toggle_select_popup_on_click};
@@ -157,46 +158,7 @@ impl ViewTree {
             changed,
         ) = {
             let mut inner = self.inner.borrow_mut();
-            let (focus_cbs, slider_act, ptr_down_cb, down_changed) =
-                apply_pointer_down_at_opts(&mut inner, x, y, Mods::default(), None);
-            let pressed = inner.pressed_node.take();
-            for pid in crate::view_tree::semantics::collect_press_notification_pair(&inner, pressed)
-                .into_iter()
-                .flatten()
-            {
-                crate::view_tree::sync::notify_selector_state_change(&mut inner, pid);
-            }
-            inner.interaction.pointer_capture = None;
-            inner.interaction.pointer_inside_captured = false;
-            let (ctrl_act, toggled) = match pressed {
-                Some(nid) => activate_control_on_pointer_release(&mut inner, nid),
-                None => (None, false),
-            };
-            let (ptr_up_cb, click_cb) = pressed
-                .filter(|&nid| inner.node(nid).is_some_and(|n| !n.is_disabled()))
-                .and_then(|nid| inner.listeners(nid))
-                .map_or((None, None), |l| {
-                    (
-                        l.on_pointer_up.clone().map(|cb| (cb, x, y)),
-                        l.on_click.clone(),
-                    )
-                });
-            let fwd_cb = pressed
-                .filter(|&nid| inner.node(nid).is_some_and(|n| !n.is_disabled()))
-                .and_then(|nid| {
-                    crate::view_tree::semantics::take_forwarded_label_click(&inner, nid)
-                });
-            (
-                focus_cbs,
-                slider_act,
-                ptr_down_cb,
-                ptr_up_cb,
-                ctrl_act,
-                click_cb,
-                fwd_cb,
-                pressed,
-                down_changed || toggled,
-            )
+            resolve_dispatch_click_inner(&mut inner, x, y)
         };
         if popup_or_early_focus_invoke(focus_cbs, slider_act, ptr_down_cb, ptr_up_cb, ctrl_act) {
             return true;
@@ -217,6 +179,75 @@ impl ViewTree {
     }
 }
 
+#[allow(clippy::type_complexity)]
+fn resolve_dispatch_click_inner(
+    inner: &mut ViewTreeInner,
+    x: f32,
+    y: f32,
+) -> (
+    crate::view_tree::focus_pointer::FocusTransitionCallbacks,
+    Option<ControlActivationCallbacks>,
+    Option<crate::view_tree::focus_pointer::PointerCallback>,
+    Option<crate::view_tree::focus_pointer::PointerCallback>,
+    Option<ControlActivationCallbacks>,
+    Option<Rc<dyn Fn()>>,
+    Option<Rc<dyn Fn()>>,
+    Option<NodeId>,
+    bool,
+) {
+    let (focus_cbs, slider_act, ptr_down_cb, down_changed) =
+        apply_pointer_down_at_opts(inner, x, y, Mods::default(), None);
+    let pressed = inner.pressed_node.take();
+    for pid in crate::view_tree::semantics::collect_press_notification_pair(inner, pressed)
+        .into_iter()
+        .flatten()
+    {
+        crate::view_tree::sync::notify_selector_state_change(inner, pid);
+    }
+    inner.interaction.pointer_capture = None;
+    inner.interaction.pointer_inside_captured = false;
+    let (ctrl_act, toggled) = match pressed {
+        Some(nid) => activate_control_on_pointer_release(inner, nid),
+        None => (None, false),
+    };
+    let (ptr_up_cb, click_cb) = pressed
+        .filter(|&nid| inner.node(nid).is_some_and(|n| !n.is_disabled()))
+        .map(|nid| {
+            let ptr_up = inner
+                .listeners(nid)
+                .and_then(|l| l.on_pointer_up.clone())
+                .map(|cb| {
+                    let ev = build_pointer_event_for_node(
+                        inner,
+                        nid,
+                        (x, y),
+                        (0.0, 0.0),
+                        PointerButton::Primary,
+                        1,
+                        Mods::default(),
+                    );
+                    (cb, ev)
+                });
+            let click = inner.listeners(nid).and_then(|l| l.on_click.clone());
+            (ptr_up, click)
+        })
+        .unwrap_or((None, None));
+    let fwd_cb = pressed
+        .filter(|&nid| inner.node(nid).is_some_and(|n| !n.is_disabled()))
+        .and_then(|nid| crate::view_tree::semantics::take_forwarded_label_click(inner, nid));
+    (
+        focus_cbs,
+        slider_act,
+        ptr_down_cb,
+        ptr_up_cb,
+        ctrl_act,
+        click_cb,
+        fwd_cb,
+        pressed,
+        down_changed || toggled,
+    )
+}
+
 fn popup_or_early_focus_invoke(
     focus_cbs: crate::view_tree::focus_pointer::FocusTransitionCallbacks,
     slider_act: Option<ControlActivationCallbacks>,
@@ -228,11 +259,11 @@ fn popup_or_early_focus_invoke(
     if let Some(act) = slider_act {
         act.invoke();
     }
-    if let Some((cb, px, py)) = ptr_down_cb {
-        batch(|| cb(px, py));
+    if let Some((cb, ev)) = ptr_down_cb {
+        batch(|| cb(ev));
     }
-    if let Some((cb, px, py)) = ptr_up_cb {
-        batch(|| cb(px, py));
+    if let Some((cb, ev)) = ptr_up_cb {
+        batch(|| cb(ev));
     }
     if let Some(act) = ctrl_act {
         act.invoke();
@@ -393,6 +424,9 @@ impl ViewTree {
         if !key_name.is_empty() && self.dispatch_key_down(&key_name) {
             return KeyAction::None;
         }
+        if matches!(key_info, KeyInfo::Escape) && self.exit_pointer_lock() {
+            return KeyAction::None;
+        }
         let is_arrow_consuming_control = self
             .with_focused_node(|n| {
                 Some(
@@ -439,11 +473,14 @@ impl ViewTree {
         let hover_cleared =
             crate::view_tree::pointer_capture::set_hovered_node_and_notify(&mut inner, None);
         changed |= inner.interaction.pointer_capture.take().is_some()
+            || inner.interaction.aux_button_capture.take().is_some()
+            || inner.interaction.pointer_lock.take().is_some()
             || inner.interaction.pointer_inside_captured
             || old_press.is_some()
             || hover_cleared
             || inner.selecting_node.take().is_some()
             || inner.scrollbar_drag.take().is_some();
+        inner.interaction.held_buttons = 0;
         if let Some(pid) = old_press {
             crate::view_tree::sync::notify_selector_state_change(&mut inner, pid);
         }

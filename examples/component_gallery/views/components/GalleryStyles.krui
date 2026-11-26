@@ -1,5 +1,14 @@
 <div class="gallery-section">
-    <Card variant="filled" title="Styles · Color, Shape, Typography & Elevation" subtitle="활성 테마: {controller.theme_name} ({controller.theme_shape_spec})">
+    <div class="m3-subroute-bar">
+        <button id="styles-sub-0" class="m3-subroute-pill m3-subroute-pill-{controller.w4.styles_subroute == 0}" onclick="{controller.w4.set_styles_subroute(0)}">All Styles</button>
+        <button id="styles-sub-1" class="m3-subroute-pill m3-subroute-pill-{controller.w4.styles_subroute == 1}" onclick="{controller.w4.set_styles_subroute(1)}">Color</button>
+        <button id="styles-sub-2" class="m3-subroute-pill m3-subroute-pill-{controller.w4.styles_subroute == 2}" onclick="{controller.w4.set_styles_subroute(2)}">Typography</button>
+        <button id="styles-sub-3" class="m3-subroute-pill m3-subroute-pill-{controller.w4.styles_subroute == 3}" onclick="{controller.w4.set_styles_subroute(3)}">Shape</button>
+        <button id="styles-sub-4" class="m3-subroute-pill m3-subroute-pill-{controller.w4.styles_subroute == 4}" onclick="{controller.w4.set_styles_subroute(4)}">Elevation &amp; Motion</button>
+        <button id="styles-sub-5" class="m3-subroute-pill m3-subroute-pill-{controller.w4.styles_subroute == 5}" onclick="{controller.w4.set_styles_subroute(5)}">CSS Engine Showcase</button>
+    </div>
+
+    <Card variant="filled" title="Styles · Color, Shape, Typography &amp; Elevation" subtitle="활성 테마: {controller.theme_name} ({controller.theme_shape_spec})">
         <span>테마 스위처나 아래 칩을 누르면 모든 색상 스와치, 모서리 반경(Shape), 그림자·물결 효과가 0-relayout으로 즉시 전환됩니다.</span>
         <div slot="actions" class="gallery-row">
             <Chip variant="filter" label="Material 3" selected="{controller.theme_index == 0}" onclick="{controller.select_theme(0)}" />
@@ -7,52 +16,108 @@
         </div>
     </Card>
 
-    <Card variant="elevated" title="Color System Tokens (--krui-*)" subtitle="테마별 Primary · Secondary · Tertiary · Error · Surface 역할 매핑">
-        <div class="m3-swatch-grid">
-            <div class="m3-swatch m3-swatch-primary">
-                <span class="m3-swatch-title">Primary (--krui-accent)</span>
-                <span class="m3-swatch-desc">On-Primary: --krui-accent-fg</span>
-            </div>
-            <div class="m3-swatch m3-swatch-secondary">
-                <span class="m3-swatch-title">Secondary Container</span>
-                <span class="m3-swatch-desc">--krui-secondary-bg / fg</span>
-            </div>
-            <div class="m3-swatch m3-swatch-tertiary">
-                <span class="m3-swatch-title">Tertiary Container</span>
-                <span class="m3-swatch-desc">--krui-tertiary-bg / fg</span>
-            </div>
-            <div class="m3-swatch m3-swatch-danger">
-                <span class="m3-swatch-title">Error / Danger</span>
-                <span class="m3-swatch-desc">--krui-danger-bg / fg</span>
-            </div>
-            <div class="m3-swatch m3-swatch-surface">
-                <span class="m3-swatch-title">Surface Container</span>
-                <span class="m3-swatch-desc">--krui-surface / border</span>
-            </div>
-            <div class="m3-swatch m3-swatch-card">
-                <span class="m3-swatch-title">Card Container High</span>
-                <span class="m3-swatch-desc">--krui-card / shadow</span>
-            </div>
-        </div>
-    </Card>
-
-    <div class="gallery-grid-2">
-        <Card variant="outlined" title="Shape Scale Tokens" subtitle="디자인 시스템별 모서리 둥글기 계층">
+    <if test="{controller.w4.styles_subroute == 0 || controller.w4.styles_subroute == 1}">
+        <Card variant="elevated" title="Color System Tokens (--krui-*)" subtitle="테마별 Primary · Secondary · Tertiary · Error · Surface 역할 매핑">
             <div class="m3-swatch-grid">
-                <div class="m3-shape-box m3-shape-btn"><span>Button Radius (--krui-btn-radius)</span></div>
-                <div class="m3-shape-box m3-shape-chip"><span>Chip Radius (--krui-chip-radius)</span></div>
-                <div class="m3-shape-box m3-shape-card"><span>Card Radius (--krui-card-radius)</span></div>
-                <div class="m3-shape-box m3-shape-dialog"><span>Dialog / Sheet (--krui-dialog-radius)</span></div>
+                <div class="m3-swatch m3-swatch-primary">
+                    <span class="m3-swatch-title">Primary (--krui-accent)</span>
+                    <span class="m3-swatch-desc">On-Primary: --krui-accent-fg</span>
+                </div>
+                <div class="m3-swatch m3-swatch-secondary">
+                    <span class="m3-swatch-title">Secondary Container</span>
+                    <span class="m3-swatch-desc">--krui-secondary-bg / fg</span>
+                </div>
+                <div class="m3-swatch m3-swatch-tertiary">
+                    <span class="m3-swatch-title">Tertiary Container</span>
+                    <span class="m3-swatch-desc">--krui-tertiary-bg / fg</span>
+                </div>
+                <div class="m3-swatch m3-swatch-danger">
+                    <span class="m3-swatch-title">Error / Danger</span>
+                    <span class="m3-swatch-desc">--krui-danger-bg / fg</span>
+                </div>
+                <div class="m3-swatch m3-swatch-surface">
+                    <span class="m3-swatch-title">Surface Container</span>
+                    <span class="m3-swatch-desc">--krui-surface / border</span>
+                </div>
+                <div class="m3-swatch m3-swatch-card">
+                    <span class="m3-swatch-title">Card Container High</span>
+                    <span class="m3-swatch-desc">--krui-card / shadow</span>
+                </div>
             </div>
         </Card>
+    </if>
 
-        <Card variant="outlined" title="Typography & Motion Scale" subtitle="Display · Title · Body · Transform2D Fast-Path">
-            <div class="gallery-col">
-                <span class="m3-type-display">Display · KRui 한국어 UI 가독성</span>
-                <span class="m3-type-title">Title · 선언형 M3 디자인 스펙 동기화</span>
-                <span class="m3-type-body">Body · `--krui-font-family` 스택과 `inherits_text_color` 런타임 상속이 버튼/카드 내부 텍스트까지 일관되게 전달됩니다.</span>
-                <span class="gallery-note">Caption · Material 3 (999px pill · pointer ripple) / Tailwind v4 (6px rounded-md · 1px ring)</span>
+    <if test="{controller.w4.styles_subroute == 0 || controller.w4.styles_subroute == 2 || controller.w4.styles_subroute == 3}">
+        <div class="gallery-grid-2">
+            <Card variant="outlined" title="Shape Scale Tokens" subtitle="디자인 시스템별 모서리 둥글기 계층">
+                <div class="m3-swatch-grid">
+                    <div class="m3-shape-box m3-shape-btn"><span>Button Radius (--krui-btn-radius)</span></div>
+                    <div class="m3-shape-box m3-shape-chip"><span>Chip Radius (--krui-chip-radius)</span></div>
+                    <div class="m3-shape-box m3-shape-card"><span>Card Radius (--krui-card-radius)</span></div>
+                    <div class="m3-shape-box m3-shape-dialog"><span>Dialog / Sheet (--krui-dialog-radius)</span></div>
+                </div>
+            </Card>
+
+            <Card variant="outlined" title="Typography &amp; Motion Scale" subtitle="Display · Title · Body · Transform2D Fast-Path">
+                <div class="gallery-col">
+                    <span class="m3-type-display">Display · KRui 한국어 UI 가독성</span>
+                    <span class="m3-type-title">Title · 선언형 M3 디자인 스펙 동기화</span>
+                    <span class="m3-type-body">Body · `--krui-font-family` 스택과 `inherits_text_color` 런타임 상속이 버튼/카드 내부 텍스트까지 일관되게 전달됩니다.</span>
+                    <span class="gallery-note">Caption · Material 3 (999px pill · pointer ripple) / Tailwind v4 (6px rounded-md · 1px ring)</span>
+                </div>
+            </Card>
+        </div>
+    </if>
+
+    <if test="{controller.w4.styles_subroute == 0 || controller.w4.styles_subroute == 4}">
+        <Card variant="outlined" title="Tailwind v4 Conformance · 229/229 (100.0%)" subtitle="@container 크기 쿼리 · CSS filter · prefers-reduced-motion · 0-Relayout 순수 CSS">
+            <div class="tw-cq-showcase">
+                <div class="m3-swatch-grid tw-cq-panel">
+                    <div class="m3-swatch m3-swatch-primary tw-filter-vivid">
+                        <span class="m3-swatch-title">@container + CSS filter</span>
+                        <span class="m3-swatch-desc">brightness(1.08) saturate(1.25)</span>
+                    </div>
+                    <div class="m3-swatch m3-swatch-tertiary tw-filter-muted">
+                        <span class="m3-swatch-title">CSS filter (Muted)</span>
+                        <span class="m3-swatch-desc">contrast(1.10) grayscale(0.35)</span>
+                    </div>
+                    <div class="m3-swatch m3-swatch-surface tw-motion-safe-badge">
+                        <span class="m3-swatch-title">prefers-reduced-motion</span>
+                        <span class="m3-swatch-desc">모션 감소 시 트랜지션 자동 비활성화</span>
+                    </div>
+                </div>
             </div>
         </Card>
-    </div>
+    </if>
+
+    <if test="{controller.w4.styles_subroute == 0 || controller.w4.styles_subroute == 5}">
+        <Card variant="elevated" title="CSS Engine Showcase · Wave 4 Renderer Parity" subtitle="conic-gradient() · 5-stop gradient · clip-path polygon() · perspective 3D">
+            <div class="w4-showcase-grid">
+                <div class="w4-showcase-tile">
+                    <div id="w4-showcase-conic" class="w4-conic-wheel"></div>
+                    <span class="m3-swatch-title">conic-gradient()</span>
+                    <span class="m3-swatch-desc">256×1 LUT + atan2 CPU/GPU 패리티</span>
+                </div>
+                <div class="w4-showcase-tile">
+                    <div id="w4-showcase-multistop" class="w4-multistop-bar"></div>
+                    <span class="m3-swatch-title">5-Stop Gradient</span>
+                    <span class="m3-swatch-desc">무제한 정지점 LUT + repeating</span>
+                </div>
+                <div class="w4-showcase-tile">
+                    <div id="w4-showcase-clip" class="w4-clip-hex"></div>
+                    <span class="m3-swatch-title">clip-path: polygon()</span>
+                    <span class="m3-swatch-desc">HW Depth24PlusStencil8 + 히트테스트</span>
+                </div>
+                <div class="w4-showcase-tile">
+                    <div class="w4-persp-stage">
+                        <div id="w4-showcase-3d" class="w4-persp-card">
+                            <span>3D</span>
+                        </div>
+                    </div>
+                    <span class="m3-swatch-title">perspective + rotateY</span>
+                    <span class="m3-swatch-desc">호모그래피 역투영 + preserve-3d</span>
+                </div>
+            </div>
+        </Card>
+    </if>
 </div>

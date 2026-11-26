@@ -87,13 +87,69 @@ impl NodeId {
     }
 }
 
-/// OS mouse cursor shape hint based on the currently hovered widget.
+/// OS mouse cursor shape hint based on CSS `cursor` and hovered widget semantics.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum HoveredCursorKind {
     #[default]
     Default,
+    None,
     Pointer,
     Text,
+    Crosshair,
+    Move,
+    Grab,
+    Grabbing,
+    EwResize,
+    NsResize,
+    NeswResize,
+    NwseResize,
+    ColResize,
+    RowResize,
+    NotAllowed,
+    Wait,
+    Progress,
+    ZoomIn,
+    ZoomOut,
+    Help,
+    Copy,
+    Alias,
+    Cell,
+    AllScroll,
+}
+
+impl HoveredCursorKind {
+    /// Maps an explicit CSS `CursorStyle` (`!= Auto`) to [`HoveredCursorKind`].
+    #[must_use]
+    pub const fn from_css_cursor(cursor: krui_style::CursorStyle) -> Option<Self> {
+        use krui_style::CursorStyle as C;
+        Some(match cursor {
+            C::Auto => return None,
+            C::Default => Self::Default,
+            C::None => Self::None,
+            C::Pointer => Self::Pointer,
+            C::Text => Self::Text,
+            C::Crosshair => Self::Crosshair,
+            C::Move => Self::Move,
+            C::Grab => Self::Grab,
+            C::Grabbing => Self::Grabbing,
+            C::EwResize => Self::EwResize,
+            C::NsResize => Self::NsResize,
+            C::NeswResize => Self::NeswResize,
+            C::NwseResize => Self::NwseResize,
+            C::ColResize => Self::ColResize,
+            C::RowResize => Self::RowResize,
+            C::NotAllowed => Self::NotAllowed,
+            C::Wait => Self::Wait,
+            C::Progress => Self::Progress,
+            C::ZoomIn => Self::ZoomIn,
+            C::ZoomOut => Self::ZoomOut,
+            C::Help => Self::Help,
+            C::Copy => Self::Copy,
+            C::Alias => Self::Alias,
+            C::Cell => Self::Cell,
+            C::AllScroll => Self::AllScroll,
+        })
+    }
 }
 
 pub(crate) type MountFn = Box<dyn FnOnce(&mut ViewTree, Option<NodeId>) -> Vec<NodeId>>;
@@ -251,6 +307,10 @@ impl ElementNode {
         let mut flags = NodeFlags::default();
         flags.set(NodeFlags::ALIVE, true);
         flags.set(NodeFlags::IS_SECRET, is_secret);
+        flags.set(
+            NodeFlags::IS_PROGRESS,
+            tag == krui_style::HtmlTag::Progress.as_str(),
+        );
         Self {
             id,
             flags,
@@ -477,32 +537,5 @@ pub(crate) fn is_node_text_selectable(node: &ElementNode) -> bool {
         UserSelect::None => false,
         UserSelect::Text | UserSelect::All => true,
         UserSelect::Auto => node.role.is_text_editable(),
-    }
-}
-
-impl ViewTree {
-    /// Marks a compiler-generated wrapper for a mixed-inline text run so `:nth-child` excludes it
-    /// by backing it with a true Stylo DOM Text node instead of a `<span>` element.
-    pub fn mark_synthetic_text_run(&mut self, node_id: crate::view_tree::NodeId) {
-        let mut inner = self.inner.borrow_mut();
-        let Some((old_sid, parent, non_empty)) = inner.node_mut(node_id).map(|node| {
-            node.set_synthetic_text_run(true);
-            (node.stylo_node, node.parent, !node.text.trim().is_empty())
-        }) else {
-            return;
-        };
-        if let Some(prev) = old_sid {
-            inner.stylo_to_view.remove(&prev);
-            inner
-                .stylo
-                .apply_mutation(krui_stylo_bridge::StyloDomMutation::DisposeSubtree(prev));
-        }
-        let text_sid = inner.stylo.alloc_text(non_empty);
-        if let Some(node) = inner.node_mut(node_id) {
-            node.stylo_node = Some(text_sid);
-        }
-        inner.stylo_to_view.insert(text_sid, node_id);
-        crate::view_tree::sync::sync_stylo_children_for_container(&mut inner, parent);
-        inner.stylo_dirty = true;
     }
 }

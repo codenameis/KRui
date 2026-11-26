@@ -1,7 +1,7 @@
 //! MVVM primitives: `Command` (sync & `new_async` with `is_running`), `InputCommand`,
 //! `IntoCanExecute`, `FromAppState`, and `AppStateExt`.
 
-use krui_core::{ClickTarget, InputTarget};
+use krui_core::{ClickTarget, InputTarget, PointerEvent, PointerTarget, WheelEvent, WheelTarget};
 use krui_signals::{
     batch, poll_async_tasks, register_async_poller_with_retention, Computed, ReactiveSession,
     Scope, Signal,
@@ -291,6 +291,23 @@ impl ClickTarget for Command {
 
     fn can_execute_signal(&self) -> Option<Computed<bool>> {
         self.can_execute
+    }
+}
+
+impl PointerTarget for Command {
+    fn into_pointer_fn(self) -> Rc<dyn Fn(PointerEvent)> {
+        let cb = self.as_rc_fn();
+        Rc::new(move |_ev| cb())
+    }
+}
+
+impl WheelTarget for Command {
+    fn into_wheel_fn(self) -> Rc<dyn Fn(WheelEvent) -> bool> {
+        let cb = self.as_rc_fn();
+        Rc::new(move |_ev| {
+            cb();
+            false
+        })
     }
 }
 

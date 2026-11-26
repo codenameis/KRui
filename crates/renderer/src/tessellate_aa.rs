@@ -91,6 +91,14 @@ pub(crate) fn resolve_canvas_cmd_style(cmd: &CanvasCommand) -> CanvasCmdStyle {
             join: to_lyon_line_join(line_join),
             color,
         },
+        CanvasCommand::SetTransform(_)
+        | CanvasCommand::PushClip { .. }
+        | CanvasCommand::PopClip
+        | CanvasCommand::FillGradient { .. }
+        | CanvasCommand::DrawText { .. }
+        | CanvasCommand::DrawImage { .. } => {
+            CanvasCmdStyle::Fill(FillRule::NonZero, Color::TRANSPARENT)
+        }
     }
 }
 

@@ -14,23 +14,86 @@ use tokio::sync::mpsc;
 
 const DEFAULT_ASYNC_WORKER_THREADS: usize = 2;
 
-static TOKIO_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+/// Controls how KRui's background async executor (`tokio`) is initialized.
+#[derive(Clone, Debug)]
+pub enum AsyncRuntimeMode {
+    /// Own a multi-threaded `tokio` runtime with `worker_threads` worker threads (default `2`).
+    MultiThread { worker_threads: usize },
+    /// Own a single-worker `tokio` runtime sized for low-overhead kiosk hosts.
+    SingleWorkerKiosk,
+    /// Reuse an existing external `tokio::runtime::Handle` (e.g., 3D engine host) without spawning workers.
+    ExternalHandle(tokio::runtime::Handle),
+}
 
-/// Returns the process-wide shared `tokio` multi-threaded async runtime built into KRui.
-pub fn tokio_runtime() -> &'static tokio::runtime::Runtime {
-    TOKIO_RUNTIME.get_or_init(|| {
-        tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(DEFAULT_ASYNC_WORKER_THREADS)
-            .thread_name("krui-tokio")
-            .enable_all()
-            .build()
-            .expect("Failed to initialize KRui built-in tokio runtime")
+enum TokioBackend {
+    Owned(tokio::runtime::Runtime),
+    External(tokio::runtime::Handle),
+}
+
+impl TokioBackend {
+    fn from_mode(mode: AsyncRuntimeMode) -> Self {
+        match mode {
+            AsyncRuntimeMode::MultiThread { worker_threads } => {
+                Self::Owned(build_owned_runtime(worker_threads.max(1), "krui-tokio"))
+            }
+            AsyncRuntimeMode::SingleWorkerKiosk => {
+                Self::Owned(build_owned_runtime(1, "krui-tokio-kiosk"))
+            }
+            AsyncRuntimeMode::ExternalHandle(handle) => Self::External(handle),
+        }
+    }
+
+    fn handle(&self) -> tokio::runtime::Handle {
+        match self {
+            Self::Owned(rt) => rt.handle().clone(),
+            Self::External(handle) => handle.clone(),
+        }
+    }
+}
+
+fn build_owned_runtime(worker_threads: usize, thread_name: &str) -> tokio::runtime::Runtime {
+    tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(worker_threads)
+        .thread_name(thread_name)
+        .enable_all()
+        .build()
+        .expect("Failed to initialize KRui built-in tokio runtime")
+}
+
+static TOKIO_BACKEND: OnceLock<TokioBackend> = OnceLock::new();
+static FALLBACK_OWNED_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
+
+/// Configures KRui's async runtime mode before any background async task is spawned.
+///
+/// Returns `Err` if the global async backend has already been initialized.
+pub fn init_async_runtime_mode(mode: AsyncRuntimeMode) -> Result<(), &'static str> {
+    let backend = TokioBackend::from_mode(mode);
+    TOKIO_BACKEND
+        .set(backend)
+        .map_err(|_| "KRui async runtime has already been initialized")
+}
+
+fn active_backend() -> &'static TokioBackend {
+    TOKIO_BACKEND.get_or_init(|| {
+        TokioBackend::from_mode(AsyncRuntimeMode::MultiThread {
+            worker_threads: DEFAULT_ASYNC_WORKER_THREADS,
+        })
     })
 }
 
-/// Returns a clonable `tokio::runtime::Handle` to KRui's built-in async runtime.
+/// Returns the process-wide shared `tokio` multi-threaded async runtime built into KRui.
+pub fn tokio_runtime() -> &'static tokio::runtime::Runtime {
+    match active_backend() {
+        TokioBackend::Owned(rt) => rt,
+        TokioBackend::External(_) => {
+            FALLBACK_OWNED_RUNTIME.get_or_init(|| build_owned_runtime(1, "krui-tokio-fallback"))
+        }
+    }
+}
+
+/// Returns a clonable `tokio::runtime::Handle` to KRui's configured async runtime or injected external handle.
 pub fn tokio_handle() -> tokio::runtime::Handle {
-    tokio_runtime().handle().clone()
+    active_backend().handle()
 }
 
 /// Handle to a spawned `tokio` task/stream/interval auto-aborted if its owning `Scope` disposes.
@@ -141,7 +204,7 @@ where
     let wake_bg = wake.clone();
     let result_bg = result_slot.clone();
 
-    let join = tokio_runtime().spawn(async move {
+    let join = tokio_handle().spawn(async move {
         let _guard = CompletionDropGuard {
             active: active_bg,
             wake: wake_bg,
@@ -233,7 +296,7 @@ where
     };
 
     let active_bg = is_active.clone();
-    let join = tokio_runtime().spawn(async move {
+    let join = tokio_handle().spawn(async move {
         let _guard = CompletionDropGuard {
             active: active_bg,
             wake,
@@ -320,7 +383,7 @@ pub fn spawn_tokio_interval(period: Duration, on_tick: impl FnMut() + 'static) -
     let ticks_bg = pending_ticks.clone();
     let wake_bg = wake.clone();
 
-    let join = tokio_runtime().spawn(async move {
+    let join = tokio_handle().spawn(async move {
         let _guard = CompletionDropGuard {
             active: active_bg,
             wake: wake_bg.clone(),

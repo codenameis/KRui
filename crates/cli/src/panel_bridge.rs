@@ -112,6 +112,7 @@ impl PanelBridgeServer {
     /// Accepts waiting clients and drains commands during initial `cargo build`.
     pub fn accept_and_poll_during_build(&mut self, session: &mut ServeSession) {
         self.accept_clients();
+        self.flush_client_writes();
         let cmds = self.poll_client_commands();
         for cmd in cmds {
             self.dispatch_editor_cmd(session, cmd);
@@ -123,6 +124,7 @@ impl PanelBridgeServer {
     /// flushes debounced virtual buffers, and forwards `ServeSession` frames/inspections.
     pub fn step(&mut self, session: &mut ServeSession) -> bool {
         self.accept_clients();
+        self.flush_client_writes();
         let cmds = self.poll_client_commands();
         let had_cmds = !cmds.is_empty();
         for cmd in cmds {
@@ -279,6 +281,17 @@ impl PanelBridgeServer {
         }
     }
 
+    fn flush_client_writes(&mut self) {
+        let mut idx = 0;
+        while idx < self.clients.len() {
+            if self.clients[idx].flush_pending_writes().is_err() {
+                self.clients.swap_remove(idx);
+            } else {
+                idx += 1;
+            }
+        }
+    }
+
     fn broadcast_raw(&mut self, packet: &[u8]) {
         let mut idx = 0;
         while idx < self.clients.len() {
@@ -362,6 +375,18 @@ fn editor_cmd_to_panel_input(cmd: PanelEditorCmd) -> Option<PanelInputEvent> {
             cursor_end,
         }),
         PanelEditorCmd::ImeCommit { text } => Some(PanelInputEvent::ImeCommit { text }),
+        PanelEditorCmd::SetColorScheme { slug } => {
+            parse_color_scheme_slug(&slug).map(PanelInputEvent::SetColorScheme)
+        }
+        _ => None,
+    }
+}
+
+fn parse_color_scheme_slug(slug: &str) -> Option<krui_style::ColorSchemePreference> {
+    match slug.trim().to_ascii_lowercase().as_str() {
+        "system" | "auto" => Some(krui_style::ColorSchemePreference::System),
+        "light" => Some(krui_style::ColorSchemePreference::Light),
+        "dark" => Some(krui_style::ColorSchemePreference::Dark),
         _ => None,
     }
 }

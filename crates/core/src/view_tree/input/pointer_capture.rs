@@ -6,6 +6,7 @@ use crate::view_tree::hit_test::node_contains_screen_point;
 use crate::view_tree::key_routing::Mods;
 use crate::view_tree::node::{is_node_text_selectable, FocusOrigin, NodeId};
 use crate::view_tree::paint_text_decorations::apply_text_selection_drag;
+use crate::view_tree::pointer_events::{build_pointer_event_for_node, PointerButton};
 use crate::view_tree::scroll::try_start_scrollbar_pointer_down;
 use crate::view_tree::select_popup::hit_select_popup_row;
 use crate::view_tree::text_selection_granularity::compute_drag_autoscroll_step;
@@ -79,6 +80,9 @@ pub(crate) struct PointerFocusState {
     pub(crate) selection_owner: Option<NodeId>,
     pub(crate) tab_anchor_node: Option<NodeId>,
     pub(crate) pointer_capture: Option<NodeId>,
+    pub(crate) aux_button_capture: Option<(NodeId, PointerButton)>,
+    pub(crate) pointer_lock: Option<NodeId>,
+    pub(crate) held_buttons: u8,
     pub(crate) pointer_inside_captured: bool,
     pub(crate) selection_granularity: SelectionGranularity,
     pub(crate) multi_click: MultiClickTracker,
@@ -100,6 +104,12 @@ impl PointerFocusState {
             self.pointer_capture = None;
             self.pointer_inside_captured = false;
             self.selection_granularity = SelectionGranularity::Char;
+        }
+        if self.aux_button_capture.is_some_and(|(nid, _)| nid == id) {
+            self.aux_button_capture = None;
+        }
+        if self.pointer_lock == Some(id) {
+            self.pointer_lock = None;
         }
         if self.multi_click.last_node == Some(id) {
             self.multi_click.reset();
@@ -168,15 +178,19 @@ impl ViewTreeInner {
         changed
     }
 
-    pub(crate) fn apply_captured_pointer_move(
+    pub(crate) fn apply_captured_pointer_move_opts(
         &mut self,
         cap_id: NodeId,
         x: f32,
         y: f32,
+        delta: (f32, f32),
+        mods: Mods,
     ) -> (Option<PointerCallback>, bool) {
         let inside = node_contains_screen_point(self, cap_id, x, y);
         let mut changed = false;
-        if self.interaction.pointer_inside_captured != inside {
+        if self.interaction.pointer_capture == Some(cap_id)
+            && self.interaction.pointer_inside_captured != inside
+        {
             self.interaction.pointer_inside_captured = inside;
             crate::view_tree::sync::notify_selector_state_change(self, cap_id);
             changed = true;
@@ -193,11 +207,20 @@ impl ViewTreeInner {
             .node(cap_id)
             .is_some_and(|n| !n.is_disabled())
             .then(|| {
+                let ev = build_pointer_event_for_node(
+                    self,
+                    cap_id,
+                    (x, y),
+                    delta,
+                    PointerButton::Primary,
+                    0,
+                    mods,
+                );
                 self.listeners(cap_id)
                     .and_then(|l| l.on_pointer_move.clone())
+                    .map(|cb| (cb, ev))
             })
-            .flatten()
-            .map(|cb| (cb, x, y));
+            .flatten();
         (cb, changed)
     }
 
@@ -339,8 +362,8 @@ pub(crate) fn run_pointer_down(
     if let Some(act) = slider_act {
         act.invoke();
     }
-    if let Some((cb, px, py)) = ptr_down_cb {
-        batch(|| cb(px, py));
+    if let Some((cb, ev)) = ptr_down_cb {
+        batch(|| cb(ev));
     }
     changed
 }
@@ -432,11 +455,13 @@ impl ViewTree {
     pub fn dispatch_pointer_cancel(&mut self) -> bool {
         let mut inner = self.inner.borrow_mut();
         let changed = inner.interaction.pointer_capture.take().is_some()
+            || inner.interaction.aux_button_capture.take().is_some()
             || inner.pressed_node.take().is_some()
             || inner.hovered_node.take().is_some()
             || inner.selecting_node.take().is_some()
             || inner.scrollbar_drag.take().is_some()
             || inner.interaction.pointer_inside_captured;
+        inner.interaction.held_buttons = 0;
         inner.interaction.pointer_inside_captured = false;
         inner.interaction.selection_granularity = SelectionGranularity::Char;
         if changed {

@@ -7,6 +7,8 @@
             <div class="gallery-row">
                 <Button id="hero-get-started-btn" variant="filled" onclick="{controller.select_section(1)}">Get started 시작하기</Button>
                 <Button id="hero-components-btn" variant="tonal" onclick="{controller.select_section(3)}">47개 컴포넌트 탐색</Button>
+                <Button id="hero-canvas-studio-btn" variant="tonal" onclick="{controller.open_canvas_studio()}">2D Canvas 스튜디오</Button>
+                <Button id="hero-viewport-3d-btn" variant="tonal" onclick="{controller.open_viewport_3d()}">3D 뷰포트 (wgpu/Bevy)</Button>
                 <Button id="hero-styles-btn" variant="outlined" onclick="{controller.select_section(2)}">Styles 토큰 보기</Button>
                 <Button id="hero-search-btn" variant="text" onclick="{controller.open_search_overlay()}">
                     <IconSearch class="m3-icon-sm" />

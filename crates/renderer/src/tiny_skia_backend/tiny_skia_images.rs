@@ -7,10 +7,10 @@ use super::tiny_skia_shapes::{
 };
 use krui_core::{
     CanvasCommand, CanvasFillRule, CanvasLineCap, CanvasLineJoin, DecodedImage, ImageId,
-    ImageSource, PathSegment,
+    ImageSource, PathSegment, ResolvedClipPath,
 };
 use krui_layout::LayoutRect;
-use krui_style::Affine2;
+use krui_style::{Affine2, ClipFillRule, Mat4};
 
 const MAX_SKIA_IMAGE_CACHE_ENTRIES: usize = 64;
 const MAX_SKIA_IMAGE_CACHE_BYTES: usize = 64 * 1024 * 1024;
@@ -194,13 +194,38 @@ pub(super) type LayerCompositeClip = (
     f32,
     [f32; 4],
     Option<(LayoutRect, [f32; 4], Affine2)>,
+    Option<ResolvedClipPath>,
 );
+
+fn build_clip_path_mask(
+    w: u32,
+    h: u32,
+    cp: &ResolvedClipPath,
+    outer: Option<&tiny_skia::Mask>,
+    scale: f32,
+) -> Option<tiny_skia::Mask> {
+    let path = build_skia_path(&cp.segments)?;
+    let mut mask = tiny_skia::Mask::new(w, h)?;
+    let rule = match cp.fill_rule {
+        ClipFillRule::NonZero => tiny_skia::FillRule::Winding,
+        ClipFillRule::EvenOdd => tiny_skia::FillRule::EvenOdd,
+    };
+    let tx = to_skia_transform(Affine2::scale(scale, scale) * cp.transform);
+    mask.fill_path(&path, rule, true, tx);
+    if let Some(om) = outer {
+        for (dst_b, &src_b) in mask.data_mut().iter_mut().zip(om.data().iter()) {
+            *dst_b = (((*dst_b as u16) * (src_b as u16) + 127) / 255) as u8;
+        }
+    }
+    Some(mask)
+}
 
 pub(super) fn composite_layer_skia(
     dst: &mut tiny_skia::Pixmap,
     src: &tiny_skia::Pixmap,
     mask_cache: &mut ClipMaskCache,
-    (clip, clip_radius, clip_radii, local_clip): LayerCompositeClip,
+    (clip, clip_radius, clip_radii, local_clip, clip_path): LayerCompositeClip,
+    perspective: Option<(LayoutRect, Mat4)>,
     opacity: f32,
     scale: f32,
 ) {
@@ -215,6 +240,21 @@ pub(super) fn composite_layer_skia(
         clip_radii,
         scale,
     );
+    if let Some((src_rect, mat4)) = perspective {
+        super::tiny_skia_perspective::composite_perspective_layer_skia(
+            dst,
+            src,
+            mask,
+            (src_rect, mat4),
+            opacity,
+            scale,
+        );
+        return;
+    }
+    let cp_mask = clip_path
+        .as_ref()
+        .and_then(|cp| build_clip_path_mask(dst.width(), dst.height(), cp, mask, scale));
+    let eff_mask = cp_mask.as_ref().or(mask);
     if let Some((lrect, lradii, ltx)) = local_clip {
         let Some(path) =
             build_skia_round_rect_4(lrect.x, lrect.y, lrect.width, lrect.height, lradii)
@@ -232,7 +272,7 @@ pub(super) fn composite_layer_skia(
             to_skia_transform(inv_tx),
             to_skia_transform(full_tx),
             opacity,
-            mask,
+            eff_mask,
         );
         return;
     }
@@ -247,7 +287,7 @@ pub(super) fn composite_layer_skia(
         src.as_ref(),
         &paint,
         tiny_skia::Transform::identity(),
-        mask,
+        eff_mask,
     );
 }
 
@@ -351,15 +391,8 @@ fn append_skia_arc(
     (cx, cy, rx, ry): (f32, f32, f32, f32),
     (start_rad, sweep_rad, x_rotation_rad): (f32, f32, f32),
 ) {
-    let ((sx, sy), cubics) = crate::tessellate_primitives::flatten_arc_to_cubics(
-        cx,
-        cy,
-        rx,
-        ry,
-        start_rad,
-        sweep_rad,
-        x_rotation_rad,
-    );
+    let ((sx, sy), cubics) =
+        crate::radii::flatten_arc_to_cubics(cx, cy, rx, ry, start_rad, sweep_rad, x_rotation_rad);
     if *has_subpath {
         pb.line_to(sx, sy);
     } else {

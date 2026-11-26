@@ -361,7 +361,7 @@ fn tessellate_canvas_batch(
         return false;
     }
     let s = ctx.scale;
-    let phys_tx = if transform == Affine2::IDENTITY {
+    let base_tx = if transform == Affine2::IDENTITY {
         Affine2 {
             a: s,
             b: 0.0,
@@ -374,13 +374,18 @@ fn tessellate_canvas_batch(
         Affine2::scale(s, s) * transform * Affine2::translation(viewport.x, viewport.y)
     };
     let (phys_w, phys_h) = ((ctx.vw * s).max(1.0), (ctx.vh * s).max(1.0));
+    let mut local_tx = Affine2::IDENTITY;
     let mut cmd_clamped = false;
     for cmd in commands.iter() {
+        if let krui_core::CanvasCommand::SetTransform(m) = cmd {
+            local_tx = *m;
+            continue;
+        }
         ctx.scratch.vertices.clear();
         ctx.scratch.indices.clear();
         tessellate_canvas_cmd(
             cmd,
-            phys_tx,
+            base_tx * local_tx,
             opacity,
             phys_w,
             phys_h,

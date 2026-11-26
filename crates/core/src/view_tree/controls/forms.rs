@@ -9,7 +9,7 @@ use crate::view_tree::form_submit::{
     try_submit_enclosing_form, ButtonKind,
 };
 use crate::view_tree::node::{sync_node_text_context, ClickTarget, InputTarget};
-use crate::view_tree::{A11yId, NodeId, ViewTree};
+use crate::view_tree::{A11yId, NodeId, PointerEvent, PointerTarget, ViewTree};
 use krui_a11y::SemanticRole;
 use krui_signals::{batch, Effect};
 use krui_style::{sanitize_untrusted_text, Dimension, Edges};
@@ -34,12 +34,12 @@ impl ViewTree {
         }
     }
 
-    /// Attaches a pointer-down callback (`onpointerdown`) to `node_id`.
-    pub fn set_on_pointer_down(&mut self, node_id: NodeId, callback: impl ClickTarget) {
-        let cb = callback.into_click_fn();
+    /// Attaches a pointer-down callback (`onpointerdown`, `PointerHandler` or zero-arg closure) to `node_id`.
+    pub fn set_on_pointer_down(&mut self, node_id: NodeId, callback: impl PointerTarget) {
+        let cb = callback.into_pointer_fn();
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_some() {
-            inner.ensure_listeners(node_id).on_pointer_down = Some(Rc::new(move |_x, _y| cb()));
+            inner.ensure_listeners(node_id).on_pointer_down = Some(cb);
         }
     }
 
@@ -51,16 +51,17 @@ impl ViewTree {
     ) {
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_some() {
-            inner.ensure_listeners(node_id).on_pointer_down = Some(Rc::new(callback));
+            inner.ensure_listeners(node_id).on_pointer_down =
+                Some(Rc::new(move |ev: PointerEvent| callback(ev.x, ev.y)));
         }
     }
 
-    /// Attaches a pointer-up callback (`onpointerup`) to `node_id`.
-    pub fn set_on_pointer_up(&mut self, node_id: NodeId, callback: impl ClickTarget) {
-        let cb = callback.into_click_fn();
+    /// Attaches a pointer-up callback (`onpointerup`, `PointerHandler` or zero-arg closure) to `node_id`.
+    pub fn set_on_pointer_up(&mut self, node_id: NodeId, callback: impl PointerTarget) {
+        let cb = callback.into_pointer_fn();
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_some() {
-            inner.ensure_listeners(node_id).on_pointer_up = Some(Rc::new(move |_x, _y| cb()));
+            inner.ensure_listeners(node_id).on_pointer_up = Some(cb);
         }
     }
 
@@ -68,16 +69,17 @@ impl ViewTree {
     pub fn set_on_pointer_up_xy(&mut self, node_id: NodeId, callback: impl Fn(f32, f32) + 'static) {
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_some() {
-            inner.ensure_listeners(node_id).on_pointer_up = Some(Rc::new(callback));
+            inner.ensure_listeners(node_id).on_pointer_up =
+                Some(Rc::new(move |ev: PointerEvent| callback(ev.x, ev.y)));
         }
     }
 
-    /// Attaches a pointer-move callback (`onpointermove`) to `node_id`.
-    pub fn set_on_pointer_move(&mut self, node_id: NodeId, callback: impl ClickTarget) {
-        let cb = callback.into_click_fn();
+    /// Attaches a pointer-move callback (`onpointermove`, `PointerHandler` or zero-arg closure) to `node_id`.
+    pub fn set_on_pointer_move(&mut self, node_id: NodeId, callback: impl PointerTarget) {
+        let cb = callback.into_pointer_fn();
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_some() {
-            inner.ensure_listeners(node_id).on_pointer_move = Some(Rc::new(move |_x, _y| cb()));
+            inner.ensure_listeners(node_id).on_pointer_move = Some(cb);
         }
     }
 
@@ -89,7 +91,8 @@ impl ViewTree {
     ) {
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_some() {
-            inner.ensure_listeners(node_id).on_pointer_move = Some(Rc::new(callback));
+            inner.ensure_listeners(node_id).on_pointer_move =
+                Some(Rc::new(move |ev: PointerEvent| callback(ev.x, ev.y)));
         }
     }
 

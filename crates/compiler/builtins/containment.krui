@@ -196,6 +196,20 @@
     border: 0px solid transparent;
     box-shadow: var(--krui-shadow);
     backdrop-filter: blur(var(--krui-backdrop-blur));
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.92) translateY(-12px);
+    transition:
+        transform var(--krui-motion-dialog-dur-exit, 150ms) var(--krui-motion-ease-exit, cubic-bezier(0.3, 0, 0.8, 0.15)),
+        opacity var(--krui-motion-dialog-dur-exit, 150ms) var(--krui-motion-ease-exit, cubic-bezier(0.3, 0, 0.8, 0.15));
+}
+.krui-ui-dialog-card.krui-ui-open-true {
+    opacity: 1;
+    pointer-events: auto;
+    transform: scale(1) translateY(0px);
+    transition:
+        transform var(--krui-motion-dialog-dur-enter, 300ms) var(--krui-motion-ease-enter, cubic-bezier(0.05, 0.7, 0.1, 1)),
+        opacity var(--krui-motion-dialog-dur-enter, 220ms) var(--krui-motion-ease-enter, cubic-bezier(0.05, 0.7, 0.1, 1));
 }
 .krui-ui-dialog-title-row {
     display: flex;
@@ -231,6 +245,30 @@
     border: 0px solid transparent;
     box-shadow: var(--krui-shadow);
     backdrop-filter: blur(var(--krui-backdrop-blur));
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(100%);
+    transition:
+        transform var(--krui-motion-sheet-dur-exit, 200ms) var(--krui-motion-ease-exit, cubic-bezier(0.3, 0, 0.8, 0.15)),
+        opacity var(--krui-motion-sheet-dur-exit, 200ms) var(--krui-motion-ease-exit, cubic-bezier(0.3, 0, 0.8, 0.15));
+}
+.krui-ui-sheet.krui-ui-side-end {
+    transform: translateX(100%);
+}
+.krui-ui-sheet.krui-ui-side-start {
+    transform: translateX(-100%);
+}
+.krui-ui-sheet.krui-ui-open-true {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0px);
+    transition:
+        transform var(--krui-motion-sheet-dur-enter, 400ms) var(--krui-motion-ease-enter, cubic-bezier(0.05, 0.7, 0.1, 1)),
+        opacity var(--krui-motion-dialog-dur-enter, 220ms) var(--krui-motion-ease-enter, cubic-bezier(0.05, 0.7, 0.1, 1));
+}
+.krui-ui-sheet.krui-ui-side-end.krui-ui-open-true,
+.krui-ui-sheet.krui-ui-side-start.krui-ui-open-true {
+    transform: translateX(0px);
 }
 .krui-ui-sheet-handle-row {
     display: flex;
@@ -318,55 +356,49 @@
 </template>
 
 <template name="Dialog" open="{false}" title="" icon="" confirm_label="확인" dismiss_label="취소" on_confirm="" on_dismiss="" id="" class="">
-    <if test="{open}">
-        <section id="{id}" class="krui-ui-dialog-card {class}">
-            <div class="krui-ui-sheet-head">
-                <span class="krui-ui-dialog-title-row">
-                    <slot name="icon"/>
-                    <if test="{icon != ''}"><span>{icon}</span></if>
-                    <span class="krui-ui-dialog-title">{title}</span>
-                </span>
-            </div>
-            <div class="krui-ui-card-body"><slot/></div>
-            <div class="krui-ui-dialog-actions">
-                <slot name="actions"/>
-                <if test="{dismiss_label != ''}">
-                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
-                </if>
-                <if test="{confirm_label != ''}">
-                    <button type="button" class="krui-ui-btn krui-ui-btn-filled" onclick="{on_confirm}">{confirm_label}</button>
-                </if>
-            </div>
-        </section>
-    </if>
+    <section id="{id}" class="krui-ui-dialog-card krui-ui-open-{open} {class}" data-open="{open}">
+        <div class="krui-ui-sheet-head">
+            <span class="krui-ui-dialog-title-row">
+                <slot name="icon"/>
+                <if test="{icon != ''}"><span>{icon}</span></if>
+                <span class="krui-ui-dialog-title">{title}</span>
+            </span>
+        </div>
+        <div class="krui-ui-card-body"><slot/></div>
+        <div class="krui-ui-dialog-actions">
+            <slot name="actions"/>
+            <if test="{dismiss_label != ''}">
+                <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
+            </if>
+            <if test="{confirm_label != ''}">
+                <button type="button" class="krui-ui-btn krui-ui-btn-filled" onclick="{on_confirm}">{confirm_label}</button>
+            </if>
+        </div>
+    </section>
 </template>
 
 <template name="BottomSheet" open="{false}" title="" dismiss_label="닫기" on_dismiss="" id="" class="">
-    <if test="{open}">
-        <section id="{id}" class="krui-ui-sheet {class}">
-            <div class="krui-ui-sheet-handle-row"><div class="krui-ui-sheet-handle"></div></div>
-            <div class="krui-ui-sheet-head">
-                <span class="krui-ui-sheet-title">{title}</span>
-                <if test="{dismiss_label != ''}">
-                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
-                </if>
-            </div>
-            <div class="krui-ui-card-body"><slot/></div>
-        </section>
-    </if>
+    <section id="{id}" class="krui-ui-sheet krui-ui-open-{open} {class}" data-open="{open}">
+        <div class="krui-ui-sheet-handle-row"><div class="krui-ui-sheet-handle"></div></div>
+        <div class="krui-ui-sheet-head">
+            <span class="krui-ui-sheet-title">{title}</span>
+            <if test="{dismiss_label != ''}">
+                <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
+            </if>
+        </div>
+        <div class="krui-ui-card-body"><slot/></div>
+    </section>
 </template>
 
 <template name="SideSheet" open="{false}" title="" position="end" dismiss_label="닫기" on_dismiss="" id="" class="">
-    <if test="{open}">
-        <section id="{id}" class="krui-ui-sheet krui-ui-side-{position} {class}">
-            <div class="krui-ui-sheet-head">
-                <span class="krui-ui-sheet-title">{title}</span>
-                <if test="{dismiss_label != ''}">
-                    <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
-                </if>
-            </div>
-            <div class="krui-ui-card-body"><slot/></div>
-            <div class="krui-ui-card-actions"><slot name="actions"/></div>
-        </section>
-    </if>
+    <section id="{id}" class="krui-ui-sheet krui-ui-side-{position} krui-ui-open-{open} {class}" data-open="{open}">
+        <div class="krui-ui-sheet-head">
+            <span class="krui-ui-sheet-title">{title}</span>
+            <if test="{dismiss_label != ''}">
+                <button type="button" class="krui-ui-btn krui-ui-btn-text" onclick="{on_dismiss}">{dismiss_label}</button>
+            </if>
+        </div>
+        <div class="krui-ui-card-body"><slot/></div>
+        <div class="krui-ui-card-actions"><slot name="actions"/></div>
+    </section>
 </template>

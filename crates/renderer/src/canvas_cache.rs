@@ -2,12 +2,14 @@
 //! vector paths avoid CPU `lyon` re-tessellation on subsequent frames and stay ABA-safe via `Weak`.
 
 use crate::tessellate::{tessellate_canvas_commands_standalone, GpuVertex};
-use krui_core::{CanvasCommand, GpuResourceLimits};
+use crate::tiny_skia_backend::tiny_skia_canvas::rasterize_canvas_batch_to_decoded;
+use krui_core::{CanvasCommand, DecodedImage, GpuResourceLimits};
 use krui_layout::LayoutRect;
 use krui_style::Affine2;
 use std::sync::{Arc, Weak};
 
 const MAX_CANVAS_CACHE_ENTRIES: usize = 64;
+const MAX_CLIPPED_RASTER_ENTRIES: usize = 32;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct CanvasMeshKey {
@@ -28,9 +30,24 @@ struct CachedCanvasEntry {
     last_used_tick: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct ClippedRasterKey {
+    commands_len: usize,
+    q_size: [i32; 2],
+    q_surface_scale: i32,
+}
+
+struct CachedClippedRaster {
+    key: ClippedRasterKey,
+    commands_weak: Weak<[CanvasCommand]>,
+    image: DecodedImage,
+    last_used_tick: u64,
+}
+
 /// Bounded LRU cache of `lyon`-tessellated `<canvas>` command buffers.
 pub struct CanvasMeshCache {
     entries: Vec<CachedCanvasEntry>,
+    clipped_rasters: Vec<CachedClippedRaster>,
     tick: u64,
     hits: u64,
     misses: u64,
@@ -47,10 +64,64 @@ impl CanvasMeshCache {
     pub fn new() -> Self {
         Self {
             entries: Vec::with_capacity(MAX_CANVAS_CACHE_ENTRIES),
+            clipped_rasters: Vec::with_capacity(MAX_CLIPPED_RASTER_ENTRIES),
             tick: 0,
             hits: 0,
             misses: 0,
         }
+    }
+
+    /// Rasterizes and caches a `<canvas>` batch using `PushClip` into a `DecodedImage` for `wgpu` compositing.
+    pub fn get_or_rasterize_clipped(
+        &mut self,
+        commands: &Arc<[CanvasCommand]>,
+        viewport: LayoutRect,
+        surface_scale: f32,
+    ) -> Option<DecodedImage> {
+        self.tick = self.tick.wrapping_add(1);
+        let key = ClippedRasterKey {
+            commands_len: commands.len(),
+            q_size: [
+                quantize_f32(viewport.width, 16.0),
+                quantize_f32(viewport.height, 16.0),
+            ],
+            q_surface_scale: quantize_f32(surface_scale, 64.0),
+        };
+        let probe_weak = Arc::downgrade(commands);
+        if let Some(entry) = self.clipped_rasters.iter_mut().find(|e| {
+            e.key == key
+                && e.commands_weak.strong_count() > 0
+                && Weak::ptr_eq(&e.commands_weak, &probe_weak)
+        }) {
+            entry.last_used_tick = self.tick;
+            self.hits += 1;
+            return Some(entry.image.clone());
+        }
+        self.misses += 1;
+        let image = rasterize_canvas_batch_to_decoded(viewport, surface_scale, commands)?;
+        if self.clipped_rasters.len() >= MAX_CLIPPED_RASTER_ENTRIES {
+            let dead = self
+                .clipped_rasters
+                .iter()
+                .position(|e| e.commands_weak.strong_count() == 0);
+            let victim = dead.or_else(|| {
+                self.clipped_rasters
+                    .iter()
+                    .enumerate()
+                    .min_by_key(|(_, e)| e.last_used_tick)
+                    .map(|(i, _)| i)
+            });
+            if let Some(idx) = victim {
+                self.clipped_rasters.swap_remove(idx);
+            }
+        }
+        self.clipped_rasters.push(CachedClippedRaster {
+            key,
+            commands_weak: probe_weak,
+            image: image.clone(),
+            last_used_tick: self.tick,
+        });
+        Some(image)
     }
 
     /// Returns `(cache_hits, cache_misses)` for telemetry and deterministic cache-hit tests.

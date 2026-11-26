@@ -377,9 +377,20 @@ fn assert_taffy_calc_and_media_revalidation(
     assert_eq!(host.rect(s1), (0.0, 0.0, 960.0, 20.0));
     assert_eq!(host.rect(s2), (0.0, 20.0, 960.0, 20.0));
 
-    // Verify set_container_size is safe & W3C forward-compat drop leaves @container non-fatal,
-    // while @media viewport invalidation updates matched color cleanly.
-    engine.set_container_size(root, Some(600.0), Some(800.0));
+    // Verify set_container_size activates @container rules before @media overrides at 800px.
+    assert!(engine.set_container_size(root, Some(600.0), Some(800.0)));
+    engine.restyle();
+    let second_cq = engine
+        .paint_style(second)
+        .expect("container matched second child");
+    assert_eq!(
+        (
+            second_cq.text_color.r,
+            second_cq.text_color.g,
+            second_cq.text_color.b
+        ),
+        (1, 2, 3)
+    );
     engine.set_viewport(800.0, 800.0, 1.0);
     engine.restyle();
     assert_eq!(

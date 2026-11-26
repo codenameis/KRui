@@ -52,6 +52,23 @@ impl WgpuFrameResources {
         if opacity <= 0.0 {
             return;
         }
+        if commands
+            .iter()
+            .any(|c| matches!(c, krui_core::CanvasCommand::PushClip { .. }))
+        {
+            self.emit_clipped_canvas_batch(
+                target_id,
+                viewport,
+                clip_pair,
+                transform,
+                opacity,
+                commands,
+                env,
+                initialized,
+                counters,
+            );
+            return;
+        }
         let (clip, clip_radius, _) = clip_pair;
         let (vw, vh) = env.vp_size;
         let Some(scissor) = compute_physical_scissor(clip, env.sf.surface_scale, vw, vh) else {
@@ -97,6 +114,39 @@ impl WgpuFrameResources {
     }
 
     #[allow(clippy::too_many_arguments)]
+    fn emit_clipped_canvas_batch(
+        &mut self,
+        target_id: usize,
+        viewport: LayoutRect,
+        clip_pair: (Option<LayoutRect>, f32, [f32; 4]),
+        transform: Affine2,
+        opacity: f32,
+        commands: &Arc<[krui_core::CanvasCommand]>,
+        env: &RecordEnv<'_>,
+        initialized: &mut [bool],
+        counters: &mut RecordCounters,
+    ) {
+        if let Some(decoded) =
+            self.canvas_cache
+                .get_or_rasterize_clipped(commands, viewport, env.sf.surface_scale)
+        {
+            self.emit_image_primitive(
+                target_id,
+                viewport,
+                [0.0, 0.0, 1.0, 1.0],
+                clip_pair,
+                transform,
+                opacity,
+                0.0,
+                &ImageSource::Decoded(decoded),
+                env,
+                initialized,
+                counters,
+            );
+        }
+    }
+
+    #[allow(clippy::too_many_arguments)]
     fn push_canvas_draw(
         &mut self,
         target_id: usize,
@@ -139,7 +189,10 @@ impl WgpuFrameResources {
                 clip_radius,
                 clip_radii,
                 local_clip: None,
+                clip_path: None,
+                perspective: None,
                 opacity: 1.0,
+                filter: krui_style::CssFilterEffect::IDENTITY,
                 drawn_bounds: Some([0.0, 0.0, env.sf.phys_w, env.sf.phys_h]),
             };
             pop_layer_into_parent(&mut self.segment, &layer, target_id, env, initialized);

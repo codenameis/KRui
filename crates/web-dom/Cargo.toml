@@ -1,0 +1,10 @@
+[package]
+name = "krui-web"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Browser DOM + native CSS + <canvas> slot backend for KRui (zero wgpu, stylo, taffy, or cosmic-text)"
+
+[dependencies]
+krui-signals = { workspace = true }
+krui-style = { workspace = true }

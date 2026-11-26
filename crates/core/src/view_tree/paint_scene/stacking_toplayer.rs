@@ -3,7 +3,6 @@
 
 use super::{emit_stacking_context, node_is_scroll_and_clip, StackEnv};
 use crate::scene::{DrawPrimitive, PaintScene};
-use crate::view_tree::clip_shape::ClipState;
 use crate::view_tree::paint::resolve_node_paint_state;
 use crate::view_tree::pointer_vars::{backdrop_pseudo_of, is_pseudo_node};
 use crate::view_tree::semantics::{
@@ -154,16 +153,7 @@ pub(super) fn emit_top_layer_pass(
 ) {
     for entry in collect_top_layer_entries(inner) {
         emit_top_layer_backdrop(inner, &entry, viewport, scene);
-        let env = StackEnv {
-            scroll: entry.scroll,
-            clip: ClipState::NONE,
-            affine: entry.affine,
-            opacity: 1.0,
-            inherited_color: None,
-            parent_is_flex_or_grid: false,
-            any_top_layer: true,
-            any_neg_z: true,
-        };
+        let env = StackEnv::top_layer(entry.scroll, entry.affine);
         emit_stacking_context(inner, entry.node_id, env, true, scene);
     }
 }
@@ -225,6 +215,7 @@ fn push_backdrop_quad(
         background_color,
         background_gradient,
         radial_gradient: None,
+        conic_gradient: None,
         border_color,
         border_width,
         border_radius: 0.0,

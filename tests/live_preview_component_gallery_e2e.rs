@@ -135,6 +135,7 @@ fn verify_target_resolution_for_component_gallery() {
         "examples/component_gallery/views/themes/tailwind.css",
         "examples/component_gallery/views/components/GalleryActions.krui",
         "examples/component_gallery/views/components/GalleryDrawer.krui",
+        "examples/component_gallery/views/icons/IconHome.krui",
     ] {
         let opts = ServeOptions {
             watch_path: Some(PathBuf::from(watch)),

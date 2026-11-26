@@ -2,6 +2,7 @@
 
 use super::{CallError, DynSignal, Value};
 use crate::scene::CanvasDraw;
+use crate::view_tree::{PointerHandler, WheelHandler};
 use krui_signals::{Computed, FastPathTransform, Signal};
 use std::fmt;
 
@@ -17,6 +18,8 @@ impl fmt::Debug for Value {
             Self::Command(c) => write!(f, "Value::Command({c:?})"),
             Self::InputHandler(_) => f.write_str("Value::InputHandler(..)"),
             Self::CanvasDraw(_) => f.write_str("Value::CanvasDraw(..)"),
+            Self::PointerHandler(_) => f.write_str("Value::PointerHandler(..)"),
+            Self::WheelHandler(_) => f.write_str("Value::WheelHandler(..)"),
             Self::FastTransform(_) => f.write_str("Value::FastTransform(..)"),
             Self::Unit => f.write_str("Value::Unit"),
         }
@@ -51,6 +54,8 @@ impl fmt::Display for Value {
             Self::Command(_) => f.write_str("[Command]"),
             Self::InputHandler(_) => f.write_str("[InputHandler]"),
             Self::CanvasDraw(_) => f.write_str("[CanvasDraw]"),
+            Self::PointerHandler(_) => f.write_str("[PointerHandler]"),
+            Self::WheelHandler(_) => f.write_str("[WheelHandler]"),
             Self::FastTransform(_) => f.write_str("[FastTransform]"),
             Self::Unit => Ok(()),
         }
@@ -197,6 +202,18 @@ where
 impl RegistryFieldExt for CanvasDraw {
     fn registry_field_get(&self) -> Option<Value> {
         Some(Value::CanvasDraw(self.clone()))
+    }
+}
+
+impl RegistryFieldExt for PointerHandler {
+    fn registry_field_get(&self) -> Option<Value> {
+        Some(Value::PointerHandler(self.clone()))
+    }
+}
+
+impl RegistryFieldExt for WheelHandler {
+    fn registry_field_get(&self) -> Option<Value> {
+        Some(Value::WheelHandler(self.clone()))
     }
 }
 

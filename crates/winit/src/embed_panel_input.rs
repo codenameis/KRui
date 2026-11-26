@@ -310,6 +310,13 @@ pub(crate) fn apply_panel_input_event<H: WindowEventHooks>(
                 hook_effect: None,
             }
         }
+        PanelInputEvent::SetColorScheme(scheme) => {
+            session.tree.set_color_scheme_preference(scheme);
+            PanelEventOutcome {
+                force_refresh: true,
+                hook_effect: None,
+            }
+        }
         other => PanelEventOutcome {
             force_refresh: false,
             hook_effect: apply_pointer_event(session, hooks, frame, is_left_down, other),

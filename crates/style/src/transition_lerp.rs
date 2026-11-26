@@ -189,6 +189,12 @@ fn lerp_opt_linear(
                     lerp_f32(ga.stop_positions[1], gb.stop_positions[1], t).clamp(0.0, 1.0),
                     lerp_f32(ga.stop_positions[2], gb.stop_positions[2], t).clamp(0.0, 1.0),
                 ],
+                extra_stops: if t < 0.5 {
+                    ga.extra_stops
+                } else {
+                    gb.extra_stops
+                },
+                repeating: if t < 0.5 { ga.repeating } else { gb.repeating },
             })
         }
     }
@@ -221,6 +227,12 @@ fn lerp_opt_radial(
             outer_color: lerp_color(ra.outer_color, rb.outer_color, t),
             inner_stop: lerp_f32(ra.inner_stop, rb.inner_stop, t).clamp(0.0, 1.0),
             outer_stop: lerp_f32(ra.outer_stop, rb.outer_stop, t).clamp(0.0, 1.0),
+            extra_stops: if t < 0.5 {
+                ra.extra_stops
+            } else {
+                rb.extra_stops
+            },
+            repeating: if t < 0.5 { ra.repeating } else { rb.repeating },
         }),
     }
 }

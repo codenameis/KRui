@@ -6,10 +6,13 @@ use krui_style::{
     OriginAxis, StandaloneTransform, Transform2D, TransformLength, TransformListRef, TransformOp,
     TranslateAxis,
 };
+use style::properties::longhands::backface_visibility::computed_value::T as BackfaceVisibility;
 use style::properties::ComputedValues;
 use style::values::computed::length_percentage::{LengthPercentage, Unpacked};
+use style::values::generics::box_::GenericPerspective;
 use style::values::generics::transform::{
     GenericPerspectiveFunction, GenericRotate, GenericScale, GenericTranslate, TransformOperation,
+    TransformStyle,
 };
 
 const BASIS_PCT_PX: f32 = 100.0;
@@ -120,6 +123,10 @@ pub(crate) fn extract_transforms(
         GenericScale::None => (1.0, 1.0),
         GenericScale::Scale(sx, sy, _sz) => (sx, sy),
     };
+    let perspective_px = match b.perspective {
+        GenericPerspective::None => None,
+        GenericPerspective::Length(ref l) => Some(l.px()),
+    };
     let standalone = StandaloneTransform {
         translate_x,
         translate_y,
@@ -128,6 +135,11 @@ pub(crate) fn extract_transforms(
         scale_y,
         origin_x: lp_to_origin_axis(&b.transform_origin.horizontal),
         origin_y: lp_to_origin_axis(&b.transform_origin.vertical),
+        perspective_px,
+        perspective_origin_x: lp_to_origin_axis(&b.perspective_origin.horizontal),
+        perspective_origin_y: lp_to_origin_axis(&b.perspective_origin.vertical),
+        preserve_3d: b.transform_style == TransformStyle::Preserve3d,
+        backface_visible: b.backface_visibility == BackfaceVisibility::Visible,
     };
     let ops: Vec<TransformOp> = b
         .transform

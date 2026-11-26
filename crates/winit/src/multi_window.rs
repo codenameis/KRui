@@ -4,7 +4,7 @@ use crate::ime_adapter::{sync_window_ime_cursor_area_cached, WinitImeStateCache}
 use crate::multi_window_runner::MultiWindowRunner;
 use crate::session::EngineSession;
 use crate::softbuffer_presenter::DesktopWindowPresenter;
-use crate::window_helpers::{cursor_icon_from_kind, touch_phase_from_winit};
+use crate::window_helpers::{apply_window_cursor, touch_phase_from_winit};
 use krui_core::{HoveredCursorKind, Mods, RenderBackendPreference};
 use krui_renderer::GpuContext;
 use krui_signals::{RuntimeId, UiWaker};
@@ -167,15 +167,16 @@ impl ManagedWindow {
         if is_down {
             self.last_caret_activity = Instant::now();
         }
+        let mods = self.mods;
         let tree = &mut self.session.tree;
         let (drag, hover, next_cursor) = self.session.reactive_session.enter(|| {
             let d = is_down && tree.dispatch_pointer_drag(lx, ly);
-            let h = tree.dispatch_pointer_move(lx, ly);
+            let h = tree.dispatch_pointer_move_with_mods(lx, ly, mods);
             (d, h, tree.hovered_cursor_kind())
         });
         if next_cursor != self.cursor_kind {
             self.cursor_kind = next_cursor;
-            self.window.set_cursor(cursor_icon_from_kind(next_cursor));
+            apply_window_cursor(&self.window, next_cursor, false);
         }
         if drag || hover {
             self.window.request_redraw();

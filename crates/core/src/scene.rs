@@ -76,6 +76,36 @@ pub struct ResolvedRadialGradient {
     pub inner_stop: f32,
     /// Normalized outer stop position (`0.0..=1.0`).
     pub outer_stop: f32,
+    /// Full stop list when > 2 stops or repeating gradient is authored.
+    pub extra_stops: krui_style::GradientStopsRef,
+    /// `true` for `repeating-radial-gradient(...)`.
+    pub repeating: bool,
+}
+
+/// Resolved vector `clip-path` geometry in world coordinates relative to box transform.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ResolvedClipPath {
+    /// Fill rule (`NonZero` or `EvenOdd`).
+    pub fill_rule: krui_style::ClipFillRule,
+    /// Closed/subpath segments in logical layout space prior to `transform`.
+    pub segments: std::sync::Arc<[PathSegment]>,
+    /// Cumulative ancestor + node `Affine2` transform matrix.
+    pub transform: Affine2,
+}
+
+/// Box-relative resolved CSS `conic-gradient(...)` geometry and stop ramp.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ResolvedConicGradient {
+    /// Horizontal center offset from box center in logical px.
+    pub center_dx: f32,
+    /// Vertical center offset from box center in logical px.
+    pub center_dy: f32,
+    /// Starting angle in degrees clockwise from 12 o'clock.
+    pub from_angle_deg: f32,
+    /// Ordered gradient stop list.
+    pub stops: krui_style::GradientStopsRef,
+    /// `true` for `repeating-conic-gradient(...)`.
+    pub repeating: bool,
 }
 
 /// A draw item in a frame's `PaintScene`, combining layout bounds with compositor-only
@@ -93,6 +123,7 @@ pub enum DrawPrimitive {
         background_color: Color,
         background_gradient: Option<krui_style::LinearGradient>,
         radial_gradient: Option<ResolvedRadialGradient>,
+        conic_gradient: Option<ResolvedConicGradient>,
         border_color: Color,
         border_width: f32,
         border_radius: f32,
@@ -134,15 +165,18 @@ pub enum DrawPrimitive {
         border_radius: f32,
         source: ImageSource,
     },
-    /// Begins an isolated group-opacity or nested/rotated-clip compositing layer so parent fills
-    /// and overlapping children composite cleanly without double-alpha bleed or clip loss.
+    /// Begins an isolated group-opacity, CSS `filter`, or nested/rotated-clip compositing layer so
+    /// parent fills and overlapping children composite cleanly without double-alpha bleed or clip loss.
     PushLayer {
         bounds: LayoutRect,
         clip: Option<LayoutRect>,
         clip_radius: f32,
         clip_radii: [f32; 4],
         local_clip: Option<(LayoutRect, [f32; 4], Affine2)>,
+        clip_path: Option<ResolvedClipPath>,
+        perspective: Option<(LayoutRect, krui_style::Mat4)>,
         opacity: f32,
+        filter: krui_style::CssFilterEffect,
     },
     /// Ends the current isolated group-opacity compositing layer and composites it into its parent.
     PopLayer,

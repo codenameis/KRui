@@ -19,6 +19,7 @@
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    flex-shrink: 0;
     width: 100%;
     min-height: var(--md-site-drawer-item-height);
     padding: 0px var(--md-site-drawer-item-px);
@@ -55,11 +56,24 @@
     flex-shrink: 0;
 }
 
+@keyframes m3-drawer-sub-enter {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0px);
+    }
+}
+
 .m3-drawer-sub-group {
     display: flex;
     flex-direction: column;
+    flex-shrink: 0;
     gap: 2px;
     padding-left: var(--md-site-drawer-sub-indent);
+    animation: m3-drawer-sub-enter 220ms var(--krui-motion-ease-enter, cubic-bezier(0.05, 0.7, 0.1, 1)) both;
 }
 
 .m3-drawer-sub-btn {
@@ -67,6 +81,7 @@
     flex-direction: row;
     align-items: center;
     justify-content: flex-start;
+    flex-shrink: 0;
     width: 100%;
     min-height: var(--md-site-drawer-item-height);
     padding: 0px var(--md-site-drawer-item-px);

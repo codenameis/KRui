@@ -461,3 +461,48 @@ fn link_krui_preset_propagates_to_tree_and_all_four_data_themes_differ() {
     assert_ne!(fluent.background_color, glass.background_color);
     assert_ne!(fluent.border_radius, glass.border_radius);
 }
+
+#[test]
+fn a11y_tree_update_never_references_missing_children() {
+    reset_reactive_runtime();
+    let mut tree = ViewTree::new();
+    tree.mount_with(|| {
+        krui!(
+            r#"
+            <style>
+                .root { width: 320px; height: 240px; }
+                .hidden-pe { pointer-events: none; opacity: 0; }
+                .vis-hidden { visibility: hidden; }
+                .vis-visible { visibility: visible; }
+                .disp-none { display: none; }
+            </style>
+            <div class="root">
+                <button id="ok-btn">확인</button>
+                <div class="hidden-pe">
+                    <button id="ghost-btn">숨김 버튼</button>
+                </div>
+                <div class="vis-hidden">
+                    <button id="revealed-btn" class="vis-visible">보이는 자식</button>
+                </div>
+                <div class="disp-none">
+                    <button id="none-btn">없음</button>
+                </div>
+            </div>
+        "#
+        )
+    });
+    let _ = tree.build_paint_scene(320, 240);
+    let update = tree.build_accessibility_tree(320.0, 240.0);
+    let present: std::collections::HashSet<_> = update.nodes.iter().map(|(id, _)| *id).collect();
+    for (id, node) in &update.nodes {
+        for child_id in node.children() {
+            assert!(
+                present.contains(child_id),
+                "Node {id:?} references missing child {child_id:?} in TreeUpdate"
+            );
+        }
+    }
+    assert!(present.contains(&update.focus));
+    let revealed = accesskit::NodeId(A11yId::from(find_id(&tree, "revealed-btn")).0);
+    assert!(present.contains(&revealed));
+}

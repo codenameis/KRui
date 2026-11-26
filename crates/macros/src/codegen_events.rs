@@ -8,6 +8,67 @@ use krui_compiler::{CompiledBoolAttr, CompiledNode, TemplateExpr};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 
+/// Emits dynamic-only boolean bindings and event/two-way handlers (`Static` bool attrs live in `StaticNodeDesc`).
+pub(crate) fn emit_dynamic_element_event_bindings(
+    node: &CompiledNode,
+    span: Span,
+    loop_vars: &[String],
+) -> Result<TokenStream2, syn::Error> {
+    let dyn_only = |opt: &Option<CompiledBoolAttr>| -> Option<CompiledBoolAttr> {
+        match opt {
+            Some(d @ CompiledBoolAttr::Dynamic { .. }) => Some(d.clone()),
+            _ => None,
+        }
+    };
+    let disabled_stmt = emit_bool_attr_binding(
+        &dyn_only(&node.disabled),
+        span,
+        format_ident!("set_disabled"),
+        format_ident!("bind_disabled"),
+        loop_vars,
+    )?;
+    let required_stmt = emit_bool_attr_binding(
+        &dyn_only(&node.required),
+        span,
+        format_ident!("set_required"),
+        format_ident!("bind_required"),
+        loop_vars,
+    )?;
+    let checked_stmt = emit_bool_attr_binding(
+        &dyn_only(&node.checked),
+        span,
+        format_ident!("set_checked"),
+        format_ident!("bind_checked"),
+        loop_vars,
+    )?;
+    let bind_checked_stmt = emit_bind_checked_stmt(node, span, loop_vars)?;
+    let input_stmt = emit_input_value_binding(node, span, loop_vars)?;
+    let change_stmt = emit_opt_binding(
+        &node.on_change,
+        span,
+        format_ident!("set_on_change"),
+        loop_vars,
+    )?;
+    let keydown_stmt = emit_opt_binding(
+        &node.on_keydown,
+        span,
+        format_ident!("set_on_keydown"),
+        loop_vars,
+    )?;
+    let canvas_stmt = emit_opt_binding(
+        &node.canvas_draw,
+        span,
+        format_ident!("set_canvas_draw"),
+        loop_vars,
+    )?;
+    let lifecycle_stmt = emit_focus_and_pointer_event_bindings(node, span, loop_vars)?;
+    Ok(quote! {
+        #disabled_stmt #required_stmt #checked_stmt #bind_checked_stmt #lifecycle_stmt
+        #input_stmt #change_stmt #keydown_stmt #canvas_stmt
+    })
+}
+
+#[allow(dead_code)]
 pub(crate) fn emit_element_event_bindings(
     node: &CompiledNode,
     span: Span,
@@ -166,6 +227,8 @@ fn emit_focus_and_pointer_event_bindings(
         (&node.on_pointer_down, "set_on_pointer_down"),
         (&node.on_pointer_up, "set_on_pointer_up"),
         (&node.on_pointer_move, "set_on_pointer_move"),
+        (&node.on_context_menu, "set_on_context_menu"),
+        (&node.on_wheel, "set_on_wheel"),
         (&node.on_scroll, "set_on_scroll"),
         (&node.on_submit, "set_on_submit"),
         (&node.on_reset, "set_on_reset"),

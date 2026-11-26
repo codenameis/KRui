@@ -201,17 +201,11 @@ impl ViewTree {
         let mut inner = self.inner.borrow_mut();
         inner.last_viewport = (viewport_w, viewport_h);
         let mut descriptors = Vec::with_capacity(inner.nodes.len() + 1);
-        let root_children: Vec<u64> = inner
-            .roots
-            .iter()
-            .copied()
-            .filter(|&r| {
-                inner
-                    .node(r)
-                    .is_some_and(|n| !n.is_anchor() && n.style.layout.display != DisplayMode::None)
-            })
-            .map(|r| A11yId::from(r).0)
-            .collect();
+        let mut root_children = Vec::new();
+        let roots = inner.roots.clone();
+        for &r in &roots {
+            collect_a11y_child_ids(&inner, r, &mut root_children);
+        }
         descriptors.push(A11yNodeDescriptor {
             id: AccessibilityEngine::ROOT_A11Y_ID,
             role: SemanticRole::Window,
@@ -229,7 +223,6 @@ impl ViewTree {
             },
             children: root_children,
         });
-        let roots = inner.roots.clone();
         for root_id in roots {
             collect_visible_a11y_descriptors(&inner, root_id, &mut descriptors);
         }
@@ -352,7 +345,11 @@ pub(crate) fn is_node_a11y_visible(inner: &ViewTreeInner, node_id: NodeId) -> bo
         let Some(n) = inner.node(cid) else {
             return false;
         };
-        if n.is_anchor() || n.style.layout.display == DisplayMode::None {
+        if n.is_anchor()
+            || n.style.layout.display == DisplayMode::None
+            || (n.is_pointer_events_none() && n.style.paint.opacity <= 0.0)
+            || (cid == node_id && n.is_visibility_hidden())
+        {
             return false;
         }
         cur = n.parent;
@@ -360,21 +357,46 @@ pub(crate) fn is_node_a11y_visible(inner: &ViewTreeInner, node_id: NodeId) -> bo
     true
 }
 
+fn is_a11y_subtree_pruned(inner: &ViewTreeInner, node_id: NodeId) -> bool {
+    let Some(node) = inner.node(node_id) else {
+        return true;
+    };
+    node.is_anchor()
+        || node.style.layout.display == DisplayMode::None
+        || (node.is_pointer_events_none() && node.style.paint.opacity <= 0.0)
+        || (crate::view_tree::pointer_vars::is_pseudo_node(inner, node_id) && node.text.is_empty())
+}
+
+fn collect_a11y_child_ids(inner: &ViewTreeInner, node_id: NodeId, out_ids: &mut Vec<u64>) {
+    if is_a11y_subtree_pruned(inner, node_id) {
+        return;
+    }
+    let Some(node) = inner.node(node_id) else {
+        return;
+    };
+    if !node.is_visibility_hidden() {
+        out_ids.push(A11yId::from(node_id).0);
+        return;
+    }
+    for &child_id in &node.children {
+        collect_a11y_child_ids(inner, child_id, out_ids);
+    }
+}
+
 fn collect_visible_a11y_descriptors(
     inner: &ViewTreeInner,
     node_id: NodeId,
     out: &mut Vec<A11yNodeDescriptor>,
 ) {
+    if is_a11y_subtree_pruned(inner, node_id) {
+        return;
+    }
     let Some(node) = inner.node(node_id) else {
         return;
     };
-    if node.is_anchor() || node.style.layout.display == DisplayMode::None {
-        return;
+    if !node.is_visibility_hidden() {
+        out.push(build_node_a11y_descriptor(inner, node));
     }
-    if crate::view_tree::pointer_vars::is_pseudo_node(inner, node_id) && node.text.is_empty() {
-        return;
-    }
-    out.push(build_node_a11y_descriptor(inner, node));
     for &child_id in &node.children {
         collect_visible_a11y_descriptors(inner, child_id, out);
     }
@@ -406,20 +428,10 @@ fn build_node_a11y_descriptor(inner: &ViewTreeInner, node: &ElementNode) -> A11y
     .then_some(node.is_checked());
     let (world_affine, eff_rect) = effective_node_world_matrix_and_rect(inner, node.id);
     let bounds = transform_rect_aabb(world_affine, eff_rect);
-    let children: Vec<u64> = node
-        .children
-        .iter()
-        .copied()
-        .filter(|&c| {
-            inner.node(c).is_some_and(|n| {
-                !n.is_anchor()
-                    && n.style.layout.display != DisplayMode::None
-                    && !(crate::view_tree::pointer_vars::is_pseudo_node(inner, c)
-                        && n.text.is_empty())
-            })
-        })
-        .map(|c| A11yId::from(c).0)
-        .collect();
+    let mut children = Vec::new();
+    for &c in &node.children {
+        collect_a11y_child_ids(inner, c, &mut children);
+    }
     A11yNodeDescriptor {
         id: A11yId::from(node.id).0,
         role: node.role,

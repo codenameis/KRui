@@ -23,12 +23,15 @@
 
 #![deny(unsafe_code)]
 
+mod computed_to_clip_path;
 mod computed_to_gradient;
 mod computed_to_layout;
 mod computed_to_paint;
 mod computed_to_text;
 mod computed_to_transform;
 mod computed_to_transitions;
+mod container_queries;
+mod container_query_parse;
 mod device;
 mod dom_element;
 mod dom_mutations;
@@ -276,6 +279,12 @@ pub enum StyloDomMutation {
     SetAttributes {
         node: StyloNodeId,
         attrs: Vec<ElementAttr>,
+    },
+    /// Sets or removes a single HTML attribute while preserving all other attributes on `node`.
+    SetSingleAttribute {
+        node: StyloNodeId,
+        name: String,
+        value: Option<String>,
     },
     /// Parses and sets an inline `style="..."` declaration block on `node`.
     SetInlineStyle { node: StyloNodeId, css: String },

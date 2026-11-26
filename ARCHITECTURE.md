@@ -1,12 +1,12 @@
 # KRui Architecture & Design Decisions
 
-This document records the architecture of **KRui** across all 16 workspace crates and its compile-time HTML/CSS (`krui-compiler` -> slim DOM IR -> `krui-stylo-bridge` + `taffy 0.15`) + live TCP hot-reload pipeline.
+This document records the architecture of **KRui** across all 19 workspace crates and its compile-time HTML/CSS (`krui-compiler` -> slim DOM IR / `static_ir` -> `krui-stylo-bridge` + `taffy 0.15`) + live TCP hot-reload pipeline.
 
 ---
 
 ## 1. Workspace Layout (Domain-Oriented Crates)
 
-Crates are organized strictly by domain capability (`DSL -> Slim IR -> codegen/interpreter -> ViewTree -> Stylo Bridge -> Taffy 0.15 Layout -> PaintScene -> Renderer`), with a **single CSS owner** (`krui-stylo-bridge`) to prevent shotgun surgery:
+Crates are organized strictly by domain capability (`DSL -> Slim IR / static_ir -> codegen/interpreter -> ViewTree -> Stylo Bridge -> Taffy 0.15 Layout -> PaintScene -> Renderer`), with a **single CSS owner** (`krui-stylo-bridge`) to prevent shotgun surgery:
 
 | Crate | Domain Capability | `unsafe` Policy |
 |---|---|---|
@@ -14,18 +14,21 @@ Crates are organized strictly by domain capability (`DSL -> Slim IR -> codegen/i
 | [`style`](crates/style/src/lib.rs) | Pure CSS data model (`LayoutStyle`, `PaintStyle`, `TextStyle`, `ColorScheme`, `Affine2`, SVG types, text sanitization — zero `TokenId`/`ThemePreset` tables) | `#![forbid(unsafe_code)]` |
 | [`stylo-bridge`](crates/stylo-bridge/src/lib.rs) | **Sole CSS owner crate**: wraps `stylo` (`0.22.0`) + `stylo_taffy` (`0.3.0-beta.4`) for W3C cascade, `@media`, `@layer`, `@supports`, `@property`, `@keyframes`, transitions, custom properties, and `TaffyStyloStyle` | `#![deny(unsafe_code)]` (`0` `unsafe {}` blocks; `5` `TElement` trait `unsafe fn`s) |
 | [`compiler`](crates/compiler/src/lib.rs) | Build-time HTML parser, component expander (`<slot>` + lexical `:where([data-krui-scope~="..."])` `@layer component` scoping), `<svg>` compiler, and slim DOM-only `CompiledDocument` IR (no `lightningcss`) | `#![forbid(unsafe_code)]` |
-| [`macros`](crates/macros/src/lib.rs) | Compile-time procedural macros `krui!(...)`, `include_krui!(...)`, `#[view_model]`, `#[controller]`, and `#[store_msg]` | `#![forbid(unsafe_code)]` |
+| [`macros`](crates/macros/src/lib.rs) | Compile-time procedural macros `krui!(...)`, `include_krui!(...)`, `static_codegen` (`StaticDocumentDesc`), `#[view_model]`, `#[controller]`, and `#[store_msg]` | `#![forbid(unsafe_code)]` |
 | [`layout`](crates/layout/src/lib.rs) | Taffy (`0.15.1`) Flexbox & CSS Grid layout solver consuming `krui-stylo-bridge` zero-copy `TaffyStyloStyle` and `LayoutStyle` overrides | `#![forbid(unsafe_code)]` |
 | [`text`](crates/text/src/lib.rs) | `cosmic-text` (`0.12`) shaping, Unicode BiDi, CJK/Korean fallback, glyph rasterization, and `TextEditBuffer` | `#![forbid(unsafe_code)]` |
 | [`a11y`](crates/a11y/src/lib.rs) | `accesskit` (`0.17`) semantic tree builder (`Role`, `Action`, `url`, focus order, password masking) | `#![forbid(unsafe_code)]` |
-| [`core`](crates/core/src/lib.rs) | Platform-neutral `ViewTree` split into cohesive submodules (`view_tree/{dom,style_bridge,input,ime,controls,paint_scene}`), `EditingState` + `TextInputHost`, `TouchTracker`, and `PaintScene` | `#![forbid(unsafe_code)]` |
+| [`core`](crates/core/src/lib.rs) | Platform-neutral `ViewTree` split into cohesive submodules (`view_tree/{dom,style_bridge,input,ime,controls,paint_scene}`), `static_ir`, `EditingState` + `TextInputHost`, `Hangul2BulsikAutomaton`, and `PaintScene` | `#![forbid(unsafe_code)]` |
 | [`renderer`](crates/renderer/src/lib.rs) | `WgpuRenderer` (instanced SDF + Kawase dual-filter blur + premultiplied LRU texture cache + `<canvas>`) and `TinySkiaRenderer` CPU fallback | `#![forbid(unsafe_code)]` |
 | [`winit`](crates/winit/src/lib.rs) | Desktop single/multi-window `winit` event loop, IME adapter, AccessKit bridge, and `KRUI_EMBED_PANEL` headless driver | `#![forbid(unsafe_code)]` |
+| [`kms`](crates/kms/src/lib.rs) | Linux DRM DumbBuffer (`RGB565`/`XRGB8888`) + `DIRTYFB` union-bbox commit planner, flush worker, and `evdev` kiosk host | `#![forbid(unsafe_code)]` |
+| [`engine-host`](crates/engine-host/src/lib.rs) | In-pass 3D engine UI host (`EngineUiHost`) sharing external `wgpu::Device`/`Queue`, `tokio::runtime::Handle`, and ping-pong `PaintScenePool` | `#![forbid(unsafe_code)]` |
+| [`web`](crates/web-dom/src/lib.rs) | Browser DOM + native CSS + `<canvas>` external slot backend (`krui-web`, excluding `wgpu`/`stylo`/`taffy`) | `#![forbid(unsafe_code)]` |
 | [`patterns`](crates/patterns/src/lib.rs) | Opt-in MVVM (`Command`, `InputCommand`), MVC (`#[controller]`), and Flux/Elm/MVI (`Store<State, Msg>`, `Effects<Msg>`) | `#![forbid(unsafe_code)]` |
 | [`preview`](crates/preview/src/lib.rs) | Dev-only (`preview` feature) TCP framing, event-driven `PreviewTcpClient`, `DevFileWatcher`, `"KRFR"` RLE codec, and device bezels sharing `CompiledDocument` IR | `#![forbid(unsafe_code)]` |
 | [`cli`](crates/cli/src/lib.rs) | `krui serve` live preview TCP server, Windows lock-free staged binary rebuilds, ADB port reverse, and `--panel` IDE bridge | `#![forbid(unsafe_code)]` |
-| [`android-ffi`](crates/android-ffi/src/lib.rs) | Safe Android JNI + Kotlin `SurfaceView` / `Choreographer` / `InputConnection` host (`0` `unsafe {}` blocks, `5` `#[no_mangle]` exports) | `#![deny(unsafe_code)]` |
-| [`krui` (root)](src/lib.rs) | Public facade, showcase application (`krui-showcase`), and controlled 120Hz release benchmark (`krui-bench`) | `#![forbid(unsafe_code)]` |
+| [`android-ffi`](crates/android-ffi/src/lib.rs) | Safe Android/Wear OS JNI + Kotlin `SurfaceView` / `Choreographer` / `InputConnection` host (`0` `unsafe {}` blocks, `5` `#[no_mangle]` exports) | `#![deny(unsafe_code)]` |
+| [`krui` (root)](src/lib.rs) | Public facade, showcase application (`krui-showcase`), M3 component gallery example (`component_gallery`), and controlled 120Hz release benchmark (`krui-bench`) | `#![forbid(unsafe_code)]` |
 
 ---
 

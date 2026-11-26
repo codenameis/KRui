@@ -169,6 +169,10 @@ pub trait WindowEventHooks {
         None
     }
 
+    /// Invoked on each frame right before scene presentation (ideal for updating
+    /// `RawWgpuViewport` / `ExternalTextureId` 3D viewports after layout/input ticks).
+    fn on_before_present(&mut self, _session: &mut EngineSession, _dt_secs: f32) {}
+
     /// Invoked after rendering each frame; returning `Some(title)` updates the native window title.
     fn on_after_frame(
         &mut self,
@@ -188,8 +192,14 @@ pub(crate) fn mouse_button_code(button: MouseButton) -> Option<u8> {
         MouseButton::Left => Some(0),
         MouseButton::Middle => Some(1),
         MouseButton::Right => Some(2),
+        MouseButton::Back => Some(3),
+        MouseButton::Forward => Some(4),
         _ => None,
     }
+}
+
+pub(crate) fn pointer_button_from_winit(button: MouseButton) -> Option<krui_core::PointerButton> {
+    mouse_button_code(button).and_then(krui_core::PointerButton::from_code)
 }
 
 /// Converts a `winit::keyboard::Key` and optional text slice into a platform-agnostic [`KeyInfo`].
@@ -305,11 +315,50 @@ pub(crate) fn run_headless_window_session(title: &str, session: &mut EngineSessi
     );
 }
 
-pub(crate) fn cursor_icon_from_kind(kind: HoveredCursorKind) -> CursorIcon {
-    match kind {
-        HoveredCursorKind::Text => CursorIcon::Text,
-        HoveredCursorKind::Pointer => CursorIcon::Pointer,
+pub(crate) fn cursor_icon_from_kind(kind: HoveredCursorKind) -> Option<CursorIcon> {
+    Some(match kind {
+        HoveredCursorKind::None => return None,
         HoveredCursorKind::Default => CursorIcon::Default,
+        HoveredCursorKind::Pointer => CursorIcon::Pointer,
+        HoveredCursorKind::Text => CursorIcon::Text,
+        HoveredCursorKind::Crosshair => CursorIcon::Crosshair,
+        HoveredCursorKind::Move => CursorIcon::Move,
+        HoveredCursorKind::Grab => CursorIcon::Grab,
+        HoveredCursorKind::Grabbing => CursorIcon::Grabbing,
+        HoveredCursorKind::EwResize => CursorIcon::EwResize,
+        HoveredCursorKind::NsResize => CursorIcon::NsResize,
+        HoveredCursorKind::NeswResize => CursorIcon::NeswResize,
+        HoveredCursorKind::NwseResize => CursorIcon::NwseResize,
+        HoveredCursorKind::ColResize => CursorIcon::ColResize,
+        HoveredCursorKind::RowResize => CursorIcon::RowResize,
+        HoveredCursorKind::NotAllowed => CursorIcon::NotAllowed,
+        HoveredCursorKind::Wait => CursorIcon::Wait,
+        HoveredCursorKind::Progress => CursorIcon::Progress,
+        HoveredCursorKind::ZoomIn => CursorIcon::ZoomIn,
+        HoveredCursorKind::ZoomOut => CursorIcon::ZoomOut,
+        HoveredCursorKind::Help => CursorIcon::Help,
+        HoveredCursorKind::Copy => CursorIcon::Copy,
+        HoveredCursorKind::Alias => CursorIcon::Alias,
+        HoveredCursorKind::Cell => CursorIcon::Cell,
+        HoveredCursorKind::AllScroll => CursorIcon::AllScroll,
+    })
+}
+
+pub(crate) fn apply_window_cursor(
+    win: &winit::window::Window,
+    kind: HoveredCursorKind,
+    pointer_locked: bool,
+) {
+    if pointer_locked {
+        win.set_cursor_visible(false);
+        return;
+    }
+    match cursor_icon_from_kind(kind) {
+        Some(icon) => {
+            win.set_cursor(icon);
+            win.set_cursor_visible(true);
+        }
+        None => win.set_cursor_visible(false),
     }
 }
 

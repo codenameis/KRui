@@ -211,6 +211,16 @@
     --krui-snackbar-fg: var(--md-sys-color-inverse-on-surface);
     --krui-tooltip-bg: var(--md-sys-color-inverse-surface);
     --krui-tooltip-fg: var(--md-sys-color-inverse-on-surface);
+
+    /* Official Material 3 Emphasized Motion Tokens (Compositor Fast-Path) */
+    --krui-motion-ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+    --krui-motion-ease-exit: cubic-bezier(0.3, 0, 0.8, 0.15);
+    --krui-motion-dialog-dur-enter: 300ms;
+    --krui-motion-dialog-dur-exit: 150ms;
+    --krui-motion-sheet-dur-enter: 400ms;
+    --krui-motion-sheet-dur-exit: 200ms;
+    --krui-motion-scrim-dur-enter: 250ms;
+    --krui-motion-scrim-dur-exit: 200ms;
 }
 
 /* M3 Surface & Elevated Cards */

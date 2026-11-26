@@ -88,7 +88,7 @@ static PREFS_INIT: Once = Once::new();
 
 pub(crate) fn init_stylo_prefs() {
     PREFS_INIT.call_once(|| {
-        stylo_static_prefs::set_pref!("layout.container-queries.enabled", false);
+        stylo_static_prefs::set_pref!("layout.container-queries.enabled", true);
         stylo_static_prefs::set_pref!("layout.css.at-scope.enabled", true);
         stylo_static_prefs::set_pref!("layout.css.has-selector.enabled", true);
         stylo_static_prefs::set_pref!("layout.css.nth-child-of.enabled", true);

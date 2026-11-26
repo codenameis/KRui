@@ -2,9 +2,9 @@
 //! outer/inset `BoxShadow`, monochrome/color `TextGlyphs`, backdrop blur, and `PopLayer`.
 
 use bytemuck::{Pod, Zeroable};
-use krui_core::ResolvedRadialGradient;
+use krui_core::{ResolvedConicGradient, ResolvedRadialGradient};
 use krui_layout::LayoutRect;
-use krui_style::{Affine2, BoxShadow, Color, LinearGradient};
+use krui_style::{Affine2, BoxShadow, Color, GradientStopsRef, LinearGradient};
 
 pub(crate) const KIND_STYLED_BOX: u32 = 0;
 pub(crate) const KIND_OUTER_SHADOW: u32 = 1;
@@ -97,45 +97,15 @@ pub(crate) struct BoxInstanceSpec {
     pub background_color: Color,
     pub background_gradient: Option<LinearGradient>,
     pub radial_gradient: Option<ResolvedRadialGradient>,
+    pub conic_gradient: Option<ResolvedConicGradient>,
     pub border_color: Color,
     pub border_width: f32,
     pub border_radius: f32,
     pub corner_radii: [f32; 4],
 }
 
-/// Resolves 4-corner radii `[tl, tr, br, bl]`, falling back to uniform `border_radius`
-/// when all per-corner radii are zero.
-#[inline]
-pub(crate) fn effective_radii_4(border_radius: f32, corner_radii: [f32; 4]) -> [f32; 4] {
-    if corner_radii == [0.0; 4] && border_radius > 0.0 {
-        let clamped = if border_radius.is_nan() {
-            0.0
-        } else {
-            border_radius.clamp(0.0, 1.0e6)
-        };
-        [clamped; 4]
-    } else {
-        corner_radii.map(|r| if r.is_nan() { 0.0 } else { r.clamp(0.0, 1.0e6) })
-    }
-}
-
-/// Applies W3C CSS Backgrounds & Borders §5.5 proportional corner-overlap normalization.
-#[inline]
-pub(crate) fn normalize_radii_4(w: f32, h: f32, radii: [f32; 4]) -> [f32; 4] {
-    let r = radii.map(|v| if v.is_nan() { 0.0 } else { v.clamp(0.0, 1.0e6) });
-    if w <= 0.0 || h <= 0.0 {
-        return [0.0; 4];
-    }
-    let f = [
-        w / (r[0] + r[1]).max(1e-4),
-        w / (r[3] + r[2]).max(1e-4),
-        h / (r[0] + r[3]).max(1e-4),
-        h / (r[1] + r[2]).max(1e-4),
-    ]
-    .into_iter()
-    .fold(1.0_f32, f32::min);
-    r.map(|v| v * f)
-}
+/// Resolves and normalizes 4-corner radii `[tl, tr, br, bl]` via shared [`crate::radii`].
+pub(crate) use crate::radii::{effective_radii_4, normalize_radii_4};
 
 pub(crate) fn encode_clip_geom(
     clip: Option<LayoutRect>,
@@ -250,12 +220,62 @@ pub(crate) fn prepare_box_common(
     })
 }
 
-fn encode_linear_gradient(
-    grad: Option<LinearGradient>,
-) -> (u32, [f32; 4], [f32; 4], f32, [f32; 4], [f32; 4]) {
+fn stops_max_span(stops: GradientStopsRef, repeating: bool) -> f32 {
+    if !repeating {
+        return 1.0;
+    }
+    stops.with_stops(|s| s.last().map_or(1.0, |st| st.position).clamp(1e-4, 1.0))
+}
+
+pub(crate) fn box_gradient_lut(spec: &BoxInstanceSpec) -> Option<(GradientStopsRef, f32)> {
+    if spec.background_gradient.is_none() && spec.radial_gradient.is_none() {
+        if let Some(cg) = spec.conic_gradient {
+            if !cg.stops.is_empty() {
+                return Some((cg.stops, stops_max_span(cg.stops, cg.repeating)));
+            }
+        }
+    }
+    if spec.background_gradient.is_none() {
+        if let Some(rg) = spec.radial_gradient {
+            if !rg.extra_stops.is_empty() {
+                return Some((rg.extra_stops, stops_max_span(rg.extra_stops, rg.repeating)));
+            }
+        }
+    }
+    if let Some(lg) = spec.background_gradient {
+        if !lg.extra_stops.is_empty() {
+            return Some((lg.extra_stops, stops_max_span(lg.extra_stops, lg.repeating)));
+        }
+    }
+    None
+}
+
+type LinearGradientUniform = (u32, u32, [f32; 4], [f32; 4], f32, [f32; 4], [f32; 4]);
+
+fn encode_linear_gradient(grad: Option<LinearGradient>) -> LinearGradientUniform {
     let Some(g) = grad else {
-        return (0, [0.0; 4], [0.0; 4], 0.0, [0.0; 4], [0.0, 0.5, 1.0, 0.0]);
+        return (
+            0,
+            0,
+            [0.0; 4],
+            [0.0; 4],
+            0.0,
+            [0.0; 4],
+            [0.0, 0.5, 1.0, 0.0],
+        );
     };
+    if !g.extra_stops.is_empty() {
+        let span = stops_max_span(g.extra_stops, g.repeating);
+        return (
+            4,
+            u32::from(g.repeating),
+            g.start_color.to_f32_array(),
+            g.end_color.to_f32_array(),
+            g.angle_deg.to_radians(),
+            [0.0; 4],
+            [span, 0.0, 0.0, 0.0],
+        );
+    }
     let (cnt, mc) = match g.mid_color {
         Some(col) => (2_u32, col.to_f32_array()),
         None => (1_u32, [0.0; 4]),
@@ -263,6 +283,7 @@ fn encode_linear_gradient(
     let [p0, p1, p2] = g.stop_positions;
     (
         cnt,
+        0,
         g.start_color.to_f32_array(),
         g.end_color.to_f32_array(),
         g.angle_deg.to_radians(),
@@ -276,49 +297,104 @@ fn encode_linear_gradient(
     )
 }
 
+fn build_conic_box(
+    spec: &BoxInstanceSpec,
+    cg: ResolvedConicGradient,
+    c: &ProjectedBoxCommon,
+    scale: f32,
+) -> SdfQuadInstance {
+    let span = stops_max_span(cg.stops, cg.repeating);
+    SdfQuadInstance {
+        screen_bounds: c.bounds,
+        center_and_vp: c.center_and_vp,
+        inv_linear: c.inv_linear,
+        box_geom: c.box_geom,
+        clip_geom: c.clip_geom,
+        color_a: spec.background_color.to_f32_array(),
+        color_b: spec.border_color.to_f32_array(),
+        grad_start: [0.0; 4],
+        grad_end: [0.0; 4],
+        uv_rect: [cg.center_dx * scale, cg.center_dy * scale, span, 0.0],
+        shadow_params: [0.0; 4],
+        extra_params: [
+            spec.opacity.clamp(0.0, 1.0),
+            c.clip_r_phys,
+            cg.from_angle_deg.to_radians(),
+            0.0,
+        ],
+        flags: [KIND_STYLED_BOX, 0, 6, u32::from(cg.repeating)],
+        corner_radii: c.corner_radii,
+        clip_radii: c.clip_radii,
+    }
+}
+
+fn build_radial_box(
+    spec: &BoxInstanceSpec,
+    rg: ResolvedRadialGradient,
+    c: &ProjectedBoxCommon,
+    s: f32,
+) -> SdfQuadInstance {
+    let (mode, rep_flag, inner_or_span, outer_or_zero) = if !rg.extra_stops.is_empty() {
+        (
+            5,
+            u32::from(rg.repeating),
+            stops_max_span(rg.extra_stops, rg.repeating),
+            0.0,
+        )
+    } else {
+        (3, 0, rg.inner_stop, rg.outer_stop)
+    };
+    SdfQuadInstance {
+        screen_bounds: c.bounds,
+        center_and_vp: c.center_and_vp,
+        inv_linear: c.inv_linear,
+        box_geom: c.box_geom,
+        clip_geom: c.clip_geom,
+        color_a: spec.background_color.to_f32_array(),
+        color_b: spec.border_color.to_f32_array(),
+        grad_start: rg.inner_color.to_f32_array(),
+        grad_end: rg.outer_color.to_f32_array(),
+        uv_rect: [
+            rg.center_dx * s,
+            rg.center_dy * s,
+            (rg.radius_x * s).max(1e-3),
+            (rg.radius_y * s).max(1e-3),
+        ],
+        shadow_params: [0.0; 4],
+        extra_params: [
+            spec.opacity.clamp(0.0, 1.0),
+            c.clip_r_phys,
+            inner_or_span,
+            outer_or_zero,
+        ],
+        flags: [KIND_STYLED_BOX, 0, mode, rep_flag],
+        corner_radii: c.corner_radii,
+        clip_radii: c.clip_radii,
+    }
+}
+
 impl SdfQuadInstance {
     pub(crate) fn styled_box(spec: &BoxInstanceSpec, sf: SurfaceFrameTransform) -> Option<Self> {
         let has_fill = spec.background_color.a > 0
             || spec.background_gradient.is_some()
-            || spec.radial_gradient.is_some();
+            || spec.radial_gradient.is_some()
+            || spec.conic_gradient.is_some();
         let has_border = spec.border_width > 0.0 && spec.border_color.a > 0;
         if !has_fill && !has_border {
             return None;
         }
         let c = prepare_box_common(spec, sf, (0.0, 0.0), (2.0, 2.0))?;
-        if spec.background_gradient.is_none() {
-            if let Some(rg) = spec.radial_gradient {
-                let s = sf.surface_scale;
-                return Some(Self {
-                    screen_bounds: c.bounds,
-                    center_and_vp: c.center_and_vp,
-                    inv_linear: c.inv_linear,
-                    box_geom: c.box_geom,
-                    clip_geom: c.clip_geom,
-                    color_a: spec.background_color.to_f32_array(),
-                    color_b: spec.border_color.to_f32_array(),
-                    grad_start: rg.inner_color.to_f32_array(),
-                    grad_end: rg.outer_color.to_f32_array(),
-                    uv_rect: [
-                        rg.center_dx * s,
-                        rg.center_dy * s,
-                        (rg.radius_x * s).max(1e-3),
-                        (rg.radius_y * s).max(1e-3),
-                    ],
-                    shadow_params: [0.0; 4],
-                    extra_params: [
-                        spec.opacity.clamp(0.0, 1.0),
-                        c.clip_r_phys,
-                        rg.inner_stop,
-                        rg.outer_stop,
-                    ],
-                    flags: [KIND_STYLED_BOX, 0, 3, 0],
-                    corner_radii: c.corner_radii,
-                    clip_radii: c.clip_radii,
-                });
+        if spec.background_gradient.is_none() && spec.radial_gradient.is_none() {
+            if let Some(cg) = spec.conic_gradient {
+                return Some(build_conic_box(spec, cg, &c, sf.surface_scale));
             }
         }
-        let (has_grad, grad_s, grad_e, angle_rad, mid_col, stop_uv) =
+        if spec.background_gradient.is_none() {
+            if let Some(rg) = spec.radial_gradient {
+                return Some(build_radial_box(spec, rg, &c, sf.surface_scale));
+            }
+        }
+        let (has_grad, rep_flag, grad_s, grad_e, angle_rad, mid_col, stop_uv) =
             encode_linear_gradient(spec.background_gradient);
         Some(Self {
             screen_bounds: c.bounds,
@@ -333,22 +409,10 @@ impl SdfQuadInstance {
             uv_rect: stop_uv,
             shadow_params: mid_col,
             extra_params: [spec.opacity.clamp(0.0, 1.0), c.clip_r_phys, angle_rad, 0.0],
-            flags: [KIND_STYLED_BOX, 0, has_grad, 0],
+            flags: [KIND_STYLED_BOX, 0, has_grad, rep_flag],
             corner_radii: c.corner_radii,
             clip_radii: c.clip_radii,
         })
-    }
-
-    pub(crate) fn radial_overlay(
-        spec: &BoxInstanceSpec,
-        rg: ResolvedRadialGradient,
-        sf: SurfaceFrameTransform,
-    ) -> Option<Self> {
-        let mut copy = *spec;
-        copy.background_color = Color::TRANSPARENT;
-        copy.background_gradient = None;
-        copy.radial_gradient = Some(rg);
-        Self::styled_box(&copy, sf)
     }
 
     pub(crate) fn box_shadow(

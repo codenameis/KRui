@@ -1,0 +1,14 @@
+[package]
+name = "krui-engine-host"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "3D game/simulation engine in-pass UI host with shared wgpu Device/Queue and ExternalHandle tokio integration"
+
+[dependencies]
+krui-core = { workspace = true }
+krui-renderer = { workspace = true, features = ["gpu"] }
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+tokio = { workspace = true }
+wgpu = { workspace = true }

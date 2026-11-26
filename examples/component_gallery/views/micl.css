@@ -108,6 +108,12 @@
     opacity: 0.08;
 }
 
+.micl-btn-group > button.micl-seg-selected-true {
+    background-color: var(--md-comp-card-selected-bg);
+    color: var(--md-comp-card-selected-fg);
+    border-color: var(--krui-accent);
+}
+
 .micl-btn-group > button:active {
     border-radius: 16px;
 }
@@ -210,6 +216,7 @@ progress.micl-progress {
     border-radius: 999px;
     background-color: var(--krui-item-bg);
     border: 1px solid var(--krui-accent);
+    accent-color: var(--krui-accent);
 }
 
 @supports (backdrop-filter: blur(8px)) {

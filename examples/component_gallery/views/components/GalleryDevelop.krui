@@ -1,0 +1,24 @@
+<div class="gallery-section">
+    <div class="m3-subroute-bar">
+        <button id="dev-sub-0" class="m3-subroute-pill m3-subroute-pill-{controller.w4.studio.develop_subroute == 0}" onclick="{controller.w4.studio.set_develop_subroute(0)}">Develop Overview</button>
+        <button id="dev-sub-1" class="m3-subroute-pill m3-subroute-pill-{controller.w4.studio.develop_subroute == 1}" onclick="{controller.w4.studio.set_develop_subroute(1)}">2D Canvas Studio (Canva)</button>
+        <button id="dev-sub-2" class="m3-subroute-pill m3-subroute-pill-{controller.w4.studio.develop_subroute == 2}" onclick="{controller.w4.studio.set_develop_subroute(2)}">3D Viewport (wgpu / Bevy)</button>
+    </div>
+
+    <if test="{controller.w4.studio.develop_subroute == 0}">
+        <Card variant="elevated" title="Develop · Debug-Only Live Preview &amp; Studio Demos" subtitle="프로덕션 바이너리에서 파서 완전 분리 · 2D Canva 캔버스 &amp; 3D wgpu/Bevy 뷰포트 내장">
+            <div class="gallery-col">
+                <span class="m3-hero-sub">krui!/include_krui! 매크로는 컴파일 타임에 `.krui`/`.css`를 네이티브 Rust 코드로 컴파일하며, 상단 탭에서 인터랙티브 2D/3D 스튜디오 데모를 바로 실행할 수 있습니다.</span>
+                <div class="gallery-row">
+                    <Button variant="filled" onclick="{controller.w4.studio.set_develop_subroute(1)}">2D Canvas Studio 열기</Button>
+                    <Button variant="tonal" onclick="{controller.w4.studio.set_develop_subroute(2)}">3D Viewport (wgpu/Bevy) 열기</Button>
+                    <Button variant="outlined" onclick="{controller.open_search_overlay()}">전체 카탈로그 검색</Button>
+                </div>
+            </div>
+        </Card>
+    <else-if test="{controller.w4.studio.develop_subroute == 1}">
+        <GalleryCanvasStudio />
+    <else>
+        <GalleryViewport3d />
+    </if>
+</div>

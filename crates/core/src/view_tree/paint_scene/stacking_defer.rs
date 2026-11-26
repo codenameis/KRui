@@ -1,8 +1,8 @@
 //! Deferred 7-step Stacking Context emission used when a subtree contains negative `z-index`.
 
 use super::{
-    creates_stacking_context, emit_stacking_context, is_flex_or_grid, is_top_layer_node,
-    node_is_scroll_and_clip, StackEnv,
+    creates_stacking_context, emit_stacking_context, emit_with_hoisted_clip, is_flex_or_grid,
+    is_top_layer_node, node_is_scroll_and_clip, HoistedClipWrap, StackEnv,
 };
 use crate::scene::{DrawPrimitive, PaintScene};
 use crate::view_tree::clip_shape::{compute_child_clip_layer, ClipState, LocalClipLayer};
@@ -22,6 +22,7 @@ struct HoistedSc {
     env: StackEnv,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum Step5Item {
     Sc(HoistedSc),
     PositionedNonSc(usize),
@@ -80,13 +81,25 @@ fn emit_sc_participants(
 ) {
     parts.neg_contexts.sort_by_key(|c| c.z_index);
     for child in &parts.neg_contexts {
-        emit_stacking_context(inner, child.node_id, child.env, false, scene);
+        let env = StackEnv {
+            hoisted_clip: None,
+            ..child.env
+        };
+        emit_with_hoisted_clip(child.env.hoisted_clip, scene, |s| {
+            emit_stacking_context(inner, child.node_id, env, false, s);
+        });
     }
     emit_inflow_ops(inner, Some(sc_frame), &parts.frames, &parts.inflow, scene);
     for item in &parts.zero_or_positioned {
         match item {
             Step5Item::Sc(child) => {
-                emit_stacking_context(inner, child.node_id, child.env, false, scene)
+                let env = StackEnv {
+                    hoisted_clip: None,
+                    ..child.env
+                };
+                emit_with_hoisted_clip(child.env.hoisted_clip, scene, |s| {
+                    emit_stacking_context(inner, child.node_id, env, false, s);
+                });
             }
             Step5Item::PositionedNonSc(ops_idx) => {
                 emit_inflow_ops(
@@ -101,7 +114,13 @@ fn emit_sc_participants(
     }
     parts.pos_contexts.sort_by_key(|c| c.z_index);
     for child in &parts.pos_contexts {
-        emit_stacking_context(inner, child.node_id, child.env, false, scene);
+        let env = StackEnv {
+            hoisted_clip: None,
+            ..child.env
+        };
+        emit_with_hoisted_clip(child.env.hoisted_clip, scene, |s| {
+            emit_stacking_context(inner, child.node_id, env, false, s);
+        });
     }
 }
 
@@ -148,7 +167,10 @@ fn emit_inflow_ops(
                 clip_radius: outer_clip.max_radius(),
                 clip_radii: outer_clip.radii,
                 local_clip: Some(local_clip),
+                clip_path: None,
+                perspective: None,
                 opacity: 1.0,
+                filter: krui_style::CssFilterEffect::IDENTITY,
             }),
             InFlowOp::PopClipLayer => scene.primitives.push(DrawPrimitive::PopLayer),
             InFlowOp::Scrollbar {
@@ -271,15 +293,32 @@ fn visit_child_paint_node(
         parts
             .zero_or_positioned
             .push(Step5Item::PositionedNonSc(new_idx));
-        collect_non_sc_subtree(inner, frame, parts, Some(new_idx));
+        if let Some(w) = env.hoisted_clip {
+            push_op_to_target(
+                parts,
+                Some(new_idx),
+                InFlowOp::PushClipLayer {
+                    bounds: w.bounds,
+                    outer_clip: w.outer_clip,
+                    local_clip: w.local_clip,
+                },
+            );
+        }
+        collect_non_sc_subtree(inner, frame, env.hoisted_clip, parts, Some(new_idx));
+        if env.hoisted_clip.is_some() {
+            push_op_to_target(parts, Some(new_idx), InFlowOp::PopClipLayer);
+        }
     } else {
-        collect_non_sc_subtree(inner, frame, parts, pos_idx);
+        collect_non_sc_subtree(inner, frame, env.hoisted_clip, parts, pos_idx);
     }
 }
 
 type DeferredChildEnv = (StackEnv, Option<LocalClipLayer>, Option<LayoutRect>, bool);
 
-fn build_non_sc_child_env(frame: &NodePaintFrame) -> DeferredChildEnv {
+fn build_non_sc_child_env(
+    frame: &NodePaintFrame,
+    inherited_hoisted: Option<HoistedClipWrap>,
+) -> DeferredChildEnv {
     let (is_scroll, clips_self) = node_is_scroll_and_clip(&frame.layout, frame.role);
     let next_scroll = if is_scroll {
         (
@@ -297,15 +336,24 @@ fn build_non_sc_child_env(frame: &NodePaintFrame) -> DeferredChildEnv {
         frame.effective_transform,
         frame.clip,
     );
+    let hoisted_clip = local_clip.map_or(inherited_hoisted, |lc| {
+        Some(HoistedClipWrap {
+            bounds: clip_bounds.unwrap_or(frame.draw_rect),
+            outer_clip: frame.clip,
+            local_clip: lc,
+        })
+    });
     let child_env = StackEnv {
         scroll: next_scroll,
         clip: next_clip,
+        hoisted_clip,
         affine: frame.effective_transform,
         opacity: frame.effective_opacity,
         inherited_color: frame.next_inherited_text_color,
         parent_is_flex_or_grid: is_flex_or_grid(frame.layout.display),
         any_top_layer: false,
         any_neg_z: true,
+        parent_3d: None,
     };
     (child_env, local_clip, clip_bounds, is_scroll)
 }
@@ -313,10 +361,12 @@ fn build_non_sc_child_env(frame: &NodePaintFrame) -> DeferredChildEnv {
 fn collect_non_sc_subtree(
     inner: &mut ViewTreeInner,
     frame: NodePaintFrame,
+    inherited_hoisted: Option<HoistedClipWrap>,
     parts: &mut ScParticipants,
     pos_idx: Option<usize>,
 ) {
-    let (child_env, local_clip, clip_bounds, is_scroll) = build_non_sc_child_env(&frame);
+    let (child_env, local_clip, clip_bounds, is_scroll) =
+        build_non_sc_child_env(&frame, inherited_hoisted);
     let frame_idx = parts.frames.len();
     parts.frames.push(frame);
     let child_len = frame.child_len;

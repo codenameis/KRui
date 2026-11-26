@@ -11,6 +11,7 @@ pub use conversions::{
 };
 
 use crate::scene::CanvasDraw;
+use crate::view_tree::{PointerHandler, WheelHandler};
 use krui_signals::{Computed, FastPathTransform, Signal};
 use std::collections::HashMap;
 use std::fmt;
@@ -90,6 +91,10 @@ pub enum Value {
     InputHandler(DynInputHandler),
     /// 2D canvas drawing callback (`CanvasDraw`).
     CanvasDraw(CanvasDraw),
+    /// Rich viewport pointer handler (`PointerHandler`).
+    PointerHandler(PointerHandler),
+    /// Rich viewport wheel handler (`WheelHandler`).
+    WheelHandler(WheelHandler),
     /// Compositor fast-path transform bundle (`FastPathTransform`).
     FastTransform(FastPathTransform),
     /// Unit return value (`()`).

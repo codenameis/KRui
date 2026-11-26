@@ -54,6 +54,7 @@ fn build_checkerboard_blur_scene(blur_px: f32) -> PaintScene {
                     background_color: Color::WHITE,
                     background_gradient: None,
                     radial_gradient: None,
+                    conic_gradient: None,
                     border_color: Color::TRANSPARENT,
                     border_width: 0.0,
                     border_radius: 0.0,
@@ -84,6 +85,7 @@ fn build_checkerboard_blur_scene(blur_px: f32) -> PaintScene {
         },
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color: Color::TRANSPARENT,
         border_width: 0.0,
         border_radius: 14.0,
@@ -270,7 +272,10 @@ fn group_opacity_push_pop_layer_eliminates_double_alpha_bleed_and_shares_gpu_con
         clip_radius: 0.0,
         clip_radii: [0.0; 4],
         local_clip: None,
+        clip_path: None,
+        perspective: None,
         opacity: 0.5,
+        filter: krui_style::CssFilterEffect::IDENTITY,
     });
     for (x, y) in [(20.0, 20.0), (50.0, 50.0)] {
         scene.primitives.push(DrawPrimitive::StyledBox {
@@ -288,6 +293,7 @@ fn group_opacity_push_pop_layer_eliminates_double_alpha_bleed_and_shares_gpu_con
             background_color: Color::WHITE,
             background_gradient: None,
             radial_gradient: None,
+            conic_gradient: None,
             border_color: Color::TRANSPARENT,
             border_width: 0.0,
             border_radius: 0.0,

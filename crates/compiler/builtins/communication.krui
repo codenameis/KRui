@@ -173,16 +173,16 @@
     </div>
 </template>
 
-<template name="Snackbar" open="{true}" message="" action_label="" dismiss_label="닫기" on_action="" on_dismiss="" id="" class="" title="">
+<template name="Snackbar" open="{true}" message="" action_label="" dismiss_label="닫기" on_action="" on_dismiss="" id="" action_id="" dismiss_id="" class="" title="">
     <if test="{open}">
         <div id="{id}" class="krui-ui-snackbar {class}" title="{title}">
             <span class="krui-ui-snackbar-msg">{message}<slot/></span>
             <div class="krui-ui-snackbar-actions">
                 <if test="{action_label != ''}">
-                    <button type="button" class="krui-ui-snackbar-btn" onclick="{on_action}">{action_label}</button>
+                    <button type="button" id="{action_id}" class="krui-ui-snackbar-btn" onclick="{on_action}">{action_label}</button>
                 </if>
                 <if test="{dismiss_label != ''}">
-                    <button type="button" class="krui-ui-snackbar-dismiss" onclick="{on_dismiss}">{dismiss_label}</button>
+                    <button type="button" id="{dismiss_id}" class="krui-ui-snackbar-dismiss" onclick="{on_dismiss}">{dismiss_label}</button>
                 </if>
             </div>
         </div>

@@ -25,6 +25,7 @@ pub(crate) fn submit_recorded_segment(
         .flatten();
     upload_atlas_and_geometry_buffers(res, ctx);
     prepare_blur_resources(res, ctx, out_view, (vw, vh), use_swapchain_scene);
+    crate::wgpu_compositor_wave4::ensure_stencil_target_if_needed(res, ctx, (vw, vh));
 
     let out_pipes = ctx.pipelines_for(out_format);
     let layer_pipes = ctx.pipelines_for(wgpu::TextureFormat::Rgba8Unorm);
@@ -68,6 +69,7 @@ fn push_swapchain_blit_instance(res: &mut WgpuFrameResources, vw: u32, vh: u32) 
         None,
         Some([0.0, 0.0, sf.phys_w, sf.phys_h]),
         1.0,
+        krui_style::CssFilterEffect::IDENTITY,
         sf,
     )
     .map(|inst| {
@@ -171,12 +173,32 @@ fn prepare_blur_resources(
     }
 }
 
+fn resolve_segment_target<'a>(
+    res: &'a WgpuFrameResources,
+    out_view: &'a wgpu::TextureView,
+    out_format: wgpu::TextureFormat,
+    (out_pipes, layer_pipes): (&'a FormatPipelines, &'a FormatPipelines),
+    target_id: usize,
+    use_swapchain_scene: bool,
+) -> (&'a wgpu::TextureView, &'a FormatPipelines, bool) {
+    let direct_root = target_id == 0 && !use_swapchain_scene;
+    let view = if direct_root {
+        out_view
+    } else if target_id == 0 {
+        &res.swapchain_scene.as_ref().expect("swapchain scene").view
+    } else {
+        &res.layer_pool.layers[target_id - 1].view
+    };
+    let pipes = if direct_root { out_pipes } else { layer_pipes };
+    (view, pipes, direct_root && out_format.is_srgb())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn encode_segment_op(
     encoder: &mut wgpu::CommandEncoder,
     res: &WgpuFrameResources,
     ctx: &GpuContext,
-    (out_pipes, layer_pipes): (&FormatPipelines, &FormatPipelines),
+    pipes: (&FormatPipelines, &FormatPipelines),
     out_view: &wgpu::TextureView,
     out_format: wgpu::TextureFormat,
     (vw, vh): (u32, u32),
@@ -189,16 +211,14 @@ fn encode_segment_op(
             load_clear,
             items,
         } => {
-            let direct_root = *target_id == 0 && !use_swapchain_scene;
-            let view = if direct_root {
-                out_view
-            } else if *target_id == 0 {
-                &res.swapchain_scene.as_ref().expect("swapchain scene").view
-            } else {
-                &res.layer_pool.layers[*target_id - 1].view
-            };
-            let pass_pipes = if direct_root { out_pipes } else { layer_pipes };
-            let target_srgb = direct_root && out_format.is_srgb();
+            let (view, pass_pipes, target_srgb) = resolve_segment_target(
+                res,
+                out_view,
+                out_format,
+                pipes,
+                *target_id,
+                use_swapchain_scene,
+            );
             encode_draw_pass(
                 encoder,
                 res,
@@ -216,6 +236,40 @@ fn encode_segment_op(
             for step in steps {
                 encode_blur_step(encoder, res, ctx, chain, step, use_swapchain_scene);
             }
+        }
+        SegmentOp::StencilClipComposite {
+            target_id,
+            load_clear,
+            mask_index_range,
+            mask_base_vertex,
+            sdf_inst_idx,
+            aux,
+        } => {
+            let (view, pass_pipes, target_srgb) = resolve_segment_target(
+                res,
+                out_view,
+                out_format,
+                pipes,
+                *target_id,
+                use_swapchain_scene,
+            );
+            let aux_bg = resolve_aux_bg(res, ctx, *aux);
+            crate::wgpu_compositor_wave4::encode_stencil_clip_composite(
+                encoder,
+                res,
+                ctx,
+                pass_pipes,
+                view,
+                (
+                    *load_clear,
+                    mask_index_range.clone(),
+                    *mask_base_vertex,
+                    *sdf_inst_idx,
+                    aux_bg,
+                ),
+                (target_srgb, vw, vh),
+                premul_clear_color,
+            );
         }
     }
 }

@@ -48,6 +48,8 @@ pub enum PanelInputEvent {
     },
     /// Commits composed or direct printable text into the focused field.
     ImeCommit { text: String },
+    /// Updates pure-CSS `ColorSchemePreference` (`System`, `Light`, or `Dark`).
+    SetColorScheme(krui_style::ColorSchemePreference),
 }
 
 /// Real `krui-renderer` framebuffer and engine state streamed from the live app back to `krui serve --panel`.
@@ -61,7 +63,7 @@ pub struct PanelFrameState {
     pub height: u16,
     /// Active renderer backend label (`"Wgpu"` or `"TinySkia"`).
     pub backend_name: String,
-    /// Active design-system preset slug (`"fluent"`, `"material"`, `"liquid-glass"`, `"cosmic"`).
+    /// Active resolved CSS color scheme slug (`"light"` or `"dark"`).
     pub theme_code: String,
     /// Active device frame slug (`"iphone-15"`, `"pixel-8"`, `"rpi-800x480"`), if any.
     pub device_frame_code: Option<String>,

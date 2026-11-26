@@ -190,6 +190,34 @@ pub(crate) type LocalClipLayer = (LayoutRect, [f32; 4], Affine2);
 /// `(child_clip, optional_promoted_local_clip, optional_layer_bounds)` returned by [`compute_child_clip_layer`].
 pub(crate) type ChildClipLayer = (ClipState, Option<LocalClipLayer>, Option<LayoutRect>);
 
+/// Returns `true` when `inner` fits inside `outer` and misses all four rounded corner cutout squares.
+fn rect_avoids_outer_rounded_corners(
+    inner: LayoutRect,
+    outer: LayoutRect,
+    outer_radii: [f32; 4],
+) -> bool {
+    const EPS: f32 = 0.01;
+    let ir = inner.x + inner.width;
+    let ib = inner.y + inner.height;
+    let or = outer.x + outer.width;
+    let ob = outer.y + outer.height;
+    if inner.x < outer.x - EPS || inner.y < outer.y - EPS || ir > or + EPS || ib > ob + EPS {
+        return false;
+    }
+    let tl_ok = outer_radii[0] <= 0.5
+        || inner.x >= outer.x + outer_radii[0] - EPS
+        || inner.y >= outer.y + outer_radii[0] - EPS;
+    let tr_ok = outer_radii[1] <= 0.5
+        || ir <= or - outer_radii[1] + EPS
+        || inner.y >= outer.y + outer_radii[1] - EPS;
+    let br_ok =
+        outer_radii[2] <= 0.5 || ir <= or - outer_radii[2] + EPS || ib <= ob - outer_radii[2] + EPS;
+    let bl_ok = outer_radii[3] <= 0.5
+        || inner.x >= outer.x + outer_radii[3] - EPS
+        || ib <= ob - outer_radii[3] + EPS;
+    tl_ok && tr_ok && br_ok && bl_ok
+}
+
 /// Computes child clip state and promotes nested rounded or rotated rounded clips to `PushLayer.local_clip`.
 pub(crate) fn compute_child_clip_layer(
     clips_self: bool,
@@ -207,7 +235,12 @@ pub(crate) fn compute_child_clip_layer(
     let has_rot_or_skew = eff_transform.b.abs() > 1e-4 || eff_transform.c.abs() > 1e-4;
     let inner_rounded = pad_radii.iter().any(|&r| r > 0.5);
     let outer_rounded = outer_clip.rect.is_some() && outer_clip.radii.iter().any(|&r| r > 0.5);
-    if (inner_rounded && has_rot_or_skew) || (inner_rounded && outer_rounded) {
+    let overlaps_outer_corners = outer_clip
+        .rect
+        .is_none_or(|or| !rect_avoids_outer_rounded_corners(pad_aabb, or, outer_clip.radii));
+    if (inner_rounded && has_rot_or_skew)
+        || (inner_rounded && outer_rounded && overlaps_outer_corners)
+    {
         let bounds = outer_clip
             .rect
             .map_or(pad_aabb, |oc| intersect_rects(pad_aabb, oc));

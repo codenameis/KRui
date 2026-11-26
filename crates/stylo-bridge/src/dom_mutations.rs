@@ -78,6 +78,9 @@ impl StyloDom {
             StyloDomMutation::SetAttributes { node, attrs } => {
                 self.set_attributes(node, attrs, snapshots);
             }
+            StyloDomMutation::SetSingleAttribute { node, name, value } => {
+                let _ = self.set_single_attribute(node, &name, value.as_deref(), snapshots);
+            }
             StyloDomMutation::SetInlineStyle { node, css } => {
                 self.set_inline_style(node, &css, base_url, reporter);
             }
@@ -93,20 +96,21 @@ impl StyloDom {
         node: StyloNodeId,
         width_px: Option<f32>,
         height_px: Option<f32>,
-    ) {
+    ) -> bool {
         let Some(idx) = self.resolve_live(node) else {
-            return;
+            return false;
         };
         let next = (
             width_px.map(Au::from_f32_px),
             height_px.map(Au::from_f32_px),
         );
         if self.slots[idx as usize].container_size == next {
-            return;
+            return false;
         }
         self.slots[idx as usize].container_size = next;
         self.restyle_subtree_slot(idx);
         self.mark_ancestors_dirty(idx);
+        true
     }
 
     fn insert_child(
@@ -268,6 +272,50 @@ impl StyloDom {
         self.slots[idx as usize].attrs = apply_attr_list(&mut self.slots[idx as usize], attrs);
         self.mark_ancestors_dirty(idx);
         self.invalidate_nth_of_siblings(idx);
+    }
+
+    pub(crate) fn set_single_attribute(
+        &mut self,
+        node: StyloNodeId,
+        raw_name: &str,
+        value: Option<&str>,
+        snapshots: &mut SnapshotMap,
+    ) -> bool {
+        let Some(idx) = self.resolve_live(node) else {
+            return false;
+        };
+        let lower = raw_name.to_ascii_lowercase();
+        let key = LocalName::from(lower.as_str());
+        let existing = self.slots[idx as usize]
+            .attrs
+            .iter()
+            .find(|(k, _)| *k == key)
+            .map(|(_, v)| v.to_string());
+        if existing.as_deref() == value {
+            return false;
+        }
+        self.capture_snapshot(
+            idx,
+            false,
+            false,
+            true,
+            std::slice::from_ref(&key),
+            snapshots,
+        );
+        let attrs = &mut self.slots[idx as usize].attrs;
+        if let Some(val) = value {
+            let av = AttrValue::String(val.to_string());
+            if let Some((_, slot_val)) = attrs.iter_mut().find(|(k, _)| *k == key) {
+                *slot_val = av;
+            } else {
+                attrs.push((key, av));
+            }
+        } else {
+            attrs.retain(|(k, _)| *k != key);
+        }
+        self.mark_ancestors_dirty(idx);
+        self.invalidate_nth_of_siblings(idx);
+        true
     }
 
     fn set_inline_style(

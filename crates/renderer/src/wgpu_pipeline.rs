@@ -22,10 +22,12 @@ const CANVAS_VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] = [
     },
 ];
 
-/// Compiled SDF quad pipeline and `<canvas>` triangle pipeline for a specific target `TextureFormat`.
+/// Compiled SDF quad, `<canvas>`, and Wave 4 hardware stencil pipelines for a `TextureFormat`.
 pub(crate) struct FormatPipelines {
     pub sdf_pipeline: wgpu::RenderPipeline,
     pub canvas_pipeline: wgpu::RenderPipeline,
+    pub stencil_write_pipeline: wgpu::RenderPipeline,
+    pub sdf_stencil_test_pipeline: wgpu::RenderPipeline,
 }
 
 pub(crate) fn create_atlas_bind_group_layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
@@ -184,27 +186,50 @@ pub(crate) fn create_dummy_aux_bind_group(
     (tex, bg)
 }
 
+fn sdf_vbuf_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<SdfQuadInstance>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Instance,
+        attributes: &SDF_INSTANCE_ATTRIBUTES,
+    }
+}
+
+fn canvas_vbuf_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<GpuVertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &CANVAS_VERTEX_ATTRIBUTES,
+    }
+}
+
 pub(crate) fn compile_format_pipelines(
     device: &wgpu::Device,
     shader: &wgpu::ShaderModule,
     layout: &wgpu::PipelineLayout,
     target_format: wgpu::TextureFormat,
 ) -> FormatPipelines {
-    let sdf_buf_layout = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<SdfQuadInstance>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Instance,
-        attributes: &SDF_INSTANCE_ATTRIBUTES,
-    };
-    let canvas_buf_layout = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<GpuVertex>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &CANVAS_VERTEX_ATTRIBUTES,
-    };
     let (sdf_fs, canvas_fs) = if target_format.is_srgb() {
         ("fs_main_srgb", "fs_canvas_srgb")
     } else {
         ("fs_main", "fs_canvas")
     };
+    let face = |compare, pass_op| wgpu::StencilFaceState {
+        compare,
+        fail_op: wgpu::StencilOperation::Keep,
+        depth_fail_op: wgpu::StencilOperation::Keep,
+        pass_op,
+    };
+    let ds_write = depth_stencil_state(
+        face(
+            wgpu::CompareFunction::Always,
+            wgpu::StencilOperation::Replace,
+        ),
+        0xFF,
+    );
+    let ds_test = depth_stencil_state(
+        face(wgpu::CompareFunction::Equal, wgpu::StencilOperation::Keep),
+        0x00,
+    );
     FormatPipelines {
         sdf_pipeline: create_premul_pipeline(
             device,
@@ -213,7 +238,9 @@ pub(crate) fn compile_format_pipelines(
             target_format,
             "vs_main",
             sdf_fs,
-            sdf_buf_layout,
+            sdf_vbuf_layout(),
+            None,
+            wgpu::ColorWrites::ALL,
         ),
         canvas_pipeline: create_premul_pipeline(
             device,
@@ -222,11 +249,51 @@ pub(crate) fn compile_format_pipelines(
             target_format,
             "vs_canvas",
             canvas_fs,
-            canvas_buf_layout,
+            canvas_vbuf_layout(),
+            None,
+            wgpu::ColorWrites::ALL,
+        ),
+        stencil_write_pipeline: create_premul_pipeline(
+            device,
+            shader,
+            layout,
+            target_format,
+            "vs_canvas",
+            canvas_fs,
+            canvas_vbuf_layout(),
+            Some(ds_write),
+            wgpu::ColorWrites::empty(),
+        ),
+        sdf_stencil_test_pipeline: create_premul_pipeline(
+            device,
+            shader,
+            layout,
+            target_format,
+            "vs_main",
+            sdf_fs,
+            sdf_vbuf_layout(),
+            Some(ds_test),
+            wgpu::ColorWrites::ALL,
         ),
     }
 }
 
+fn depth_stencil_state(face: wgpu::StencilFaceState, write_mask: u32) -> wgpu::DepthStencilState {
+    wgpu::DepthStencilState {
+        format: wgpu::TextureFormat::Depth24PlusStencil8,
+        depth_write_enabled: false,
+        depth_compare: wgpu::CompareFunction::Always,
+        stencil: wgpu::StencilState {
+            front: face,
+            back: face,
+            read_mask: 0xFF,
+            write_mask,
+        },
+        bias: wgpu::DepthBiasState::default(),
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn create_premul_pipeline(
     device: &wgpu::Device,
     shader: &wgpu::ShaderModule,
@@ -235,11 +302,14 @@ fn create_premul_pipeline(
     vs_entry: &str,
     fs_entry: &str,
     buf_layout: wgpu::VertexBufferLayout<'_>,
+    depth_stencil: Option<wgpu::DepthStencilState>,
+    write_mask: wgpu::ColorWrites,
 ) -> wgpu::RenderPipeline {
     let color_targets = [Some(wgpu::ColorTargetState {
         format: target_format,
-        blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-        write_mask: wgpu::ColorWrites::ALL,
+        blend: (write_mask != wgpu::ColorWrites::empty())
+            .then_some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+        write_mask,
     })];
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(vs_entry),
@@ -260,7 +330,7 @@ fn create_premul_pipeline(
             topology: wgpu::PrimitiveTopology::TriangleList,
             ..Default::default()
         },
-        depth_stencil: None,
+        depth_stencil,
         multisample: wgpu::MultisampleState::default(),
         multiview: None,
         cache: None,

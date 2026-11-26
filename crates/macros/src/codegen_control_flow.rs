@@ -1,24 +1,24 @@
 //! Procedural macro code generation for `<if>`/`<else-if>`/`<else>`, `<for>`/`<empty>`,
 //! static/dynamic `class="..."` bindings, and interpolated text slots.
 
-use crate::codegen::{emit_node_construction, format_path_expr};
+use crate::codegen::format_path_expr;
 use crate::expr_vars::{
     collect_free_idents_from_node, collect_free_idents_from_template_expr, emit_clone_lets,
     emit_template_expr,
 };
+use crate::static_codegen::emit_static_subblock_body;
 use krui_compiler::{CompiledFor, CompiledIf, CompiledNode, CompiledTextPart};
 use proc_macro2::{Ident, Span, TokenStream as TokenStream2};
 use quote::{format_ident, quote};
 use std::path::Path;
 
-pub(crate) fn emit_if_construction(
+pub(crate) fn emit_if_at_anchor(
     cif: &CompiledIf,
     source_base_dir: Option<&Path>,
     span: Span,
-    parent_path_expr: &TokenStream2,
-    for_key_ident: Option<&Ident>,
-    sibling_idx: usize,
+    (parent_path_expr, for_key_ident, sibling_idx): (&TokenStream2, Option<&Ident>, usize),
     loop_vars: &[String],
+    anchor_target: Option<(TokenStream2, TokenStream2)>,
 ) -> Result<TokenStream2, syn::Error> {
     let mut cond_idents = Vec::new();
     let mut cond_arms = Vec::with_capacity(cif.branches.len());
@@ -47,6 +47,12 @@ pub(crate) fn emit_if_construction(
 
     let cond_clones = emit_clone_lets(&cond_idents);
     let branch_count = branch_closures.len();
+    let mount_call = match anchor_target {
+        Some((anc, parent_opt)) => {
+            quote! { __tree.attach_if_to_anchor(#parent_opt, #anc, __branch_fn, __branches) }
+        }
+        None => quote! { __tree.mount_if(__parent, __branch_fn, __branches) },
+    };
     Ok(quote! {{
         let __branch_fn = {
             #cond_clones
@@ -61,7 +67,7 @@ pub(crate) fn emit_if_construction(
         let mut __branches: ::std::vec::Vec<::krui::BranchMountFn> =
             ::std::vec::Vec::with_capacity(#branch_count);
         #( __branches.push(#branch_closures); )*
-        __tree.mount_if(__parent, __branch_fn, __branches)
+        #mount_call;
     }})
 }
 
@@ -97,25 +103,20 @@ fn emit_if_branch_closure(
         collect_free_idents_from_node(ch, span, loop_vars, &mut br_idents)?;
     }
     let br_clones = emit_clone_lets(&br_idents);
-    let mut child_exprs = Vec::with_capacity(children.len());
-    for (ch_idx, ch) in children.iter().enumerate() {
-        child_exprs.push(emit_node_construction(
-            ch,
-            source_base_dir,
-            span,
-            &quote! { #br_path_ident },
-            None,
-            ch_idx,
-            loop_vars,
-        )?);
-    }
+    let (sub_body, root_slots) = emit_static_subblock_body(
+        children,
+        source_base_dir,
+        span,
+        &quote! { #br_path_ident },
+        None,
+        loop_vars,
+    )?;
     Ok(quote! {{
         #br_clones
         #br_path_let
         ::std::rc::Rc::new(move |__tree: &mut ::krui::ViewTree, __parent: Option<::krui::NodeId>| {
-            let mut __ids = ::std::vec::Vec::new();
-            #( __ids.push(#child_exprs); )*
-            __ids
+            #sub_body
+            ::std::vec![#(__slots[#root_slots]),*]
         }) as ::krui::BranchMountFn
     }})
 }
@@ -141,14 +142,13 @@ fn emit_for_path_let(
     }
 }
 
-pub(crate) fn emit_for_construction(
+pub(crate) fn emit_for_at_anchor(
     cfor: &CompiledFor,
     source_base_dir: Option<&Path>,
     span: Span,
-    parent_path_expr: &TokenStream2,
-    for_key_ident: Option<&Ident>,
-    sibling_idx: usize,
+    (parent_path_expr, for_key_ident, sibling_idx): (&TokenStream2, Option<&Ident>, usize),
     loop_vars: &[String],
+    anchor_target: Option<(TokenStream2, TokenStream2)>,
 ) -> Result<TokenStream2, syn::Error> {
     let for_path_ident = format_ident!("__for_path_{sibling_idx}");
     let for_path_let = emit_for_path_let(
@@ -183,15 +183,30 @@ pub(crate) fn emit_for_construction(
         loop_vars,
     )?;
     let key_closure = emit_for_key_closure(&key_clones, &item_ident, &key_tokens);
+    let mount_call = match anchor_target {
+        Some((anc, parent_opt)) => quote! {
+            __tree.attach_for_to_anchor(
+                #parent_opt,
+                #anc,
+                { #list_clones move || ::krui::KruiIterableSource::read_krui_items(&(#list_tokens)) },
+                #key_closure,
+                #body_closure,
+                #empty_opt,
+            )
+        },
+        None => quote! {
+            __tree.mount_for(
+                __parent,
+                { #list_clones move || ::krui::KruiIterableSource::read_krui_items(&(#list_tokens)) },
+                #key_closure,
+                #body_closure,
+                #empty_opt,
+            )
+        },
+    };
     Ok(quote! {{
         #for_path_let
-        __tree.mount_for(
-            __parent,
-            { #list_clones move || ::krui::KruiIterableSource::read_krui_items(&(#list_tokens)) },
-            #key_closure,
-            #body_closure,
-            #empty_opt,
-        )
+        #mount_call;
     }})
 }
 
@@ -256,18 +271,14 @@ fn emit_for_body_closure(
         }
     }
     let body_clones = emit_clone_lets(&body_idents);
-    let mut body_exprs = Vec::with_capacity(cfor.body.len());
-    for (ch_idx, ch) in cfor.body.iter().enumerate() {
-        body_exprs.push(emit_node_construction(
-            ch,
-            source_base_dir,
-            span,
-            &quote! { #for_path_ident },
-            Some(item_for_key_ident),
-            ch_idx,
-            inner_vars,
-        )?);
-    }
+    let (sub_body, root_slots) = emit_static_subblock_body(
+        &cfor.body,
+        source_base_dir,
+        span,
+        &quote! { #for_path_ident },
+        Some(item_for_key_ident),
+        inner_vars,
+    )?;
     let item_key_let = if cfg!(feature = "preview") {
         quote! { #[allow(unused_variables)] let #item_for_key_ident = ::std::format!("{}", #key_tokens); }
     } else {
@@ -280,9 +291,8 @@ fn emit_for_body_closure(
         move |__tree: &mut ::krui::ViewTree, __parent: Option<::krui::NodeId>, #item_ident| -> ::std::vec::Vec<::krui::NodeId> {
             let _ = &#item_ident;
             #item_key_let
-            let mut __ids = ::std::vec::Vec::new();
-            #( __ids.push(#body_exprs); )*
-            __ids
+            #sub_body
+            ::std::vec![#(__slots[#root_slots]),*]
         }
     }})
 }
@@ -309,26 +319,21 @@ fn emit_for_empty_branch(
         collect_free_idents_from_node(ch, span, loop_vars, &mut empty_idents)?;
     }
     let empty_clones = emit_clone_lets(&empty_idents);
-    let mut empty_exprs = Vec::with_capacity(empty_body.len());
-    for (ch_idx, ch) in empty_body.iter().enumerate() {
-        empty_exprs.push(emit_node_construction(
-            ch,
-            source_base_dir,
-            span,
-            &quote! { #empty_path_ident },
-            None,
-            ch_idx,
-            loop_vars,
-        )?);
-    }
+    let (sub_body, root_slots) = emit_static_subblock_body(
+        empty_body,
+        source_base_dir,
+        span,
+        &quote! { #empty_path_ident },
+        None,
+        loop_vars,
+    )?;
     Ok(quote! {
         Some({
             #empty_clones
             #empty_path_let
             ::std::rc::Rc::new(move |__tree: &mut ::krui::ViewTree, __parent: Option<::krui::NodeId>| {
-                let mut __ids = ::std::vec::Vec::new();
-                #( __ids.push(#empty_exprs); )*
-                __ids
+                #sub_body
+                ::std::vec![#(__slots[#root_slots]),*]
             }) as ::krui::BranchMountFn
         })
     })

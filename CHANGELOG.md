@@ -2,6 +2,16 @@
 
 All notable changes and milestone checkpoints for **KRui** are documented in this file.
 
+## [0.3.0-dev] — 2026-11-25 (Stylo 0.22 Pure CSS Parity, M3 Gallery Motion & v3.1 Tier Coexistence)
+
+### Added & Changed
+- **Single CSS Owner (`krui-stylo-bridge`, Stylo `0.22.0` + `stylo_taffy` + Taffy `0.15.1`)**: Replaced legacy `ThemePreset`/`TokenId`/`TokenTable`/`lightningcss` with full W3C cascade (`@layer`, `@property`, `@media`, `@supports`, `@container`, `light-dark()`, CSS `filter`, `:has()`). Measured `@tailwindcss/cli@4.3.5` conformance: **229 / 229 (100.0%)** in `tests/real_css_conformance.rs`.
+- **Static Descriptor IR (`krui-core::static_ir`, `static_codegen`)**: Lowered compiled templates into `.rodata` slices (`StaticDocumentDesc` / `StaticNodeDesc`) with zero markup parser in release binaries.
+- **v3.1 Multi-Tier Platform Crates ([`ADR-0001`](docs/decisions/0001-v3-1-tier-coexistence.md))**: Added `krui-kms` (Linux DRM DumbBuffer + `DIRTYFB` + `evdev`), `krui-engine-host` (shared `wgpu::Device` / `ExternalHandle` tokio overlay host), `krui-web` (`krui-web` DOM + CSS + `<canvas>` backend), `wear_host` in `krui-android-ffi`, and `Hangul2BulsikAutomaton` for bare kiosks.
+- **Material Design 3 Component Gallery & Built-in Library (`examples/component_gallery`)**: Unified 47 built-in M3 components, 41 documented pages, 77 Material Symbols SVG components, real OS clipboard JSON export via `arboard`, `<progress>` native indicator rendering, pure-CSS 0-relayout overlay motion (`[data-open]` / `krui-ui-open-*`), and Windows release GUI subsystem (`windows_subsystem = "windows"`).
+- **VS Code Live Preview (`editors/vscode-krui`)**: Replaced removed `0x0B` theme-preset command with pure-CSS `OP_CMD_SET_COLOR_SCHEME` (`system` / `light` / `dark`), `views/icons/*.krui` watch resolution, password paste handling, prebuilt `krui` lookup, and JS↔Rust opcode parity test.
+- **Build Documentation**: Added [`docs/BUILD_OPTIONS.md`](docs/BUILD_OPTIONS.md) covering Cargo profiles (`dev`, `release`, `kiosk`), crate features, CLI flags, and environment variables.
+
 ## [0.2.0-m1] — 2026-10-24 (Milestone M1 Checkpoint: Desktop Shell, Interactive Widgets, Korean IME & Live Hot-Reload)
 
 ### Added

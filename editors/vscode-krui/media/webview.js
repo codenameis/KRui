@@ -28,6 +28,7 @@
 
   const state = {
     inspectMode: false,
+    colorSchemePref: (window.__KRUI_INIT__ && window.__KRUI_INIT__.theme) || "system",
     deviceFrame: (window.__KRUI_INIT__ && window.__KRUI_INIT__.deviceFrame) || "none",
     imeFocused: false,
     isPassword: false,
@@ -41,9 +42,7 @@
     userInteractedCanvas: false,
   };
 
-  if (window.__KRUI_INIT__ && window.__KRUI_INIT__.theme && window.__KRUI_INIT__.theme !== "auto") {
-    themeSelect.value = window.__KRUI_INIT__.theme;
-  }
+  themeSelect.value = state.colorSchemePref;
   frameSelect.value = state.deviceFrame || "none";
 
   function post(type, extra) {
@@ -155,7 +154,11 @@
   }
 
   function updateToolbarFromState(msg) {
-    if (msg.theme && themeSelect.value !== msg.theme) {
+    if (
+      state.colorSchemePref !== "system" &&
+      (msg.theme === "light" || msg.theme === "dark") &&
+      themeSelect.value !== msg.theme
+    ) {
       themeSelect.value = msg.theme;
     }
     const frameSlug = msg.deviceFrame || "none";
@@ -244,14 +247,17 @@
     }
   });
 
-  imeBridge.addEventListener("paste", (e) => {
+  function handlePaste(e) {
     e.preventDefault();
     if (!state.imeFocused && !state.isPassword) return;
     const text = (e.clipboardData && e.clipboardData.getData("text/plain")) || "";
     if (text.length > 0) {
       post("imeCommit", { text });
     }
-  });
+  }
+
+  imeBridge.addEventListener("paste", handlePaste);
+  stage.addEventListener("paste", handlePaste);
 
   function handleKeyDown(e) {
     if (e.isComposing || e.keyCode === 229) return;
@@ -337,7 +343,8 @@
   );
 
   themeSelect.addEventListener("change", () => {
-    post("setTheme", { slug: themeSelect.value });
+    state.colorSchemePref = themeSelect.value;
+    post("setColorScheme", { slug: themeSelect.value });
   });
 
   frameSelect.addEventListener("change", () => {

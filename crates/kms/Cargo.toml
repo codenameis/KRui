@@ -1,0 +1,12 @@
+[package]
+name = "krui-kms"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Linux DRM DumbBuffer + DIRTYFB union-bbox commit planner and evdev kiosk host for KRui"
+
+[dependencies]
+krui-core = { workspace = true }
+krui-renderer = { workspace = true }
+krui-signals = { workspace = true }
+krui-style = { workspace = true }

@@ -120,8 +120,8 @@ fn modern_colors_math_layer_supports_and_has_work() {
     assert!(card_paint.background_color.r > 100 && card_paint.background_color.b > 100);
     assert_eq!(eng.box_meta(card).unwrap().display, DisplayMode::Grid);
     assert!(
-        (card_paint.opacity - 1.0).abs() < 1e-4,
-        "@container must be dropped cleanly"
+        (card_paint.opacity - 0.25).abs() < 1e-4,
+        "@supports (container-type: inline-size) must apply 0.25 while unmatched @container remains inert"
     );
 
     let sticky_meta = eng.box_meta(sticky).unwrap();

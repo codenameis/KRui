@@ -18,6 +18,8 @@ mod components;
 mod control_attrs;
 mod css_collect;
 mod css_collect_scan;
+mod css_media_rewrite;
+mod css_profile_lint;
 mod element_attrs;
 pub mod expr;
 mod html;
@@ -73,6 +75,10 @@ pub enum CompileWarningKind {
     UnsupportedAtRule,
     /// Unknown lowercase HTML tag or custom web-component element mapped to a generic container.
     UnknownHtmlElement,
+    /// CSS feature falls outside GPU/CPU shader representation limits (`docs/ENGINE_LIMITS.toml`).
+    EngineRepresentationLimit,
+    /// Effect triggers an expensive offscreen blur or unsupported backdrop blur on `kiosk-spi`.
+    CpuTierHeavyEffect,
 }
 
 /// Optional compiler behavior toggles.
@@ -84,6 +90,10 @@ pub struct CompileOptions {
     pub external_stylesheet: bool,
     /// Explicitly selects minimal browser-UA baseline defaults.
     pub unstyled: bool,
+    /// Target tier profile enabling profile-specific warnings (`CpuTierHeavyEffect`).
+    pub target_profile: Option<krui_style::TierProfile>,
+    /// Preserves raw `@media (prefers-reduced-motion)` rules without attribute rewriting (`web` DOM).
+    pub preserve_raw_media_queries: bool,
 }
 
 /// Compile-time diagnostic emitted by the KRui markup/slot compiler.
@@ -184,8 +194,7 @@ pub fn compile_krui_source_strict(source: &str) -> Result<CompiledDocument, Comp
         source,
         CompileOptions {
             strict_css: true,
-            external_stylesheet: false,
-            unstyled: false,
+            ..CompileOptions::default()
         },
     )
 }
@@ -284,6 +293,8 @@ fn compile_krui_with_options_inner(
     let (inline_styles, linked_hrefs, html_text) = extract_style_and_link_blocks(source)?;
     let mut collector = CollectedStylesheets::default();
     collector.unstyled = options.unstyled;
+    collector.target_profile = options.target_profile;
+    collector.preserve_raw_media_queries = options.preserve_raw_media_queries;
     load_linked_and_companion_css(
         source,
         &linked_hrefs,
@@ -309,7 +320,7 @@ fn compile_krui_with_options_inner(
         )?;
         expander.expand_root_nodes(source, unexpanded_roots)?
     };
-    let mut warnings = Vec::new();
+    let mut warnings = std::mem::take(&mut collector.css_warnings);
     let roots = compile_expanded_roots(source, raw_nodes, &mut warnings)?;
     let unstyled = collector.unstyled;
     let (stylesheets, embedded_font_files, external_css_paths) = collector.into_stylesheets();

@@ -2,7 +2,7 @@
 //! for `TinySkiaRenderer`.
 
 use super::tiny_skia_shapes::build_skia_round_rect_4;
-use crate::sdf_instance::effective_radii_4;
+use crate::radii::effective_radii_4;
 use krui_layout::LayoutRect;
 
 const MAX_CACHED_CLIP_MASKS: usize = 16;

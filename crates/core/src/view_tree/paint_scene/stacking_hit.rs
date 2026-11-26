@@ -4,12 +4,14 @@ use super::{
     creates_stacking_context, is_flex_or_grid, is_top_layer_node,
     stacking_toplayer::collect_top_layer_entries, StackEnv,
 };
-use crate::view_tree::clip_shape::{compute_padding_box_clip, ClipState};
+use crate::view_tree::clip_path_resolve::{point_in_resolved_clip_path, resolve_clip_path};
+use crate::view_tree::clip_shape::ClipState;
 use crate::view_tree::hit_test::{
     compute_node_hit_geometry, node_matches_role, resolve_self_or_occluded_hit,
     subtree_scroll_and_clip, HitFilter, PointerHit,
 };
-use crate::view_tree::hit_test_geom::{point_inside_clip, point_inside_rounded_rect};
+use crate::view_tree::hit_test_geom::point_inside_node_clip_pad;
+use crate::view_tree::paint_scene::{paint_3d, paint_3d_hit};
 use crate::view_tree::pointer_vars::is_pseudo_node;
 use crate::view_tree::semantics::is_node_semantically_hidden;
 use crate::view_tree::{NodeId, ViewTreeInner};
@@ -22,6 +24,7 @@ struct HitScEntry {
     env: StackEnv,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum HitStep5 {
     Sc(HitScEntry),
     PositionedNonSc(NodeId, StackEnv),
@@ -44,23 +47,16 @@ pub(crate) fn hit_test_stacked_scene(
     if let Some(top_res) = hit_test_top_layer(inner, (x, y), filter) {
         return top_res;
     }
-    let root_env = StackEnv {
-        scroll: (0.0, 0.0),
-        clip: ClipState::NONE,
-        affine: Affine2::IDENTITY,
-        opacity: 1.0,
-        inherited_color: None,
-        parent_is_flex_or_grid: false,
-        any_top_layer: true,
-        any_neg_z: true,
-    };
+    let root_env = StackEnv::top_layer((0.0, 0.0), Affine2::IDENTITY);
     for &root_id in inner.roots.iter().rev() {
         if is_top_layer_node(inner, root_id) {
             continue;
         }
         match hit_test_stacking_context(inner, root_id, root_env, true, false, (x, y), filter) {
             Some(PointerHit::Matched(hit)) => return Some(hit),
-            Some(PointerHit::Occluded(_)) => return None,
+            Some(PointerHit::Occluded(occ)) => {
+                return paint_3d_hit::resolve_occluded_ancestor(inner, occ, filter)
+            }
             None => {}
         }
     }
@@ -74,43 +70,17 @@ fn hit_test_top_layer(
 ) -> Option<Option<NodeId>> {
     let entries = collect_top_layer_entries(inner);
     for entry in entries.iter().rev() {
-        let env = StackEnv {
-            scroll: entry.scroll,
-            clip: ClipState::NONE,
-            affine: entry.affine,
-            opacity: 1.0,
-            inherited_color: None,
-            parent_is_flex_or_grid: false,
-            any_top_layer: true,
-            any_neg_z: true,
-        };
+        let env = StackEnv::top_layer(entry.scroll, entry.affine);
         match hit_test_stacking_context(inner, entry.node_id, env, true, true, pt, filter) {
             Some(PointerHit::Matched(hit)) => return Some(Some(hit)),
-            Some(PointerHit::Occluded(_)) => return Some(None),
+            Some(PointerHit::Occluded(occ)) => {
+                return Some(paint_3d_hit::resolve_occluded_ancestor(inner, occ, filter));
+            }
             None if entry.is_dialog && filter != HitFilter::AnyVisible => return Some(None),
             None => {}
         }
     }
     None
-}
-
-fn point_inside_node_clip_pad(
-    pt: (f32, f32),
-    clips_self: bool,
-    world_rect: LayoutRect,
-    eff_paint: &PaintStyle,
-    layout: &krui_style::LayoutStyle,
-    eff_transform: Affine2,
-) -> bool {
-    if !clips_self {
-        return true;
-    }
-    let (pad_rect, pad_radii) = compute_padding_box_clip(world_rect, eff_paint, layout);
-    let Some(inv) = eff_transform.inverse() else {
-        return false;
-    };
-    let (lx, ly) = inv.transform_point(pt.0, pt.1);
-    point_inside_rounded_rect(lx, ly, pad_rect, pad_radii)
 }
 
 struct ScHitPrepared {
@@ -126,6 +96,36 @@ struct ScHitPrepared {
     next_clip: ClipState,
     eff_opacity: f32,
     parent_is_flex_or_grid: bool,
+    hit_3d: paint_3d_hit::ScHit3d,
+}
+
+fn compute_sc_in_child_clip(
+    pt: (f32, f32),
+    hit_3d: paint_3d_hit::ScHit3d,
+    n: &crate::view_tree::node::ElementNode,
+    world_rect: LayoutRect,
+    eff_paint: &PaintStyle,
+    eff_transform: Affine2,
+    is_scroll: bool,
+) -> bool {
+    let clips_self = is_scroll
+        || n.style.layout.effective_overflow_y() == OverflowMode::Hidden
+        || n.style.layout.effective_overflow_x() == OverflowMode::Hidden;
+    hit_3d.projected
+        || (point_inside_node_clip_pad(
+            pt,
+            clips_self,
+            world_rect,
+            eff_paint,
+            &n.style.layout,
+            eff_transform,
+        ) && eff_paint.clip_path.is_none_or(|cp| {
+            point_in_resolved_clip_path(
+                pt.0,
+                pt.1,
+                &resolve_clip_path(cp, world_rect, eff_transform),
+            )
+        }))
 }
 
 fn prepare_sc_hit_node(
@@ -147,12 +147,10 @@ fn prepare_sc_hit_node(
     {
         return None;
     }
-    let (eff_scroll, eff_clip) = if n.style.layout.position == PositionMode::Fixed {
-        ((0.0, 0.0), ClipState::NONE)
-    } else if is_top_layer {
-        (env.scroll, ClipState::NONE)
-    } else {
-        (env.scroll, env.clip)
+    let (eff_scroll, eff_clip) = match (n.style.layout.position, is_top_layer) {
+        (PositionMode::Fixed, _) => ((0.0, 0.0), ClipState::NONE),
+        (_, true) => (env.scroll, ClipState::NONE),
+        _ => (env.scroll, env.clip),
     };
     let (eff_opacity, eff_transform, world_rect, eff_paint, is_shielding) =
         compute_node_hit_geometry(
@@ -164,6 +162,10 @@ fn prepare_sc_hit_node(
             env.affine,
             env.opacity,
         )?;
+    let hit_3d = paint_3d_hit::eval_sc_hit_3d(env, &eff_paint, world_rect, eff_transform);
+    if hit_3d.culled_all {
+        return None;
+    }
     let (is_scroll, self_scroll, next_clip) = subtree_scroll_and_clip(
         inner,
         n,
@@ -173,16 +175,14 @@ fn prepare_sc_hit_node(
         eff_transform,
         eff_clip,
     );
-    let clips_self = is_scroll
-        || n.style.layout.effective_overflow_y() == OverflowMode::Hidden
-        || n.style.layout.effective_overflow_x() == OverflowMode::Hidden;
-    let in_child_clip = point_inside_node_clip_pad(
+    let in_child_clip = compute_sc_in_child_clip(
         pt,
-        clips_self,
+        hit_3d,
+        n,
         world_rect,
         &eff_paint,
-        &n.style.layout,
         eff_transform,
+        is_scroll,
     );
     Some(ScHitPrepared {
         is_scroll,
@@ -197,6 +197,7 @@ fn prepare_sc_hit_node(
         next_clip,
         eff_opacity,
         parent_is_flex_or_grid: is_flex_or_grid(n.style.layout.display),
+        hit_3d,
     })
 }
 
@@ -211,35 +212,62 @@ fn hit_test_stacking_context(
 ) -> Option<PointerHit> {
     let prep = prepare_sc_hit_node(inner, node_id, env, is_top_layer, pt)?;
     let n = inner.node(node_id)?;
+    let child_env = StackEnv {
+        scroll: (
+            prep.eff_scroll.0 + prep.self_scroll.0,
+            prep.eff_scroll.1 + prep.self_scroll.1,
+        ),
+        clip: if prep.hit_3d.projected && !prep.hit_3d.preserve_3d {
+            ClipState::NONE
+        } else {
+            prep.next_clip
+        },
+        affine: if prep.hit_3d.projected {
+            Affine2::IDENTITY
+        } else {
+            prep.eff_transform
+        },
+        opacity: prep.eff_opacity,
+        inherited_color: None,
+        parent_is_flex_or_grid: prep.parent_is_flex_or_grid,
+        parent_3d: prep.hit_3d.child_3d,
+        ..env
+    };
+    if prep.hit_3d.preserve_3d {
+        for cid in paint_3d::sorted_preserve_3d_children(inner, node_id, child_env)
+            .into_iter()
+            .rev()
+        {
+            if let Some(h) =
+                hit_test_stacking_context(inner, cid, child_env, false, false, pt, filter)
+            {
+                return Some(h);
+            }
+        }
+        let inside_self = !prep.hit_3d.self_culled
+            && paint_3d_hit::point_inside_box_with_3d(
+                pt,
+                prep.eff_clip,
+                prep.eff_transform,
+                prep.hit_3d.inv_h,
+                prep.world_rect,
+                &prep.eff_paint,
+            );
+        if inside_self && node_matches_role(inner, n, node_id, filter, prep.is_scroll) {
+            return Some(PointerHit::Matched(node_id));
+        }
+        return (inside_self && prep.is_shielding).then_some(PointerHit::Occluded(node_id));
+    }
     let mut parts = HitScParts::default();
     if prep.in_child_clip {
-        let child_env = StackEnv {
-            scroll: (
-                prep.eff_scroll.0 + prep.self_scroll.0,
-                prep.eff_scroll.1 + prep.self_scroll.1,
-            ),
-            clip: prep.next_clip,
-            affine: prep.eff_transform,
-            opacity: prep.eff_opacity,
-            inherited_color: None,
-            parent_is_flex_or_grid: prep.parent_is_flex_or_grid,
-            ..env
-        };
         collect_hit_sc_parts(inner, &n.children, child_env, &mut parts);
     }
     resolve_sc_reverse_hit(
         inner,
         node_id,
         &n.children,
-        prep.eff_clip,
-        (prep.is_scroll, prep.is_shielding, prep.in_child_clip),
-        (prep.eff_transform, prep.world_rect, &prep.eff_paint),
-        (
-            prep.eff_scroll,
-            prep.self_scroll,
-            prep.next_clip,
-            prep.eff_opacity,
-        ),
+        &prep,
+        child_env,
         &mut parts,
         pt,
         filter,
@@ -251,10 +279,8 @@ fn resolve_sc_reverse_hit(
     inner: &ViewTreeInner,
     node_id: NodeId,
     children: &[NodeId],
-    eff_clip: ClipState,
-    (is_scroll, is_shielding, in_child_clip): (bool, bool, bool),
-    (eff_transform, world_rect, eff_paint): (Affine2, LayoutRect, &PaintStyle),
-    (eff_scroll, self_scroll, next_clip, eff_opacity): ((f32, f32), (f32, f32), ClipState, f32),
+    prep: &ScHitPrepared,
+    mut child_env: StackEnv,
     parts: &mut HitScParts,
     pt: (f32, f32),
     filter: HitFilter,
@@ -281,18 +307,13 @@ fn resolve_sc_reverse_hit(
             return hit;
         }
     }
-    let child_env = StackEnv {
-        scroll: (eff_scroll.0 + self_scroll.0, eff_scroll.1 + self_scroll.1),
-        clip: next_clip,
-        affine: eff_transform,
-        opacity: eff_opacity,
-        inherited_color: None,
-        parent_is_flex_or_grid: is_flex_or_grid(n.style.layout.display),
-        any_top_layer: true,
-        any_neg_z: true,
-    };
+    (
+        child_env.hoisted_clip,
+        child_env.any_top_layer,
+        child_env.any_neg_z,
+    ) = (None, true, true);
     let mut inflow_occ = None;
-    if in_child_clip {
+    if prep.in_child_clip {
         for &cid in children.iter().rev() {
             match hit_test_non_sc_inflow_child(inner, cid, child_env, pt, filter) {
                 Some(PointerHit::Matched(m)) => return Some(PointerHit::Matched(m)),
@@ -301,8 +322,16 @@ fn resolve_sc_reverse_hit(
             }
         }
     }
-    let inside_self = point_inside_self_box(pt, eff_clip, eff_transform, world_rect, eff_paint);
-    if inside_self && node_matches_role(inner, n, node_id, filter, is_scroll) {
+    let inside_self = !prep.hit_3d.self_culled
+        && paint_3d_hit::point_inside_box_with_3d(
+            pt,
+            prep.eff_clip,
+            prep.eff_transform,
+            prep.hit_3d.inv_h,
+            prep.world_rect,
+            &prep.eff_paint,
+        );
+    if inside_self && node_matches_role(inner, n, node_id, filter, prep.is_scroll) {
         return Some(PointerHit::Matched(node_id));
     }
     if let Some(occ) = inflow_occ {
@@ -316,29 +345,7 @@ fn resolve_sc_reverse_hit(
             return Some(h);
         }
     }
-    (inside_self && is_shielding).then_some(PointerHit::Occluded(node_id))
-}
-
-fn point_inside_self_box(
-    pt: (f32, f32),
-    clip: ClipState,
-    transform: Affine2,
-    world_rect: LayoutRect,
-    eff_paint: &PaintStyle,
-) -> bool {
-    if !point_inside_clip(pt.0, pt.1, clip) {
-        return false;
-    }
-    let Some(inv) = transform.inverse() else {
-        return false;
-    };
-    let (lx, ly) = inv.transform_point(pt.0, pt.1);
-    point_inside_rounded_rect(
-        lx,
-        ly,
-        world_rect,
-        eff_paint.effective_corner_radii().to_array(),
-    )
+    (inside_self && prep.is_shielding).then_some(PointerHit::Occluded(node_id))
 }
 
 fn collect_hit_sc_parts(
@@ -497,7 +504,10 @@ fn hit_test_non_sc_inflow_node(
         || n.style.layout.effective_overflow_y() == OverflowMode::Hidden
         || n.style.layout.effective_overflow_x() == OverflowMode::Hidden;
     let in_child_clip =
-        point_inside_node_clip_pad(pt, clips_self, w_rect, &eff_paint, &n.style.layout, eff_tf);
+        point_inside_node_clip_pad(pt, clips_self, w_rect, &eff_paint, &n.style.layout, eff_tf)
+            && eff_paint.clip_path.is_none_or(|cp| {
+                point_in_resolved_clip_path(pt.0, pt.1, &resolve_clip_path(cp, w_rect, eff_tf))
+            });
     let child_occ = if in_child_clip {
         let next_env = StackEnv {
             scroll: (env.scroll.0 + self_scroll.0, env.scroll.1 + self_scroll.1),

@@ -1,0 +1,43 @@
+<div class="gallery-col">
+    <Card variant="outlined" title="Canva-Style 2D Shape Studio (&lt;canvas&gt;)" subtitle="도형 추가 · 클릭 선택 · 드래그 이동 · 우하단 핸들 크기 조절 · 앞/뒤 정렬">
+        <div class="gallery-col">
+            <div class="dev-canvas-toolbar">
+                <button id="canvas-add-rect" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.add_shape(0)}">+ 사각형</button>
+                <button id="canvas-add-card" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.add_shape(1)}">+ 포스터 카드</button>
+                <button id="canvas-add-circle" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.add_shape(2)}">+ 원</button>
+                <button id="canvas-add-tri" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.add_shape(3)}">+ 삼각형</button>
+                <button id="canvas-add-star" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.add_shape(4)}">+ 별</button>
+                <button id="canvas-add-badge" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.add_shape(5)}">+ 배지</button>
+            </div>
+
+            <div class="dev-canvas-toolbar">
+                <span class="m3-spec-val">색상:</span>
+                <button id="canvas-color-0" class="dev-color-dot dev-swatch-0 dev-swatch-active-{controller.w4.studio.canvas.active_color_idx == 0}" onclick="{controller.w4.studio.canvas.set_selected_color(0)}"></button>
+                <button id="canvas-color-1" class="dev-color-dot dev-swatch-1 dev-swatch-active-{controller.w4.studio.canvas.active_color_idx == 1}" onclick="{controller.w4.studio.canvas.set_selected_color(1)}"></button>
+                <button id="canvas-color-2" class="dev-color-dot dev-swatch-2 dev-swatch-active-{controller.w4.studio.canvas.active_color_idx == 2}" onclick="{controller.w4.studio.canvas.set_selected_color(2)}"></button>
+                <button id="canvas-color-3" class="dev-color-dot dev-swatch-3 dev-swatch-active-{controller.w4.studio.canvas.active_color_idx == 3}" onclick="{controller.w4.studio.canvas.set_selected_color(3)}"></button>
+                <button id="canvas-color-4" class="dev-color-dot dev-swatch-4 dev-swatch-active-{controller.w4.studio.canvas.active_color_idx == 4}" onclick="{controller.w4.studio.canvas.set_selected_color(4)}"></button>
+                <button id="canvas-color-5" class="dev-color-dot dev-swatch-5 dev-swatch-active-{controller.w4.studio.canvas.active_color_idx == 5}" onclick="{controller.w4.studio.canvas.set_selected_color(5)}"></button>
+                <button id="canvas-front" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.bring_to_front()}">맨 앞으로</button>
+                <button id="canvas-back" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.send_to_back()}">맨 뒤로</button>
+                <button id="canvas-dup" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.duplicate_selected()}">복제</button>
+                <button id="canvas-del" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.delete_selected()}">삭제</button>
+                <button id="canvas-reset" class="m3-subroute-pill" onclick="{controller.w4.studio.canvas.reset_board()}">초기화</button>
+            </div>
+
+            <canvas
+                id="studio-2d-canvas"
+                class="dev-canvas-board"
+                draw="{controller.w4.studio.canvas.canvas_draw}"
+                onpointerdown="{controller.w4.studio.canvas.on_pointer_down}"
+                onpointermove="{controller.w4.studio.canvas.on_pointer_move}"
+                onpointerup="{controller.w4.studio.canvas.on_pointer_up}"
+            />
+
+            <div class="dev-canvas-statusbar">
+                <span id="studio-2d-status" class="m3-spec-token">{controller.w4.studio.canvas.status_label}</span>
+                <span id="studio-2d-count" class="m3-spec-badge">{controller.w4.studio.canvas.shape_count_label}</span>
+            </div>
+        </div>
+    </Card>
+</div>

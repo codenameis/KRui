@@ -330,9 +330,20 @@ fn append_visible_subtree_text(inner: &ViewTreeInner, nid: NodeId, out: &mut Str
 }
 
 impl ViewTree {
-    /// Returns the appropriate OS cursor shape (`Default`, `Pointer`, `Text`) for the hovered element.
+    /// Returns the appropriate OS cursor shape for the captured or hovered element.
     pub fn hovered_cursor_kind(&self) -> HoveredCursorKind {
-        let inner = self.inner.borrow();
+        let mut inner = self.inner.borrow_mut();
+        if inner.stylo_dirty {
+            crate::view_tree::sync::flush_pending_restyle(&mut inner);
+        }
+        if let Some(cap_id) = inner.interaction.pointer_capture {
+            if let Some(node) = inner.node(cap_id).filter(|n| !n.is_disabled()) {
+                if let Some(explicit) = HoveredCursorKind::from_css_cursor(node.style.paint.cursor)
+                {
+                    return explicit;
+                }
+            }
+        }
         if inner
             .overlay
             .select_popup
@@ -348,7 +359,14 @@ impl ViewTree {
             return HoveredCursorKind::Default;
         };
         if node.is_disabled() {
-            return HoveredCursorKind::Default;
+            return if node.style.paint.cursor == krui_style::CursorStyle::NotAllowed {
+                HoveredCursorKind::NotAllowed
+            } else {
+                HoveredCursorKind::Default
+            };
+        }
+        if let Some(explicit) = HoveredCursorKind::from_css_cursor(node.style.paint.cursor) {
+            return explicit;
         }
         let has_click = inner.listeners(hid).is_some_and(|l| l.on_click.is_some());
         let has_label_for = inner.control(hid).is_some_and(|c| c.label_for.is_some());

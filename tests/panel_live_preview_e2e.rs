@@ -10,7 +10,8 @@ use krui::dev_hot_reload::{
 use krui::*;
 use krui_cli::panel_codec::{
     OP_CMD_BUFFER_UPDATE, OP_CMD_IME_COMMIT, OP_CMD_IME_PREEDIT, OP_CMD_INSPECT_CLICK,
-    OP_CMD_POINTER_DOWN, OP_CMD_POINTER_UP, OP_CMD_SHUTDOWN, OP_SERVER_JSON, OP_SERVER_KRFR,
+    OP_CMD_POINTER_DOWN, OP_CMD_POINTER_UP, OP_CMD_SET_COLOR_SCHEME, OP_CMD_SHUTDOWN,
+    OP_SERVER_JSON, OP_SERVER_KRFR,
 };
 use krui_cli::{
     parse_cli_args, preview_binary_path_for_opts, resolve_effective_target, PanelBridgeServer,
@@ -458,4 +459,53 @@ fn verify_virtual_reload_error_and_shutdown(
         br.should_exit()
     });
     assert!(bridge.should_exit());
+}
+
+#[test]
+fn panel_color_scheme_command_updates_scheme_without_disconnect() {
+    let mut h = setup_panel_e2e();
+    pump_until(
+        &mut h.driver,
+        &mut h.bridge,
+        &mut h.session,
+        &mut h.editor,
+        |_, ed, _, _| ed.jsons.iter().any(|j| j.contains(r#""kind":"stateSync""#)),
+    );
+
+    h.editor.jsons.clear();
+    h.editor.send_cmd(OP_CMD_SET_COLOR_SCHEME, b"dark");
+    pump_until(
+        &mut h.driver,
+        &mut h.bridge,
+        &mut h.session,
+        &mut h.editor,
+        |_, ed, _, _| ed.jsons.iter().any(|j| j.contains(r#""theme":"dark""#)),
+    );
+    assert!(!h.bridge.should_exit());
+
+    h.editor.jsons.clear();
+    h.editor.send_cmd(OP_CMD_SET_COLOR_SCHEME, b"light");
+    pump_until(
+        &mut h.driver,
+        &mut h.bridge,
+        &mut h.session,
+        &mut h.editor,
+        |_, ed, _, _| ed.jsons.iter().any(|j| j.contains(r#""theme":"light""#)),
+    );
+
+    // Unknown/legacy slugs must be ignored cleanly without dropping the TCP session.
+    h.editor.send_cmd(OP_CMD_SET_COLOR_SCHEME, b"fluent");
+    let _ = h.driver.step();
+    let _ = h.bridge.step(&mut h.session);
+    assert!(!h.bridge.should_exit());
+
+    h.editor.send_cmd(OP_CMD_SHUTDOWN, &[]);
+    pump_until(
+        &mut h.driver,
+        &mut h.bridge,
+        &mut h.session,
+        &mut h.editor,
+        |_, _, br, _| br.should_exit(),
+    );
+    assert!(h.bridge.should_exit());
 }

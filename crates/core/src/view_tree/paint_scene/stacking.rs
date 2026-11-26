@@ -2,6 +2,7 @@
 //! Reverse hit-testing lives in `stacking_hit.rs`; Top-Layer overlays in `stacking_toplayer.rs`;
 //! deferred negative `z-index` collection in `stacking_defer.rs`; direct emission in `stacking_direct.rs`.
 
+use super::paint_3d::{self, Sc3dEnter};
 #[path = "stacking_defer.rs"]
 mod stacking_defer;
 #[path = "stacking_direct.rs"]
@@ -16,27 +17,81 @@ use stacking_toplayer::emit_top_layer_pass;
 pub(crate) use stacking_toplayer::is_top_layer_node;
 
 use crate::scene::{DrawPrimitive, PaintScene};
-use crate::view_tree::clip_shape::{compute_child_clip_layer, ClipState};
+use crate::view_tree::clip_path_resolve::resolve_clip_path;
+use crate::view_tree::clip_shape::{compute_child_clip_layer, ClipState, LocalClipLayer};
 use crate::view_tree::node::ElementNode;
 use crate::view_tree::paint::{
-    emit_backdrop_blur_prelayer, emit_node_self_box_primitives, emit_node_self_content_primitives,
-    emit_scrollbar_thumb, node_needs_group_opacity, prepare_node_paint_frame, NodePaintFrame,
+    emit_node_self_box_primitives, emit_node_self_content_primitives, emit_scrollbar_thumb,
+    prepare_node_paint_frame, NodePaintFrame,
 };
 use crate::view_tree::semantics::is_node_semantically_hidden;
 use crate::view_tree::{NodeId, ViewTreeInner};
 use krui_a11y::SemanticRole;
-use krui_style::{Affine2, Color, DisplayMode, PaintStyle, PositionMode, Transform2D};
+use krui_layout::LayoutRect;
+use krui_style::{
+    Affine2, Color, CssFilterEffect, DisplayMode, Mat4, PaintStyle, PositionMode, Transform2D,
+};
+
+#[derive(Clone, Copy)]
+pub(super) struct HoistedClipWrap {
+    pub(super) bounds: LayoutRect,
+    pub(super) outer_clip: ClipState,
+    pub(super) local_clip: LocalClipLayer,
+}
 
 #[derive(Clone, Copy)]
 pub(super) struct StackEnv {
     pub(super) scroll: (f32, f32),
     pub(super) clip: ClipState,
+    pub(super) hoisted_clip: Option<HoistedClipWrap>,
     pub(super) affine: Affine2,
     pub(super) opacity: f32,
     pub(super) inherited_color: Option<Color>,
     pub(super) parent_is_flex_or_grid: bool,
     pub(super) any_top_layer: bool,
     pub(super) any_neg_z: bool,
+    pub(super) parent_3d: Option<Mat4>,
+}
+
+impl StackEnv {
+    pub(super) fn top_layer(scroll: (f32, f32), affine: Affine2) -> Self {
+        Self {
+            scroll,
+            clip: ClipState::NONE,
+            hoisted_clip: None,
+            affine,
+            opacity: 1.0,
+            inherited_color: None,
+            parent_is_flex_or_grid: false,
+            any_top_layer: true,
+            any_neg_z: true,
+            parent_3d: None,
+        }
+    }
+}
+
+pub(super) fn emit_with_hoisted_clip(
+    wrap: Option<HoistedClipWrap>,
+    scene: &mut PaintScene,
+    emit: impl FnOnce(&mut PaintScene),
+) {
+    if let Some(w) = wrap {
+        scene.primitives.push(DrawPrimitive::PushLayer {
+            bounds: w.bounds,
+            clip: w.outer_clip.rect,
+            clip_radius: w.outer_clip.max_radius(),
+            clip_radii: w.outer_clip.radii,
+            local_clip: Some(w.local_clip),
+            clip_path: None,
+            perspective: None,
+            opacity: 1.0,
+            filter: CssFilterEffect::IDENTITY,
+        });
+        emit(scene);
+        scene.primitives.push(DrawPrimitive::PopLayer);
+    } else {
+        emit(scene);
+    }
 }
 
 pub(super) fn creates_stacking_context(
@@ -54,7 +109,11 @@ pub(super) fn creates_stacking_context(
         || (parent_is_flex_or_grid && l.has_z_index)
         || eff_paint.opacity < 0.999
         || eff_paint.has_non_identity_transform()
+        || eff_paint.standalone_transform.perspective_px.is_some()
+        || eff_paint.standalone_transform.preserve_3d
+        || eff_paint.clip_path.is_some()
         || eff_paint.backdrop_blur_px > 0.0
+        || !eff_paint.filter.is_identity()
 }
 
 pub(super) fn is_flex_or_grid(d: DisplayMode) -> bool {
@@ -110,12 +169,14 @@ pub(crate) fn emit_stacked_paint_scene(
     let root_env = StackEnv {
         scroll: (0.0, 0.0),
         clip: ClipState::NONE,
+        hoisted_clip: None,
         affine: Affine2::IDENTITY,
         opacity: 1.0,
         inherited_color: None,
         parent_is_flex_or_grid: false,
         any_top_layer: flags.any_top_layer,
         any_neg_z: flags.any_neg_z,
+        parent_3d: None,
     };
     let root_len = inner.roots.len();
     for i in 0..root_len {
@@ -162,7 +223,8 @@ fn sc_has_negative_z_descendant(inner: &ViewTreeInner, parent_id: NodeId, is_fg:
             || (is_fg && l.has_z_index)
             || n.style.paint.opacity < 0.999
             || n.style.paint.transform != Transform2D::IDENTITY
-            || n.style.paint.backdrop_blur_px > 0.0;
+            || n.style.paint.backdrop_blur_px > 0.0
+            || !n.style.paint.filter.is_identity();
         if !stops_here
             && !n.children.is_empty()
             && sc_has_negative_z_descendant(inner, cid, is_flex_or_grid(l.display))
@@ -194,24 +256,17 @@ pub(super) fn emit_stacking_context(
     ) else {
         return;
     };
-    let use_opacity_layer = node_needs_group_opacity(inner, &frame);
-    if use_opacity_layer {
-        emit_backdrop_blur_prelayer(&mut frame, scene);
-        let bounds = if frame.draw_rect.width > 0.5 && frame.draw_rect.height > 0.5 {
-            frame.draw_rect
-        } else {
-            frame.clip.rect.unwrap_or(frame.draw_rect)
-        };
-        scene.primitives.push(DrawPrimitive::PushLayer {
-            bounds,
-            clip: frame.clip.rect,
-            clip_radius: frame.clip.max_radius(),
-            clip_radii: frame.clip.radii,
-            local_clip: None,
-            opacity: frame.effective_opacity,
-        });
-        frame.effective_opacity = 1.0;
-    }
+    let resolved_clip_path = frame
+        .effective_paint
+        .clip_path
+        .map(|cp| resolve_clip_path(cp, frame.world_rect, frame.effective_transform));
+    let Sc3dEnter::Continue {
+        child_3d,
+        pushed_layer,
+    } = paint_3d::enter_stacking_context_3d(inner, &mut frame, env, resolved_clip_path, scene)
+    else {
+        return;
+    };
     if frame.self_visible {
         emit_node_self_box_primitives(&frame, scene);
     }
@@ -220,9 +275,9 @@ pub(super) fn emit_stacking_context(
             emit_node_self_content_primitives(inner, &frame, scene);
         }
     } else {
-        emit_sc_clipped_body(inner, &frame, env, scene);
+        emit_sc_clipped_body(inner, &frame, env, child_3d, scene);
     }
-    if use_opacity_layer {
+    if pushed_layer {
         scene.primitives.push(DrawPrimitive::PopLayer);
     }
 }
@@ -231,6 +286,7 @@ fn emit_sc_clipped_body(
     inner: &mut ViewTreeInner,
     frame: &NodePaintFrame,
     env: StackEnv,
+    child_3d: Option<Mat4>,
     scene: &mut PaintScene,
 ) {
     let (is_scroll, clips_self) = node_is_scroll_and_clip(&frame.layout, frame.role);
@@ -257,18 +313,23 @@ fn emit_sc_clipped_body(
             clip_radius: frame.clip.max_radius(),
             clip_radii: frame.clip.radii,
             local_clip: Some(lc),
+            clip_path: None,
+            perspective: None,
             opacity: 1.0,
+            filter: krui_style::CssFilterEffect::IDENTITY,
         });
     }
     let child_env = StackEnv {
         scroll: next_scroll,
         clip: next_clip,
+        hoisted_clip: None,
         affine: frame.effective_transform,
         opacity: frame.effective_opacity,
         inherited_color: frame.next_inherited_text_color,
         parent_is_flex_or_grid: is_flex_or_grid(frame.layout.display),
         any_top_layer: env.any_top_layer,
         any_neg_z: env.any_neg_z,
+        parent_3d: child_3d,
     };
     if env.any_neg_z
         && sc_has_negative_z_descendant(inner, frame.node_id, child_env.parent_is_flex_or_grid)

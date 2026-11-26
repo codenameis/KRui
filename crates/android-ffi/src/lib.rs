@@ -7,6 +7,7 @@ pub mod ime_bridge;
 pub mod jni_entrypoints;
 pub mod preview_client;
 pub mod session;
+pub mod wear_host;
 
 pub use ime_bridge::{
     composing_cursor_bytes, compute_utf8_delete_surrounding, editor_action_from_android_code,
@@ -17,3 +18,4 @@ pub use session::{
     create_registered_session, destroy_registered_session, register_session,
     with_registered_session, AndroidSession,
 };
+pub use wear_host::{WearDisplayMode, WearHostConfig, WearHostState, WearRenderBackend};

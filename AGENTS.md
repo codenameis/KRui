@@ -14,7 +14,7 @@ Slint를 벤치마크 삼되, 웹 개발자와 Rust 입문자가 **바로 읽고
 | 3 | **라이브 미리보기**: 앱 개발 중 `.krui`/`.css`를 저장하면 앱 상태를 유지한 채 즉시 반영됩니다. Dioxus/Flutter처럼 `krui serve`로 데스크탑, 디바이스 프레임, Android 에뮬레이터/iOS 시뮬레이터에서 실행 중인 앱에 핫리로드합니다. |
 | 4 | **어디서나 동작**: 데스크탑(`Win/Mac/Linux` + 멀티윈도우·터치) → 모바일(`Android` `krui-android-ffi` / `iOS` 예정). 게임 엔진·영상 통합은 `ExternalTexture` 슬롯으로 연결합니다. |
 | 5 | **고성능**: 정적 UI와 비활성 창은 유휴 시 0% CPU, 컴포지터 애니메이션(transform/opacity/색상 등)은 레이아웃 없이 동작하며 레이아웃 속성 애니메이션만 변경 노드를 국소 dirty 처리합니다. |
-| 6 | **순수 CSS 호환(목표 100%) & 헤드리스 위젯**: `krui-stylo-bridge`(`stylo 0.22.0` + `stylo_taffy` + `taffy 0.15.1`) 단일 CSS 소유 계층으로 외부 순수 `.css` 프레임워크 무수정 적용을 목표로 합니다(현재 `@tailwindcss/cli@4.3.5` 실제 출력 속성 일치율 **226/229 [98.7%]**, 측정일 `2026-11-23`, `tests/real_css_conformance.rs`). 헤드리스 동작 코어(`unstyled` 옵션 포함) 위에 순수 CSS 테마/디자인 시스템을 결합합니다. |
+| 6 | **순수 CSS 호환(목표 100%) & 헤드리스 위젯**: `krui-stylo-bridge`(`stylo 0.22.0` + `stylo_taffy` + `taffy 0.15.1`) 단일 CSS 소유 계층으로 외부 순수 `.css` 프레임워크 무수정 적용을 목표로 합니다(현재 `@tailwindcss/cli@4.3.5` 실제 출력 속성 일치율 **229/229 [100.0%]**, 측정일 `2026-11-25`, `tests/real_css_conformance.rs`). 헤드리스 동작 코어(`unstyled` 옵션 포함) 위에 순수 CSS 테마/디자인 시스템을 결합합니다. |
 | 7 | **통합 반응형 + 비동기**: 표준 반응형 상태(`Signal`/`Computed`/`Effect` + 일반 메서드 호출 + 내장 `tokio` 비동기)를 기본으로 하고, `Store<State, Msg>` 등 아키텍처 패턴은 `krui-patterns`로 제공합니다. |
 
 ---
@@ -30,26 +30,26 @@ Slint를 벤치마크 삼되, 웹 개발자와 Rust 입문자가 **바로 읽고
      - 안전한 대안(안정적인 의존성의 safe API, 코드 생성 도구)을 먼저 검토하고, 검토 결과를 PR에 적습니다.
    - `krui-core`, `krui-signals`, `krui-compiler`, `krui-macros`, `krui-patterns`, 렌더러에는 예외를 두지 않습니다.
 2. **릴리즈 빌드에는 마크업/미리보기 파서가 없습니다.**
-   - `.krui` 마크업/템플릿은 `krui!`/`include_krui!` 매크로가 컴파일 타임에 슬림 DOM IR(`CompiledDocument`) 기반 Rust 코드로 변환합니다.
+   - `.krui` 마크업/템플릿은 `krui!`/`include_krui!` 매크로가 컴파일 타임에 정적 UI 디스크립터 슬라이스(`StaticDocumentDesc`/`StaticNodeDesc` in `krui-core::static_ir`)와 단일 바인딩 디스패치로 변환합니다. (외부 테마 교체용 `.kruitheme` 고정 헤더·슬라이스 경계 검증 테이블 로더만 예외로 허용하며, 마크업 파서가 아님을 명시합니다.)
    - 미리보기용 인터프리터는 `preview` feature(기본 off, dev 전용)에서만 컴파일됩니다.
    - 매크로 코드 생성과 미리보기 인터프리터는 **같은 IR(`krui-compiler`의 `CompiledDocument`)** 을 사용합니다. 미리보기 결과와 릴리즈 결과가 달라지면 버그입니다.
 3. **단일 CSS 소유 계층(`krui-stylo-bridge`) & W3C 전방 호환 CSS 파싱**
    - HTML 마크업·제어흐름 태그와 `{...}` 템플릿 바인딩 오류는 `CompileError`(파일·줄·열 포함, 프로시저 매크로는 패닉 없이 `syn::Error`)로 처리합니다.
-   - 모든 CSS 파싱·캐스케이드·커스텀 프로퍼티(`@property`, `light-dark()`, `@layer`, `@media`)·애니메이션 계산은 단일 크레이트 [`crates/stylo-bridge`](crates/stylo-bridge/src/lib.rs)(`stylo 0.22.0` + `stylo_taffy` + `taffy 0.15.1`)가 전담합니다. 현재 `@tailwindcss/cli@4.3.5` 실제 출력 속성 일치율은 **226/229 [98.7%]**(측정일 `2026-11-23`)입니다.
+   - 모든 CSS 파싱·캐스케이드·커스텀 프로퍼티(`@property`, `light-dark()`, `@layer`, `@media`)·애니메이션 계산은 단일 크레이트 [`crates/stylo-bridge`](crates/stylo-bridge/src/lib.rs)(`stylo 0.22.0` + `stylo_taffy` + `taffy 0.15.1`)가 전담합니다. 현재 `@tailwindcss/cli@4.3.5` 실제 출력 속성 일치율은 **229/229 [100.0%]**(측정일 `2026-11-25`)입니다.
    - 미지원 선언·값·`@container` 등은 Stylo W3C 선언 무시(drop) 정책과 `Diagnostic`으로 비차단 처리해 같은 블록 내 선행 유효 폴백 선언을 보존합니다.
    - `ThemePreset`·`TokenId`·`TokenTable` 및 `lightningcss`는 완전히 제거되었으며 `examples/`에는 `component_gallery`만 유지합니다.
 4. **매크로 위생**
    - 매크로는 파일을 쓰지 않습니다(`std::fs::write` 금지).
    - 읽은 모든 외부 파일(`.krui`, `.css`)은 `include_bytes!`로 Cargo가 변경을 추적하게 합니다.
 5. **2계층 Fast-Path 불변식**
-   - **1계층(컴포지터 Fast-Path)**: 명시적 Fast-Path 속성은 컴파일 타임에 확정합니다. `transform`(2D 및 wgpu 4×4 3D 행렬 변환, `preserve-3d` 폴리곤 교차 분할만 제외), `opacity`, 색상, 4모서리 `border-radius`, 4변 `border`, 그라데이션, 다중/내부(`inset`) `box-shadow`는 레이아웃(Taffy) 없이 WGSL SDF 셰이더 + 인스턴스 버퍼 단일 배칭으로 처리하며, `backdrop-filter`·그룹 `opacity` 서브트리(`filter`·복합 `clip-path`는 추후 오프스크린/스텐실 백로그, 현행 선언 drop)만 오프스크린 렌더 타깃으로 분리합니다(기본 테마·벤치마크는 Fast-Path만 사용).
+   - **1계층(컴포지터 Fast-Path)**: 명시적 Fast-Path 속성은 컴파일 타임에 확정합니다. `transform`(2D 및 4×4 행렬의 `z=0` 아핀 투영; 원근 3D 투영은 `docs/ENGINE_LIMITS.toml` 백로그로 추적), `opacity`, 색상, 4모서리 `border-radius`, 4변 `border`, 그라데이션(선형 3-stop / 방사형 2-stop; 초과 정지점 및 `conic-gradient`는 경고+백로그), 다중/내부(`inset`) `box-shadow`는 레이아웃(Taffy) 없이 WGSL SDF 셰이더 + 인스턴스 버퍼 단일 배칭으로 처리하며, `backdrop-filter`·CSS `filter`·그룹 `opacity` 서브트리(복합 `clip-path`는 추후 스텐실 백로그)만 오프스크린 렌더 타깃으로 분리합니다(기본 테마·벤치마크는 Fast-Path만 사용).
    - **2계층(레이아웃 애니메이션 트랙)**: `@keyframes`와 `transition`에서 `width`, `height`, `padding` 등 레이아웃 속성도 허용하되, `transition: all`(속성 생략 단축 표기 포함)과 `var()` 변수는 **런타임에 실제 변경된 속성이 레이아웃 속성일 때만** 해당 노드를 Taffy dirty 처리하고 비차단 `CompileWarning`(스타일시트별 경고 억제 지원)을 남깁니다. 핫패치로 CSS가 재컴파일될 때 진행 중인 레이아웃 애니메이션 타깃을 즉시 재평가해 Taffy dirty 상태를 동기화합니다.
    - 텍스트, 폰트, 정적 크기 변경은 **반드시** 해당 노드를 레이아웃 dirty로 표시합니다. `transform`은 노드별 행렬(기본 원점 = 박스 중심)로 부모→자식 순서로 누적하고, 렌더링과 히트테스트가 같은 행렬을 씁니다.
 6. **수명 관리**: 노드, Effect, 애니메이션 드라이버는 소유 스코프가 해제되면 함께 해제됩니다. 해제된 `NodeId`(generational)에 접근하면 무시되거나 `None`을 반환하고, 패닉하지 않습니다.
 7. **플랫폼 분리**
    - `krui-core`(ViewTree, 레이아웃, 입력 처리, PaintScene)는 winit/wgpu에 의존하지 않습니다.
-   - 윈도우와 이벤트 루프는 `krui-winit`, Android 호스트 브리지는 `krui-android-ffi`, GPU/SW 렌더러는 `krui-renderer`가 담당합니다. 게임 엔진이나 외부 호스트는 core에 이벤트를 주입하고 `PaintScene`/`ExternalTexture` 또는 오프스크린 wgpu 텍스처로 결과를 받습니다.
-   - 비동기 런타임(`tokio`)은 `krui-signals`에 내장하며, 모든 백그라운드 태스크·스트림은 소유 스코프 해제 또는 패닉/취소 시 자동 정리되는 `Drop` 가드를 둡니다.
+   - 윈도우와 이벤트 루프는 `krui-winit`, 리눅스 키오스크 DRM/evdev 호스트는 `krui-kms`, 자체 3D 엔진 인패스 호스트는 `krui-engine-host`, 브라우저 DOM 호스트는 `krui-web`, Android/Wear OS 호스트 브리지는 `krui-android-ffi`, GPU/SW 렌더러는 `krui-renderer`(`gpu` feature 선택)가 담당합니다. 게임 엔진이나 외부 호스트는 core에 이벤트를 주입하고 `PaintScene`/`DynamicSlotBuffer`/`ExternalTexture` 또는 오프스크린 wgpu 텍스처로 결과를 받습니다.
+   - 비동기 런타임(`tokio`)은 `krui-signals`에 내장하되 `AsyncRuntimeMode`(`MultiThread` / `SingleWorkerKiosk` / `ExternalHandle` 주입)로 제어하며, 모든 백그라운드 태스크·스트림은 소유 스코프 해제 또는 패닉/취소 시 자동 정리되는 `Drop` 가드를 둡니다.
 8. **UI 스레드 블로킹 금지**: 서브프로세스(powershell 등) 실행이나 동기 I/O를 하지 않습니다. 클립보드는 `arboard` 같은 네이티브 API를 씁니다.
 9. **가짜 기능 금지**: 동작하지 않는 스텁, "암호화"라고 부르는 난독화, 측정하지 않은 성능 수치를 문서나 테스트에 쓰지 않습니다. "완료"라고 보고하려면 **그 기능이 실패하면 함께 실패하는 테스트**가 있어야 합니다.
 10. **순수 CSS 전담 & 헤드리스 위젯 코어 원칙**
@@ -57,8 +57,8 @@ Slint를 벤치마크 삼되, 웹 개발자와 Rust 입문자가 **바로 읽고
     - 다크/라이트 모드와 테마 토큰은 전적으로 순수 CSS(`@media (prefers-color-scheme)`, `light-dark()`, `@layer`, `@property`, 런타임 DOM 상속 `--*` 변수)가 담당하며, Rust API는 윈도우/앱 단위의 `@media (prefers-color-scheme)` 평가 모드(`System`/`Light`/`Dark`) 오버라이드 인터페이스만 제공합니다.
     - `@font-face`와 `background`/`mask`의 `url(...)`은 로컬 상대 경로·임베디드 번들·인라인 `data:` URI(Base64/UTF-8 SVG)·SVG 래스터라이즈·`ttf/otf/woff2` 디코딩·`local()` 시스템 폰트를 기본 지원합니다. 코어에 HTTP/TLS 의존성을 강제하지 않도록 원격 `http(s)://` 에셋은 비차단 경고 후 다음 폴백으로 넘기되 호스트 주입용 비동기 `AssetLoader` 트레이트 인터페이스만 열어둡니다.
 11. **IME 구조**
-    - `krui-core`가 플랫폼 중립 `EditingState { text, selection, composing }`와 IME 상태 기계를 가집니다. 플랫폼 어댑터(winit, `krui-android-ffi`, iOS, 임베드 호스트)는 `TextInputHost` 트레이트로 연결합니다.
-    - 조합(composing)은 OS가 소유합니다. 조합 중인 입력은 **조합이 끝날 때까지 시작한 노드(ime_target)로** 이벤트를 받습니다. 포커스가 바뀌어도 조합 텍스트를 잃지 않습니다. 데스크탑 비밀번호 필드는 OS IME 조합을 비활성화하고, 모바일은 `InputKind::Password` 소프트 키보드를 씁니다.
+    - `krui-core`가 플랫폼 중립 `EditingState { text, selection, composing }`와 IME 상태 기계, 리눅스 키오스크용 내장 두벌식 한글 오토마타(`Hangul2BulsikAutomaton`)를 가집니다. 플랫폼 어댑터(winit, `krui-kms`, `krui-android-ffi`, iOS, 임베드 호스트)는 `TextInputHost` 트레이트로 연결합니다.
+    - 조합(composing)은 OS가 소유합니다(단, OS IME가 없는 `kiosk-spi` 키오스크는 KRui 내장 오토마타+OSK, 후순위 `watch-apple` 타깃은 Swift 시스템 받아쓰기/손글씨 위임 예외). 조합 중인 입력은 **조합이 끝날 때까지 시작한 노드(ime_target)로** 이벤트를 받습니다. 포커스가 바뀌어도 조합 텍스트를 잃지 않습니다. 데스크탑 비밀번호 필드는 OS IME 조합을 비활성화하고, 모바일은 `InputKind::Password` 소프트 키보드를 씁니다.
 12. **성능 수치는 통제된 측정만**: release 빌드, 워밍업 후 N회 반복, 중앙값과 p99를 보고합니다. 다른 빌드나 작업이 동시에 돌고 있을 때 잰 숫자는 쓰지 않습니다.
 13. **실기기 핫리로드 & 그래픽 프리미티브**: 가짜 웹 샌드박스/더미 뷰포트를 두지 않으며, `krui serve`는 실행 중인 실제 데스크탑/Android 앱에 TCP로 핫리로드합니다. 래스터 이미지는 `<img>`(PNG/JPG/WebP), 아이콘은 컴파일 타임 `<svg>`, 외부 영상·엔진 통합은 `ExternalTexture` 슬롯을 사용합니다.
 
@@ -116,9 +116,9 @@ Slint를 벤치마크 삼되, 웹 개발자와 Rust 입문자가 **바로 읽고
   - `<for>` 바로 뒤에 오는 `<empty>`는 목록이 비었을 때 표시됩니다.
   - `<if>`/`<for>`는 레이아웃 박스를 만들지 않습니다(자식이 부모에 직접 배치됨).
 - 컴포넌트: 파일 하나가 컴포넌트 하나입니다. `Card.krui` → `<Card title="{..}">…</Card>`. 대문자로 시작하는 태그는 컴포넌트입니다. 컴포넌트의 `<style>`은 클래스명 해싱(mangling) 없이 원본 태그·클래스·속성명을 보존한 채 `:where()` 또는 `@scope`와 스타일시트 최상단(외부 `.css` 로드 이전)에 선언되는 암묵적 하위 레이어(`@layer preset, component;`)로 스코핑하여 외부 `.css`가 항상 우선 덮어쓸 수 있게 합니다. 외부 프레임워크 전체 적용을 위한 내장 기본 스타일 비활성화(`unstyled`) 옵션과 `<slot/>`/`<slot name="..."/>`을 지원합니다.
-- **표준 순수 CSS 호환(목표 100%, 현행 실측 226/229 [98.7%]) + 자동 Fast-Path 최적화 원칙**:
+- **표준 순수 CSS 호환(목표 100%, 현행 실측 229/229 [100.0%]) + 자동 Fast-Path 최적화 원칙**:
   - **셀렉터**: 태그·`.class`·`#id`·`*`, 후손(`A B`)·자식(`A > B`)·인접/일반 형제(`+`, `~`) 결합자, 속성 부분 일치(`[attr^=.../$=.../*=...]`), `:hover`, `:focus`, `:focus-within`, `:placeholder-shown`, `:active`, `:disabled`, `:checked`, `:nth-child`, `:not()`, `:is()`, `:where()`, `:has()` 의사 클래스, 그리고 독립 레이아웃·페인트·애니메이션 박스로 동작하는 `::before`/`::after` 및 `::placeholder`·`::selection`·모달 `::backdrop`을 지원합니다. 컴파일 타임에 **셀렉터 의존성 플래그(Invalidation Map)** 를 생성해 일반 노드는 Fast-Path를 유지하고 동적 상태가 걸린 부모·형제 노드만 런타임에 선택적으로 재평가합니다.
-  - **규칙·색상·레이아웃·타이포 스펙**: `@media`(색상 스킴·모션 감소·뷰포트·`hover`/`pointer`), `@layer`, `@import`(파일 기반 시트; 외부 링크 시트 내 중첩 `@import`는 엔진 백로그), `@supports`(선언 컴파일러 판정), `@property`, `@keyframes`, CSS Color 4/5(`oklch`/`oklab`/`hwb`, 공백·슬래시 알파, `color-mix`, 상대 색상 `from`, `light-dark()`, `currentColor`, wgpu 선형/sRGB 이중 감마 보정 방지), 단위·수식(`rem`/`em`/`vw`/`vh`/`vmin`/`vmax`/`dvh`/`svh`/`%`, `calc`/`min`/`max`/`clamp`), `block`/`inline-block`/`contents`(`display: table` 계열→Grid/Flex 매핑, `float`/`clear`→비차단 경고+폴백), `fixed`/`sticky`, `overflow-x`/`overflow-y`, `appearance: none`, `aspect-ratio`, 타이포그래피(`line-height`, `word-break`/`overflow-wrap`, `line-clamp`/`-webkit-line-clamp`, `font-variation-settings`, OpenType `liga`)를 구현하며, `@container`·`cqw`/`cqi`·`filter`·복합 `clip-path`는 `KNOWN_GAPS.toml`에 추적합니다.
+  - **규칙·색상·레이아웃·타이포 스펙**: `@media`(색상 스킴·모션 감소[`prefers-reduced-motion`는 웹 외 타깃에서 컴파일러가 `:root:where([data-krui-motion="reduce"])`로 재작성]·뷰포트·`hover`/`pointer`), `@layer`, `@import`(파일 기반 시트; 외부 링크 시트 내 중첩 `@import`는 엔진 백로그), `@supports`(선언 컴파일러 판정), `@property`, `@keyframes`, CSS Color 4/5(`oklch`/`oklab`/`hwb`, 공백·슬래시 알파, `color-mix`, 상대 색상 `from`, `light-dark()`, `currentColor`, wgpu 선형/sRGB 이중 감마 보정 방지), 단위·수식(`rem`/`em`/`vw`/`vh`/`vmin`/`vmax`/`dvh`/`svh`/`%`, `calc`/`min`/`max`/`clamp`), `block`/`inline-block`/`contents`(`display: table` 계열→Grid/Flex 매핑, `float`/`clear`→비차단 경고+폴백), `fixed`/`sticky`, `overflow-x`/`overflow-y`, `appearance: none`, `aspect-ratio`, 타이포그래피(`line-height`, `word-break`/`overflow-wrap`, `line-clamp`/`-webkit-line-clamp`, `font-variation-settings`, OpenType `liga`), `@container` 크기 쿼리, CSS `filter`를 구현하며, 복합 `clip-path`·`conic-gradient`·원근 3D 투영은 `docs/ENGINE_LIMITS.toml`에 추적합니다.
 - 테마 프리셋은 **토큰(CSS 변수)과 태그 기본값**만 정의합니다. `.row` 같은 앱 클래스를 넣지 않습니다.
 
 ---
@@ -167,3 +167,4 @@ Slint를 벤치마크 삼되, 웹 개발자와 Rust 입문자가 **바로 읽고
 | 핫패치 시 비활성 제어흐름/제거된 토큰 잔류 | 미리보기 패치 판별 (`crates/preview/src/style_patch.rs`, `crates/preview/src/lib.rs`) + E2E (`tests/css_compositor_transitions.rs`) | `<if>`/`<for>` 제어흐름 스타일 변경 시 상태 보존 재마운트, 스타일시트 패치 시 Stylo 캐스케이드·제거된 토큰 상태 재동기화 |
 | 릴리즈 파서 유입 / Fast-Path 레이아웃 누수 | 의존성·런타임 게이트 (`probe_krui.ps1`, `cargo tree`) | 릴리즈 그래프에 `krui-compiler`·`krui-preview`·`lightningcss` 미포함, `StyloDamage` 기반 Fast-Path 120프레임 중 Taffy relayout 0회(레이아웃 트랙은 변경 노드만 dirty), 화면 전환 100회 누수 0 |
 | 런타임 `if ==` / 문자열·색상·프리셋 하드코딩 | Clippy + `syn` AST 래칫 (`crates/{core,renderer,layout}/clippy.toml`, `tests/anti_hardcode_lint_gate.rs`, `probe_krui.ps1`) | `Color::rgb/rgba`·`ThemePreset` 차단, Tier A(`renderer`/`layout`/`a11y`/`signals`/`android-ffi`) 문자열/`ThemePreset` 분기 0건, Tier B(`core`/`winit`/`patterns`) 신규 하드코딩 차단 및 기존 목록 양방향 축소 강제 |
+| `kiosk-spi` 최저 티어 공존·부팅·부분 손상 게이트 | CPU 전용 피처 게이트 + `krui-kms` 모의 게이트 (`cargo check -p krui-renderer --no-default-features`, `cargo test -p krui-kms`, `crates/engine-host`) | `kiosk-spi` 빌드에서 `wgpu`/`naga`/`winit` 완전 제외, `hx8357d` 외접 사각형 분할 커밋 및 플러시 스레드 비블로킹, 엔진 `DirtyFlagOnly` 0-alloc 불변식 강제 |

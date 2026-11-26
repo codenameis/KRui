@@ -1,10 +1,16 @@
 //! Frame-budget telemetry (`FrameTelemetry`) and `EngineSession` runner.
 
+#[cfg(feature = "gpu")]
+use krui_core::ExternalTextureId;
 use krui_core::{
     FrameRenderStats, GpuResourceLimits, NodeId, RenderBackendPreference, ViewFragment, ViewTree,
 };
 use krui_renderer::AdaptiveRenderer;
+#[cfg(feature = "gpu")]
+use krui_renderer::GpuContext;
 use krui_signals::FrameClock;
+#[cfg(feature = "gpu")]
+use std::sync::Arc;
 use std::time::Instant;
 
 /// Returns `true` only when both the `preview` feature AND debug assertions are enabled.
@@ -175,6 +181,35 @@ impl EngineSession {
             let action = tree.dispatch_routed_key(key_info, mods, repeat);
             crate::window_helpers::apply_key_action(tree, action)
         })
+    }
+
+    /// Returns the shared `Arc<GpuContext>` if the active renderer is backed by `wgpu`.
+    #[cfg(feature = "gpu")]
+    pub fn gpu_context(&self) -> Option<Arc<GpuContext>> {
+        self.renderer.gpu_context()
+    }
+
+    /// Registers an external host `wgpu::TextureView` for [`ExternalTextureId`] slots.
+    #[cfg(feature = "gpu")]
+    pub fn register_external_texture(
+        &self,
+        id: ExternalTextureId,
+        view: &wgpu::TextureView,
+    ) -> bool {
+        if let Some(ctx) = self.renderer.gpu_context() {
+            ctx.register_external_texture(id, view);
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Unregisters a previously registered [`ExternalTextureId`] binding.
+    #[cfg(feature = "gpu")]
+    pub fn unregister_external_texture(&self, id: ExternalTextureId) {
+        if let Some(ctx) = self.renderer.gpu_context() {
+            ctx.unregister_external_texture(id);
+        }
     }
 
     /// Advances the frame clock by `dt_seconds`, runs layout (only if dirty), renders the scene,

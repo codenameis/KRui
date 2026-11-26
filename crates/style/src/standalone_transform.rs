@@ -76,8 +76,10 @@ impl OriginAxis {
     /// Default CSS `transform-origin` axis (`50%`).
     pub const CENTER: Self = Self::Percent(50.0);
 
+    /// Resolves this axis against `[box_start, box_start + box_span]` in logical pixels.
     #[inline]
-    fn resolve(self, box_start: f32, box_span: f32) -> f32 {
+    #[must_use]
+    pub fn resolve(self, box_start: f32, box_span: f32) -> f32 {
         match self {
             Self::Px(v) => box_start + v,
             Self::Percent(p) => box_start + box_span * (p * 0.01),
@@ -118,6 +120,16 @@ pub struct StandaloneTransform {
     pub origin_x: OriginAxis,
     /// Vertical pivot from `transform-origin`.
     pub origin_y: OriginAxis,
+    /// Optional parent `perspective: <length>` distance in logical px.
+    pub perspective_px: Option<f32>,
+    /// Horizontal pivot of `perspective-origin`.
+    pub perspective_origin_x: OriginAxis,
+    /// Vertical pivot of `perspective-origin`.
+    pub perspective_origin_y: OriginAxis,
+    /// `true` when `transform-style: preserve-3d` is active.
+    pub preserve_3d: bool,
+    /// `true` when `backface-visibility: visible` (CSS default).
+    pub backface_visible: bool,
 }
 
 impl Default for StandaloneTransform {
@@ -136,6 +148,11 @@ impl StandaloneTransform {
         scale_y: 1.0,
         origin_x: OriginAxis::CENTER,
         origin_y: OriginAxis::CENTER,
+        perspective_px: None,
+        perspective_origin_x: OriginAxis::CENTER,
+        perspective_origin_y: OriginAxis::CENTER,
+        preserve_3d: false,
+        backface_visible: true,
     };
 
     /// Returns `true` when `translate`, `rotate`, and `scale` are all identity values.
@@ -146,6 +163,9 @@ impl StandaloneTransform {
             && self.rotate_deg.abs() <= 1e-6
             && (self.scale_x - 1.0).abs() <= 1e-6
             && (self.scale_y - 1.0).abs() <= 1e-6
+            && self.perspective_px.is_none()
+            && !self.preserve_3d
+            && self.backface_visible
     }
 
     /// Composes `self` (`translate`, `rotate`, `scale` around `transform-origin`) followed by
@@ -259,6 +279,24 @@ impl StandaloneTransform {
             scale_y: lerp_f32(a.scale_y, b.scale_y, t),
             origin_x: a.origin_x.lerp(b.origin_x, t),
             origin_y: a.origin_y.lerp(b.origin_y, t),
+            perspective_px: match (a.perspective_px, b.perspective_px) {
+                (Some(x), Some(y)) => Some(lerp_f32(x, y, t).max(1.0)),
+                (Some(x), None) if t < 0.5 => Some(x),
+                (None, Some(y)) if t >= 0.5 => Some(y),
+                _ => None,
+            },
+            perspective_origin_x: a.perspective_origin_x.lerp(b.perspective_origin_x, t),
+            perspective_origin_y: a.perspective_origin_y.lerp(b.perspective_origin_y, t),
+            preserve_3d: if t < 0.5 {
+                a.preserve_3d
+            } else {
+                b.preserve_3d
+            },
+            backface_visible: if t < 0.5 {
+                a.backface_visible
+            } else {
+                b.backface_visible
+            },
         }
     }
 }

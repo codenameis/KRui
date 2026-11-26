@@ -13,26 +13,38 @@
 
         <div class="m3-cards-stage">
             <div class="gallery-col">
-                <TopAppBar variant="center" title="Center TopAppBar" subtitle="Selected menu: {controller.nav_menu_label}">
-                    <IconButton slot="navigation" variant="standard" label="Open menu" onclick="{controller.toggle_nav_menu()}">
+                <TopAppBar id="appbar-top-demo" variant="center" title="Center TopAppBar" subtitle="Selected menu: {controller.nav_menu_label}">
+                    <IconButton id="appbar-hamburger-btn" slot="navigation" variant="standard" label="Open menu" onclick="{controller.toggle_nav_menu()}">
                         <IconMenu />
                     </IconButton>
                     <div slot="actions" class="gallery-row">
-                        <Button variant="tonal" onclick="{controller.toggle_nav_menu()}">Menu</Button>
+                        <Button id="appbar-menu-btn" variant="tonal" onclick="{controller.toggle_nav_menu()}">Menu</Button>
                     </div>
                 </TopAppBar>
+                <Menu id="appbar-popup-menu" open="{controller.nav_menu_open}">
+                    <MenuItem id="appbar-menu-item-0" label="기본 보기" trailing="Ctrl+1" selected="{controller.nav_menu_label == '기본 보기'}" onclick="{controller.pick_nav_menu_item(0)}">
+                        <IconViewAgenda slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                    <MenuItem id="appbar-menu-item-1" label="확장 레이아웃" trailing="Ctrl+2" selected="{controller.nav_menu_label == '확장 레이아웃'}" onclick="{controller.pick_nav_menu_item(1)}">
+                        <IconViewColumn slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                    <MenuItem id="appbar-menu-item-2" label="토큰 인스펙터" trailing="Ctrl+3" selected="{controller.nav_menu_label == '토큰 인스펙터'}" onclick="{controller.pick_nav_menu_item(2)}">
+                        <IconSettings slot="icon" class="m3-icon-sm" />
+                    </MenuItem>
+                </Menu>
                 <Toolbar variant="docked">
                     <Button variant="text" onclick="{controller.record_action(0)}">Undo</Button>
                     <Button variant="text" onclick="{controller.record_action(1)}">Redo</Button>
                     <Button variant="tonal" onclick="{controller.toggle_nav_menu()}">View</Button>
                 </Toolbar>
                 <BottomAppBar id="bottom-app-bar">
-                    <Button variant="text" onclick="{controller.record_action(3)}">Search</Button>
+                    <Button variant="text" onclick="{controller.open_search_overlay()}">Search</Button>
                     <Button variant="text" onclick="{controller.record_action(4)}">Filter</Button>
                     <Fab slot="fab" variant="primary" size="sm" label="Quick add" onclick="{controller.record_action(5)}">
                         <IconAdd slot="icon" />
                     </Fab>
                 </BottomAppBar>
+                <span class="gallery-note">{controller.status_banner}</span>
             </div>
         </div>
 
@@ -82,13 +94,13 @@
                         </NavigationRailItem>
                     </NavigationRail>
                     <NavigationDrawer id="mini-nav-drawer" title="워크스페이스 탐색">
-                        <NavigationDrawerItem label="프로젝트 루트" badge="4" selected="{controller.drawer_idx == 0}" onclick="{controller.set_drawer_item(0)}">
+                        <NavigationDrawerItem id="nav-drawer-item-0" label="프로젝트 루트" badge="4" selected="{controller.drawer_idx == 0}" onclick="{controller.set_drawer_item(0)}">
                             <IconFolder slot="icon" class="m3-icon-sm" />
                         </NavigationDrawerItem>
-                        <NavigationDrawerItem label="기본 컴포넌트 팩" selected="{controller.drawer_idx == 1}" onclick="{controller.set_drawer_item(1)}">
+                        <NavigationDrawerItem id="nav-drawer-item-1" label="기본 컴포넌트 팩" selected="{controller.drawer_idx == 1}" onclick="{controller.set_drawer_item(1)}">
                             <IconExtension slot="icon" class="m3-icon-sm" />
                         </NavigationDrawerItem>
-                        <NavigationDrawerItem label="테마 프리셋 설정" selected="{controller.drawer_idx == 2}" onclick="{controller.set_drawer_item(2)}">
+                        <NavigationDrawerItem id="nav-drawer-item-2" label="테마 프리셋 설정" selected="{controller.drawer_idx == 2}" onclick="{controller.set_drawer_item(2)}">
                             <IconSettings slot="icon" class="m3-icon-sm" />
                         </NavigationDrawerItem>
                     </NavigationDrawer>
@@ -138,17 +150,31 @@
         </div>
 
         <div class="m3-cards-stage">
-            <NavigationDrawer id="mini-nav-drawer" title="워크스페이스 탐색">
-                <NavigationDrawerItem label="프로젝트 루트" badge="4" selected="{controller.drawer_idx == 0}" onclick="{controller.set_drawer_item(0)}">
-                    <IconFolder slot="icon" class="m3-icon-sm" />
-                </NavigationDrawerItem>
-                <NavigationDrawerItem label="기본 컴포넌트 팩" selected="{controller.drawer_idx == 1}" onclick="{controller.set_drawer_item(1)}">
-                    <IconExtension slot="icon" class="m3-icon-sm" />
-                </NavigationDrawerItem>
-                <NavigationDrawerItem label="테마 프리셋 설정" selected="{controller.drawer_idx == 2}" onclick="{controller.set_drawer_item(2)}">
-                    <IconSettings slot="icon" class="m3-icon-sm" />
-                </NavigationDrawerItem>
-            </NavigationDrawer>
+            <div class="m3-drawer-demo-grid">
+                <NavigationDrawer id="mini-nav-drawer" title="워크스페이스 탐색">
+                    <NavigationDrawerItem id="nav-drawer-item-0" label="프로젝트 루트" badge="4" selected="{controller.drawer_idx == 0}" onclick="{controller.set_drawer_item(0)}">
+                        <IconFolder slot="icon" class="m3-icon-sm" />
+                    </NavigationDrawerItem>
+                    <NavigationDrawerItem id="nav-drawer-item-1" label="기본 컴포넌트 팩" selected="{controller.drawer_idx == 1}" onclick="{controller.set_drawer_item(1)}">
+                        <IconExtension slot="icon" class="m3-icon-sm" />
+                    </NavigationDrawerItem>
+                    <NavigationDrawerItem id="nav-drawer-item-2" label="테마 프리셋 설정" selected="{controller.drawer_idx == 2}" onclick="{controller.set_drawer_item(2)}">
+                        <IconSettings slot="icon" class="m3-icon-sm" />
+                    </NavigationDrawerItem>
+                </NavigationDrawer>
+                <div class="m3-drawer-detail-pane">
+                    <if test="{controller.drawer_idx == 0}">
+                        <span id="nav-drawer-detail-0" class="m3-bullet-text">프로젝트 루트 (4개 활성 워크스페이스 대상): Cargo.toml · src/ · crates/ · examples/</span>
+                    <else-if test="{controller.drawer_idx == 1}">
+                        <span id="nav-drawer-detail-1" class="m3-bullet-text">기본 컴포넌트 팩: `@layer component` 기반 47개 M3 헤드리스/CSS 컴포넌트</span>
+                    <else>
+                        <span id="nav-drawer-detail-2" class="m3-bullet-text">테마 프리셋 설정: 현재 테마 `{controller.theme_name}` ({controller.theme_shape_spec})</span>
+                    </if>
+                    <div class="gallery-row">
+                        <Button id="open-modal-drawer-btn" variant="tonal" onclick="{controller.set_modal_drawer_open(true)}">Modal drawer 열기</Button>
+                    </div>
+                </div>
+            </div>
         </div>
 
     <else-if test="{controller.active_doc_page == 38}">
@@ -186,16 +212,25 @@
 
         <div class="m3-cards-stage">
             <Tabs id="nav-tabs-demo" variant="primary">
-                <Tab label="개요" selected="{controller.active_tab == 0}" onclick="{controller.set_active_tab(0)}">
+                <Tab id="nav-tab-0" label="개요" selected="{controller.active_tab == 0}" onclick="{controller.set_active_tab(0)}">
                     <IconInfo slot="icon" class="m3-icon-sm" />
                 </Tab>
-                <Tab label="토큰 매핑" selected="{controller.active_tab == 1}" onclick="{controller.set_active_tab(1)}">
+                <Tab id="nav-tab-1" label="토큰 매핑" selected="{controller.active_tab == 1}" onclick="{controller.set_active_tab(1)}">
                     <IconPalette slot="icon" class="m3-icon-sm" />
                 </Tab>
-                <Tab label="레이아웃 로그" selected="{controller.active_tab == 2}" onclick="{controller.set_active_tab(2)}">
+                <Tab id="nav-tab-2" label="레이아웃 로그" selected="{controller.active_tab == 2}" onclick="{controller.set_active_tab(2)}">
                     <IconViewAgenda slot="icon" class="m3-icon-sm" />
                 </Tab>
             </Tabs>
+            <div class="m3-tab-panel">
+                <if test="{controller.active_tab == 0}">
+                    <span id="nav-tab-panel-0" class="m3-bullet-text">개요 탭: Primary/Secondary Tabs는 키보드 포커스와 컴포지터 색 전환을 공유합니다.</span>
+                <else-if test="{controller.active_tab == 1}">
+                    <span id="nav-tab-panel-1" class="m3-bullet-text">토큰 매핑 탭: 활성 테마 `{controller.theme_name}` ({controller.theme_shape_spec})</span>
+                <else>
+                    <span id="nav-tab-panel-2" class="m3-bullet-text">레이아웃 로그 탭: {controller.status_banner}</span>
+                </if>
+            </div>
         </div>
     </if>
 </div>

@@ -17,14 +17,6 @@ pub(super) fn build_scheme_signals() -> SchemePair {
     (mode, label)
 }
 
-pub(super) fn scheme_mode_name(mode: i32) -> &'static str {
-    match mode {
-        1 => "Light (고정)",
-        2 => "Dark (고정)",
-        _ => "System (자동)",
-    }
-}
-
 fn attach_bundle_search_cmd(mut ctrl: GalleryController) -> GalleryController {
     let cs = ctrl.clone();
     ctrl.on_search_input_cmd = InputCommand::new(move |q| cs.apply_search(&q));
@@ -67,7 +59,8 @@ fn finish_gallery_init(b: GalleryInitBundle, scheme: SchemePair) -> GalleryContr
         fab_menu_open: Signal::new(false),
         unread_count: b.unread_count,
         unread_text: b.c.unread_text,
-        progress_px: Signal::new(140.0),
+        progress_px: b.progress_px,
+        progress_pct: b.c.progress_pct,
         progress_label: Signal::new(INIT_PROGRESS_LABEL.to_string()),
         spinner_running: Signal::new(true),
         rich_tooltip_open: Signal::new(false),
@@ -80,6 +73,7 @@ fn finish_gallery_init(b: GalleryInitBundle, scheme: SchemePair) -> GalleryContr
         micl_field_text: Signal::new(String::new()),
         bottom_nav_idx: Signal::new(0),
         drawer_idx: Signal::new(0),
+        modal_drawer_open: Signal::new(false),
         active_tab: Signal::new(0),
         nav_menu_open: Signal::new(false),
         nav_menu_label: Signal::new("기본 보기".to_string()),
@@ -105,6 +99,7 @@ fn finish_gallery_init(b: GalleryInitBundle, scheme: SchemePair) -> GalleryContr
         search_open: Signal::new(false),
         search_results: Signal::new(filter_catalog_rows("")),
         on_search_input_cmd: InputCommand::new(|_| {}),
+        w4: super::Wave4RoutesController::new(),
     })
 }
 
@@ -130,21 +125,74 @@ impl GalleryController {
         batch(move || {
             this.dark_mode.set(next);
             this.color_scheme_mode.set(next_scheme);
-            let mode = if next { "Dark" } else { "Light" };
-            this.status_banner.set(format!("색채 스킴 전환: {mode}"));
         });
     }
 
     pub(super) fn apply_color_scheme_mode(&self, mode: i32) {
         let clamped = mode.clamp(0, 2);
         let dark = clamped == 2;
-        let label = scheme_mode_name(clamped);
         let this = self.clone();
         batch(move || {
             this.color_scheme_mode.set(clamped);
             this.dark_mode.set(dark);
+        });
+    }
+
+    pub(super) fn apply_copy_theme_tokens(&self) {
+        let name = self.theme_name.get_untracked().replace('"', "\\\"");
+        let slug = self.theme_slug.get_untracked().replace('"', "\\\"");
+        let scheme = self.color_scheme_label.get_untracked().replace('"', "\\\"");
+        let motion = self.animations_paused.get_untracked();
+        let spec = self.theme_shape_spec.get_untracked().replace('"', "\\\"");
+        let json = format!(
+            r#"{{"theme":"{name}","data_theme":"{slug}","color_scheme":"{scheme}","reduced_motion":{motion},"shape_spec":"{spec}"}}"#
+        );
+        set_clipboard_text(&json);
+        let this = self.clone();
+        batch(move || {
+            this.bottom_sheet_open.set(false);
             this.status_banner
-                .set(format!("ColorSchemePreference: {label}"));
+                .set(format!("{name} 테마 토큰 JSON을 클립보드에 복사했습니다."));
+        });
+    }
+
+    pub(super) fn apply_dismiss_top_overlay(&self) -> bool {
+        let flags = [
+            (&self.search_overlay_open, "검색 오버레이 닫힘"),
+            (&self.modal_drawer_open, "모달 서랍 닫힘"),
+            (&self.dialog_open, "Dialog 닫힘"),
+            (&self.bottom_sheet_open, "BottomSheet 닫힘"),
+            (&self.side_sheet_open, "SideSheet 닫힘"),
+            (&self.micl_dialog_open, "MICL Dialog 닫힘"),
+            (&self.split_menu_open, "SplitButton 메뉴 닫힘"),
+            (&self.fab_menu_open, "FAB 메뉴 닫힘"),
+            (&self.nav_menu_open, "메뉴 닫힘"),
+            (&self.rich_tooltip_open, "리치 툴팁 닫힘"),
+        ];
+        for (sig, msg) in flags {
+            if sig.get_untracked() {
+                sig.set(false);
+                self.status_banner.set(msg.to_string());
+                return true;
+            }
+        }
+        false
+    }
+
+    pub(super) fn apply_set_drawer_item(&self, idx: i32, close_modal: bool) {
+        let clamped = idx.clamp(0, 2);
+        let label = match clamped {
+            0 => "프로젝트 루트",
+            1 => "기본 컴포넌트 팩",
+            _ => "테마 프리셋 설정",
+        };
+        let this = self.clone();
+        batch(move || {
+            this.drawer_idx.set(clamped);
+            if close_modal {
+                this.modal_drawer_open.set(false);
+            }
+            this.status_banner.set(format!("서랍 탐색 이동: {label}"));
         });
     }
 }

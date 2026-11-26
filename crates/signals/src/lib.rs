@@ -36,8 +36,9 @@ pub use template_scalar::{
     IntoKruiTemplateScalar, KruiBoolCondition, KruiIterableSource, KruiLoopItem, KruiTemplateScalar,
 };
 pub use tokio_bridge::{
-    spawn_tokio_interval, spawn_tokio_stream, spawn_tokio_task, spawn_tokio_task_with_status,
-    tokio_handle, tokio_runtime, AsyncTaskHandle, StreamSink,
+    init_async_runtime_mode, spawn_tokio_interval, spawn_tokio_stream, spawn_tokio_task,
+    spawn_tokio_task_with_status, tokio_handle, tokio_runtime, AsyncRuntimeMode, AsyncTaskHandle,
+    StreamSink,
 };
 pub use waker::{set_ui_waker, wake_ui_loop, UiWaker};
 

@@ -5,14 +5,18 @@ edition.workspace = true
 license.workspace = true
 description = "Dual wgpu + tiny-skia rendering engine, lyon 2D canvas tessellator, and 3D/VR-AR extensibility hooks for KRui"
 
+[features]
+default = ["gpu"]
+gpu = ["dep:bytemuck", "dep:lyon_tessellation", "dep:lyon_path", "dep:pollster", "dep:wgpu"]
+
 [dependencies]
 krui-core = { workspace = true }
 krui-style = { workspace = true }
 krui-layout = { workspace = true }
 krui-text = { workspace = true }
-bytemuck = { workspace = true }
-lyon_tessellation = { workspace = true }
-lyon_path = { workspace = true }
 tiny-skia = { workspace = true }
-wgpu = { workspace = true }
-pollster = { workspace = true }
+bytemuck = { workspace = true, optional = true }
+lyon_tessellation = { workspace = true, optional = true }
+lyon_path = { workspace = true, optional = true }
+wgpu = { workspace = true, optional = true }
+pollster = { workspace = true, optional = true }

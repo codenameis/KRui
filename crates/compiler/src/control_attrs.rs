@@ -375,6 +375,8 @@ fn attach_element_events_and_attrs(node: &mut CompiledNode, attrs: ParsedElement
     node.on_pointer_down = attrs.on_pointer_down;
     node.on_pointer_up = attrs.on_pointer_up;
     node.on_pointer_move = attrs.on_pointer_move;
+    node.on_context_menu = attrs.on_context_menu;
+    node.on_wheel = attrs.on_wheel;
     node.on_scroll = attrs.on_scroll;
     node.on_input = attrs.on_input;
     node.on_change = attrs.on_change;

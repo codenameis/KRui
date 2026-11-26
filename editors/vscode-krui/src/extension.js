@@ -93,6 +93,11 @@ function buildCliCommand(workspaceRoot, serveArgs) {
   if (cliPath.length > 0) {
     return { cmd: cliPath, args: serveArgs };
   }
+  const binName = process.platform === "win32" ? "krui.exe" : "krui";
+  const prebuilt = path.join(workspaceRoot, "target", "debug", binName);
+  if (fs.existsSync(prebuilt)) {
+    return { cmd: prebuilt, args: serveArgs };
+  }
   const hasWorkspaceCli = fs.existsSync(path.join(workspaceRoot, "crates", "cli", "Cargo.toml"));
   if (hasWorkspaceCli) {
     return { cmd: "cargo", args: ["run", "-q", "-p", "krui-cli", "--", ...serveArgs] };
@@ -225,8 +230,8 @@ function connectBridgeSocket(ctx, hostPort) {
   ctx.socket = sock;
 
   sock.on("connect", () => {
-    if (ctx.defaultTheme && ctx.defaultTheme !== "auto") {
-      ctx.sendPacket(OP.SET_THEME, Buffer.from(ctx.defaultTheme, "utf8"));
+    if (ctx.defaultTheme && ctx.defaultTheme !== "system") {
+      ctx.sendPacket(OP.SET_COLOR_SCHEME, Buffer.from(ctx.defaultTheme, "utf8"));
     }
     for (const doc of vscode.workspace.textDocuments) {
       if (doc.uri.scheme === "file" && doc.isDirty && isLiveSourceFile(doc.fileName)) {
@@ -246,7 +251,7 @@ function connectBridgeSocket(ctx, hostPort) {
 function createPreviewSession(context, diagnostics, output, targetPath) {
   const workspaceRoot = findWorkspaceRoot(targetPath);
   const config = vscode.workspace.getConfiguration("krui");
-  const defaultTheme = String(config.get("defaultTheme") || "auto");
+  const defaultTheme = String(config.get("defaultColorScheme") || "system");
   const defaultFrame = String(config.get("defaultDeviceFrame") || "none");
   const panel = createWebviewPanel(context, targetPath, defaultTheme, defaultFrame);
 

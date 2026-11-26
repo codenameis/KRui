@@ -1,7 +1,11 @@
 //! Platform-agnostic 2D vector drawing commands and `CanvasContext2D` recorded for
 //! `<canvas>` elements, compiled `<svg>` icons, and vector form controls.
 
-use krui_style::Color;
+use crate::canvas_2d_extras::{rect_to_path_segments, scale_color_alpha, CanvasState};
+pub use crate::canvas_2d_extras::{CanvasGradient, CanvasGradientStop, CanvasTextAlign};
+use crate::media::ImageSource;
+use krui_layout::LayoutRect;
+use krui_style::{Affine2, Color};
 use std::rc::Rc;
 
 /// Logical 2D size (`width`, `height`) in logical pixels passed to `<canvas>` drawing callbacks.
@@ -176,6 +180,39 @@ pub enum CanvasCommand {
         line_join: CanvasLineJoin,
         color: Color,
     },
+    /// Updates the local 2D affine transform applied to subsequent canvas commands.
+    SetTransform(Affine2),
+    /// Pushes an arbitrary vector clip path intersected with any active ancestor clip.
+    PushClip {
+        segments: Vec<PathSegment>,
+        fill_rule: CanvasFillRule,
+    },
+    /// Pops the most recently pushed canvas clip path.
+    PopClip,
+    /// Fills an arbitrary vector path with a linear or radial [`CanvasGradient`].
+    FillGradient {
+        segments: Vec<PathSegment>,
+        fill_rule: CanvasFillRule,
+        gradient: CanvasGradient,
+        alpha: f32,
+    },
+    /// Draws a styled text string anchored at `(x, y)`.
+    DrawText {
+        text: String,
+        x: f32,
+        y: f32,
+        font_size: f32,
+        font_weight: u16,
+        color: Color,
+        align: CanvasTextAlign,
+    },
+    /// Draws a decoded or external raster image into `dst_rect` with optional source pixel crop `[sx, sy, sw, sh]`.
+    DrawImage {
+        source: ImageSource,
+        src_rect: Option<[f32; 4]>,
+        dst_rect: LayoutRect,
+        alpha: f32,
+    },
 }
 
 /// First-class 2D drawing context exposed to `<canvas>` elements, `<svg>` icons, and internal controls.
@@ -183,11 +220,11 @@ pub enum CanvasCommand {
 pub struct CanvasContext2D {
     width: f32,
     height: f32,
-    current_path: Vec<PathSegment>,
-    commands: Vec<CanvasCommand>,
-    line_cap: CanvasLineCap,
-    line_join: CanvasLineJoin,
-    fill_rule: CanvasFillRule,
+    pub(crate) current_path: Vec<PathSegment>,
+    pub(crate) commands: Vec<CanvasCommand>,
+    pub(crate) state: CanvasState,
+    state_stack: Vec<CanvasState>,
+    emitted_transform: Affine2,
 }
 
 impl Default for CanvasContext2D {
@@ -197,9 +234,9 @@ impl Default for CanvasContext2D {
             height: 260.0,
             current_path: Vec::new(),
             commands: Vec::new(),
-            line_cap: CanvasLineCap::Butt,
-            line_join: CanvasLineJoin::Miter,
-            fill_rule: CanvasFillRule::NonZero,
+            state: CanvasState::default(),
+            state_stack: Vec::new(),
+            emitted_transform: Affine2::IDENTITY,
         }
     }
 }
@@ -217,25 +254,159 @@ impl CanvasContext2D {
             height: height.max(1.0),
             current_path: Vec::new(),
             commands: Vec::new(),
-            line_cap: CanvasLineCap::Butt,
-            line_join: CanvasLineJoin::Miter,
-            fill_rule: CanvasFillRule::NonZero,
+            state: CanvasState::default(),
+            state_stack: Vec::new(),
+            emitted_transform: Affine2::IDENTITY,
         }
+    }
+
+    pub(crate) fn sync_transform(&mut self) {
+        if self.emitted_transform != self.state.transform {
+            self.commands
+                .push(CanvasCommand::SetTransform(self.state.transform));
+            self.emitted_transform = self.state.transform;
+        }
+    }
+
+    pub(crate) fn effective_color(&self, color: Color) -> Color {
+        if (self.state.global_alpha - 1.0).abs() <= 1e-5 {
+            color
+        } else {
+            scale_color_alpha(color, self.state.global_alpha)
+        }
+    }
+
+    /// Pushes a snapshot of the current transform, clip stack depth, dash, stroke, and alpha state.
+    pub fn save(&mut self) {
+        self.state_stack.push(self.state.clone());
+    }
+
+    /// Restores the most recently saved drawing state and pops any clip regions pushed since `save()`.
+    pub fn restore(&mut self) {
+        if let Some(prev) = self.state_stack.pop() {
+            while self.state.clip_depth > prev.clip_depth {
+                self.commands.push(CanvasCommand::PopClip);
+                self.state.clip_depth -= 1;
+            }
+            self.state = prev;
+        }
+    }
+
+    /// Post-multiplies the current canvas transform by a translation `(dx, dy)`.
+    pub fn translate(&mut self, dx: f32, dy: f32) {
+        self.state.transform = self.state.transform * Affine2::translation(dx, dy);
+    }
+
+    /// Post-multiplies the current canvas transform by a scale `(sx, sy)`.
+    pub fn scale(&mut self, sx: f32, sy: f32) {
+        self.state.transform = self.state.transform * Affine2::scale(sx, sy);
+    }
+
+    /// Post-multiplies the current canvas transform by a rotation of `radians` clockwise.
+    pub fn rotate(&mut self, radians: f32) {
+        self.state.transform = self.state.transform * Affine2::rotation_deg(radians.to_degrees());
+    }
+
+    /// Post-multiplies the current canvas transform by affine matrix `matrix`.
+    pub fn transform(&mut self, matrix: Affine2) {
+        self.state.transform = self.state.transform * matrix;
+    }
+
+    /// Replaces the current canvas transform with `matrix`.
+    pub fn set_transform(&mut self, matrix: Affine2) {
+        self.state.transform = matrix;
+    }
+
+    /// Resets the current canvas transform back to [`Affine2::IDENTITY`].
+    pub fn reset_transform(&mut self) {
+        self.state.transform = Affine2::IDENTITY;
+    }
+
+    /// Returns the currently active 2D canvas transform matrix.
+    pub fn current_transform(&self) -> Affine2 {
+        self.state.transform
+    }
+
+    /// Sets the global alpha multiplier (`0.0..=1.0`) applied to subsequent draws.
+    pub fn set_global_alpha(&mut self, alpha: f32) {
+        if alpha.is_finite() {
+            self.state.global_alpha = alpha.clamp(0.0, 1.0);
+        }
+    }
+
+    /// Returns the currently active global alpha multiplier (`0.0..=1.0`).
+    pub fn global_alpha(&self) -> f32 {
+        self.state.global_alpha
+    }
+
+    /// Sets the stroke dash pattern (empty slice resets to solid strokes; odd slices are duplicated per HTML5 Canvas).
+    pub fn set_line_dash(&mut self, segments: &[f32]) {
+        if segments.iter().any(|v| !v.is_finite() || *v < 0.0) {
+            return;
+        }
+        if segments.is_empty() || segments.iter().all(|&v| v <= 1e-5) {
+            self.state.line_dash.clear();
+            return;
+        }
+        let mut pattern = segments.to_vec();
+        if pattern.len() % 2 == 1 {
+            pattern.extend_from_within(..);
+        }
+        self.state.line_dash = pattern;
+    }
+
+    /// Returns the active stroke dash pattern slice.
+    pub fn line_dash(&self) -> &[f32] {
+        &self.state.line_dash
+    }
+
+    /// Sets the stroke dash pattern phase offset in logical pixels.
+    pub fn set_line_dash_offset(&mut self, offset: f32) {
+        if offset.is_finite() {
+            self.state.line_dash_offset = offset;
+        }
+    }
+
+    /// Returns the active stroke dash pattern phase offset.
+    pub fn line_dash_offset(&self) -> f32 {
+        self.state.line_dash_offset
+    }
+
+    /// Intersects the active clip region with `current_path` (popped automatically on matching `restore()`).
+    pub fn clip_path(&mut self) {
+        if !self.current_path.is_empty() {
+            self.sync_transform();
+            self.state.clip_depth += 1;
+            self.commands.push(CanvasCommand::PushClip {
+                segments: self.current_path.clone(),
+                fill_rule: self.state.fill_rule,
+            });
+        }
+    }
+
+    /// Intersects the active clip region with the rectangle `(x, y, w, h)` (popped on matching `restore()`).
+    pub fn clip_rect(&mut self, x: f32, y: f32, w: f32, h: f32) {
+        self.sync_transform();
+        self.state.clip_depth += 1;
+        self.commands.push(CanvasCommand::PushClip {
+            segments: rect_to_path_segments(x, y, w, h, 0.0),
+            fill_rule: CanvasFillRule::NonZero,
+        });
     }
 
     /// Sets the stroke endpoint cap style for subsequent `stroke_path`/`stroke_line` calls.
     pub fn set_line_cap(&mut self, cap: CanvasLineCap) {
-        self.line_cap = cap;
+        self.state.line_cap = cap;
     }
 
     /// Sets the stroke corner join style for subsequent `stroke_path`/`stroke_circle` calls.
     pub fn set_line_join(&mut self, join: CanvasLineJoin) {
-        self.line_join = join;
+        self.state.line_join = join;
     }
 
     /// Sets the path fill rule for subsequent `fill_path` calls.
     pub fn set_fill_rule(&mut self, rule: CanvasFillRule) {
-        self.fill_rule = rule;
+        self.state.fill_rule = rule;
     }
 
     /// Returns the logical width of the `<canvas>` node being drawn.
@@ -253,10 +424,13 @@ impl CanvasContext2D {
         (self.width, self.height)
     }
 
-    /// Clears recorded path state and drawing commands.
+    /// Clears recorded path state, transform/clip state stack, and drawing commands.
     pub fn clear(&mut self) {
         self.current_path.clear();
         self.commands.clear();
+        self.state = CanvasState::default();
+        self.state_stack.clear();
+        self.emitted_transform = Affine2::IDENTITY;
     }
 
     /// Returns a slice of recorded drawing commands.
@@ -332,121 +506,5 @@ impl CanvasContext2D {
     /// Closes the current subpath back to its initial point.
     pub fn close_path(&mut self) {
         self.current_path.push(PathSegment::Close);
-    }
-
-    /// Fills the current path with `color`.
-    pub fn fill_path(&mut self, color: Color) {
-        if !self.current_path.is_empty() {
-            self.commands.push(CanvasCommand::FillPath {
-                segments: self.current_path.clone(),
-                fill_rule: self.fill_rule,
-                color,
-            });
-        }
-    }
-
-    /// Strokes the current path with `line_width` and `color`.
-    pub fn stroke_path(&mut self, line_width: f32, color: Color) {
-        if !self.current_path.is_empty() {
-            self.commands.push(CanvasCommand::StrokePath {
-                segments: self.current_path.clone(),
-                line_width: line_width.max(0.05),
-                line_cap: self.line_cap,
-                line_join: self.line_join,
-                color,
-            });
-        }
-    }
-
-    /// Fills a sharp rectangle at `(x, y)` of size `(w, h)`.
-    pub fn fill_rect(&mut self, x: f32, y: f32, w: f32, h: f32, color: Color) {
-        self.fill_round_rect(x, y, w, h, 0.0, color);
-    }
-
-    /// Fills a rounded rectangle at `(x, y)` of size `(w, h)` with uniform corner `radius`.
-    pub fn fill_round_rect(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, color: Color) {
-        self.commands.push(CanvasCommand::FillRect {
-            x,
-            y,
-            w,
-            h,
-            radius,
-            color,
-        });
-    }
-
-    /// Alias of [`Self::fill_round_rect`] for CSS-style naming consistency.
-    pub fn fill_rounded_rect(&mut self, x: f32, y: f32, w: f32, h: f32, radius: f32, color: Color) {
-        self.fill_round_rect(x, y, w, h, radius, color);
-    }
-
-    /// Strokes a rectangle outline at `(x, y)` of size `(w, h)`.
-    pub fn stroke_rect(&mut self, x: f32, y: f32, w: f32, h: f32, line_width: f32, color: Color) {
-        self.commands.push(CanvasCommand::StrokeRect {
-            x,
-            y,
-            w,
-            h,
-            line_width: line_width.max(0.05),
-            color,
-        });
-    }
-
-    /// Fills a circle centered at `(cx, cy)` with `radius`.
-    pub fn fill_circle(&mut self, cx: f32, cy: f32, radius: f32, color: Color) {
-        self.commands.push(CanvasCommand::FillCircle {
-            cx,
-            cy,
-            radius,
-            color,
-        });
-    }
-
-    /// Strokes a circle centered at `(cx, cy)` with `radius` and `line_width`.
-    pub fn stroke_circle(&mut self, cx: f32, cy: f32, radius: f32, line_width: f32, color: Color) {
-        if radius <= 0.0 {
-            return;
-        }
-        let segments = vec![
-            PathSegment::MoveTo(cx + radius, cy),
-            PathSegment::Arc {
-                cx,
-                cy,
-                rx: radius,
-                ry: radius,
-                start_rad: 0.0,
-                sweep_rad: std::f32::consts::TAU,
-                x_rotation_rad: 0.0,
-            },
-            PathSegment::Close,
-        ];
-        self.commands.push(CanvasCommand::StrokePath {
-            segments,
-            line_width: line_width.max(0.05),
-            line_cap: self.line_cap,
-            line_join: self.line_join,
-            color,
-        });
-    }
-
-    /// Strokes a straight line segment from `(x1, y1)` to `(x2, y2)`.
-    pub fn stroke_line(
-        &mut self,
-        x1: f32,
-        y1: f32,
-        x2: f32,
-        y2: f32,
-        line_width: f32,
-        color: Color,
-    ) {
-        self.commands.push(CanvasCommand::StrokeLine {
-            x1,
-            y1,
-            x2,
-            y2,
-            line_width: line_width.max(0.05),
-            line_cap: self.line_cap,
-            color,
-        });
     }
 }

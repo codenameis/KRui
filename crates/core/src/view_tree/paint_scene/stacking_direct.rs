@@ -1,8 +1,8 @@
 //! Direct (non-negative-`z-index`) Stacking Context body emission split out of [`super`].
 
 use super::{
-    creates_stacking_context, emit_stacking_context, is_flex_or_grid, is_top_layer_node,
-    node_is_scroll_and_clip, StackEnv,
+    creates_stacking_context, emit_stacking_context, emit_with_hoisted_clip, is_flex_or_grid,
+    is_top_layer_node, node_is_scroll_and_clip, HoistedClipWrap, StackEnv,
 };
 use crate::scene::{DrawPrimitive, PaintScene};
 use crate::view_tree::clip_shape::{compute_child_clip_layer, LocalClipLayer};
@@ -38,17 +38,23 @@ pub(super) fn emit_sc_body_direct(
         scene,
         true,
     );
-    for (nid, env, is_sc) in queues.zero_pos {
-        if is_sc {
-            emit_stacking_context(inner, nid, env, false, scene);
-        } else {
-            emit_positioned_non_sc_direct(inner, nid, env, scene);
-        }
+    for (nid, mut env, is_sc) in queues.zero_pos {
+        let wrap = env.hoisted_clip.take();
+        emit_with_hoisted_clip(wrap, scene, |s| {
+            if is_sc {
+                emit_stacking_context(inner, nid, env, false, s);
+            } else {
+                emit_positioned_non_sc_direct(inner, nid, env, s);
+            }
+        });
     }
     if !queues.pos.is_empty() {
         queues.pos.sort_by_key(|c| c.1);
-        for (nid, _, env) in queues.pos {
-            emit_stacking_context(inner, nid, env, false, scene);
+        for (nid, _, mut env) in queues.pos {
+            let wrap = env.hoisted_clip.take();
+            emit_with_hoisted_clip(wrap, scene, |s| {
+                emit_stacking_context(inner, nid, env, false, s);
+            });
         }
     }
 }
@@ -190,9 +196,17 @@ fn next_env_for_frame(frame: &NodePaintFrame, env: StackEnv) -> DirectChildEnv {
         frame.effective_transform,
         frame.clip,
     );
+    let hoisted_clip = local_clip.map_or(env.hoisted_clip, |lc| {
+        Some(HoistedClipWrap {
+            bounds: clip_bounds.unwrap_or(frame.draw_rect),
+            outer_clip: frame.clip,
+            local_clip: lc,
+        })
+    });
     let child_env = StackEnv {
         scroll: next_scroll,
         clip: next_clip,
+        hoisted_clip,
         affine: frame.effective_transform,
         opacity: frame.effective_opacity,
         inherited_color: frame.next_inherited_text_color,
@@ -235,7 +249,10 @@ fn emit_direct_non_sc_subtree(
             clip_radius: frame.clip.max_radius(),
             clip_radii: frame.clip.radii,
             local_clip: Some(lc),
+            clip_path: None,
+            perspective: None,
             opacity: 1.0,
+            filter: krui_style::CssFilterEffect::IDENTITY,
         });
     }
     if frame.child_len > 0 {

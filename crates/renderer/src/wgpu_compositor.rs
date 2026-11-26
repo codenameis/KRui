@@ -3,22 +3,24 @@
 use crate::blur_pass::{BlurChainTargets, BlurStep, LayerTargetPool, OffscreenLayerTarget};
 use crate::canvas_cache::CanvasMeshCache;
 use crate::gpu_context::GpuContext;
+use crate::gradient_lut_cache::GradientLutCache;
 use crate::sdf_instance::{SdfQuadInstance, SurfaceFrameTransform};
 use crate::tessellate::GpuVertex;
 use crate::wgpu_compositor_exec::submit_recorded_segment;
 use crate::wgpu_pipeline::{create_sampleable_target, create_sdf_and_canvas_buffers};
 use krui_core::{
     ActiveBackendKind, DrawPrimitive, FrameRenderStats, GpuResourceLimits, PaintScene,
+    ResolvedClipPath,
 };
 use krui_layout::LayoutRect;
-use krui_style::{Affine2, Color};
+use krui_style::{Affine2, Color, CssFilterEffect, Mat4};
 use std::ops::Range;
 use std::sync::Arc;
 
 const INITIAL_SDF_CAP: usize = 1024;
 const INITIAL_CANVAS_V_CAP: usize = 2048;
 const INITIAL_CANVAS_I_CAP: usize = 6144;
-pub(crate) const MAX_LAYER_POOL_DEPTH: usize = 16;
+pub(crate) use crate::MAX_LAYER_POOL_DEPTH;
 const IDLE_LAYER_POOL_CAP: usize = 4;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -49,6 +51,14 @@ pub(crate) enum SegmentOp {
     },
     BlurChain {
         steps: Vec<BlurStep>,
+    },
+    StencilClipComposite {
+        target_id: usize,
+        load_clear: Option<Color>,
+        mask_index_range: Range<u32>,
+        mask_base_vertex: i32,
+        sdf_inst_idx: u32,
+        aux: AuxBinding,
     },
 }
 
@@ -156,7 +166,10 @@ pub(crate) struct ActiveLayer {
     pub clip_radius: f32,
     pub clip_radii: [f32; 4],
     pub local_clip: Option<(LayoutRect, [f32; 4], Affine2)>,
+    pub clip_path: Option<ResolvedClipPath>,
+    pub perspective: Option<(LayoutRect, Mat4)>,
     pub opacity: f32,
+    pub filter: CssFilterEffect,
     pub drawn_bounds: Option<[f32; 4]>,
 }
 
@@ -201,8 +214,10 @@ pub(crate) struct WgpuFrameResources {
     pub canvas_ibuf: wgpu::Buffer,
     pub canvas_i_cap: usize,
     pub canvas_cache: CanvasMeshCache,
+    pub gradient_luts: GradientLutCache,
     pub blur_targets: BlurChainTargets,
     pub layer_pool: LayerTargetPool,
+    pub stencil_target: Option<((u32, u32), wgpu::Texture, wgpu::TextureView)>,
     pub root_blur_src_bg: Option<(u64, wgpu::BindGroup)>,
     pub swapchain_scene: Option<OffscreenLayerTarget>,
     pub(crate) segment: EncoderSegment,
@@ -224,8 +239,10 @@ impl WgpuFrameResources {
             canvas_ibuf,
             canvas_i_cap: INITIAL_CANVAS_I_CAP,
             canvas_cache: CanvasMeshCache::new(),
+            gradient_luts: GradientLutCache::default(),
             blur_targets: BlurChainTargets::default(),
             layer_pool: LayerTargetPool::default(),
+            stencil_target: None,
             root_blur_src_bg: None,
             swapchain_scene: None,
             segment: EncoderSegment::default(),

@@ -13,7 +13,7 @@
 4. **Zero runtime markup/preview parser in release**: No HTML parser, no preview interpreter, and no `lightningcss` dependency ship in release binaries.
 5. **No webview in app runtime**: Every pixel is drawn by KRui's own `wgpu` (GPU) or `tiny-skia` (CPU fallback) renderer using pure CSS `[data-theme]` / `@media (prefers-color-scheme)` / `light-dark()` stylesheets.
 6. **Integrated reactive + pattern library**: Use `Signal<T>` / `Computed<T>` / `Effect` + `tokio` async tasks directly, or opt-in `krui-patterns` (`#[view_model]`, `Command`, `#[controller]`, `Store<State, Msg>`).
-7. **Measured pure-CSS conformance**: Target 100% unmodified external CSS compatibility. Current measured conformance on real `@tailwindcss/cli@4.3.5` output (`tests/fixtures/real_css/tailwind_v4` vs headless Chromium oracle, `tests/real_css_conformance.rs`): **226/229 (98.7%, measured 2026-11-23)**; remaining 3 tracked gaps in `tests/fixtures/real_css/KNOWN_GAPS.toml` are `@container` (`cqw`/`cqi`) and CSS `filter` (with complex `clip-path` also in engine backlog).
+7. **Measured pure-CSS conformance**: Target 100% unmodified external CSS compatibility. Current measured conformance on real `@tailwindcss/cli@4.3.5` output (`tests/fixtures/real_css/tailwind_v4` vs headless Chromium oracle, `tests/real_css_conformance.rs`): **229/229 (100.0%, measured 2026-11-25)** with zero remaining known gaps (`tests/fixtures/real_css/KNOWN_GAPS.toml`); complex `clip-path`, `conic-gradient()`, and 3D perspective remain tracked in `docs/ENGINE_LIMITS.toml`.
 
 ---
 
@@ -31,9 +31,12 @@ cargo run -p krui --bin krui-showcase -- --headless
 # Run the Material 3 / Tailwind pure-CSS Component Gallery headless gate:
 cargo run --example component_gallery -- --headless
 
+# Run the full build & feature options reference: docs/BUILD_OPTIONS.md
 # Launch live TCP hot-reload preview:
 cargo run -p krui-cli -- serve --example component_gallery
 ```
+
+See [Build Options & Flags](docs/BUILD_OPTIONS.md) and [Roadmap](docs/TODO.md) for profiles (`dev`, `release`, `kiosk`), features, and multi-platform targets.
 
 ### 2. Run the Full Test & Harness2 Verification Suite
 
@@ -84,7 +87,7 @@ session.tree.mount_with(|| {
 
 ## unsafe 목록
 
-16개 워크스페이스 크레이트 중 14개 크레이트(`krui`, `krui-core`, `krui-signals`, `krui-style`, `krui-compiler`, `krui-macros`, `krui-layout`, `krui-text`, `krui-a11y`, `krui-renderer`, `krui-winit`, `krui-patterns`, `krui-preview`, `krui-cli`)는 모두 `#![forbid(unsafe_code)]`를 강제합니다. 예외 2개 크레이트인 [`crates/android-ffi`](crates/android-ffi/README.md)와 [`crates/stylo-bridge`](crates/stylo-bridge/src/lib.rs) 역시 `#![deny(unsafe_code)]` 아래 **직접 작성한 `unsafe {}` 블록과 raw pointer가 0줄**이며, 각각 JNI 심볼 바인딩용 `#[no_mangle]` 5개 및 `style::dom::TElement` 트레이트 계약상 필수인 `unsafe fn` 시그니처 5개(크레이트당 한도 10개 이내)만 사용합니다.
+19개 워크스페이스 크레이트 중 17개 크레이트(`krui`, `krui-core`, `krui-signals`, `krui-style`, `krui-compiler`, `krui-macros`, `krui-layout`, `krui-text`, `krui-a11y`, `krui-renderer`, `krui-winit`, `krui-kms`, `krui-engine-host`, `krui-web`, `krui-patterns`, `krui-preview`, `krui-cli`)는 모두 `#![forbid(unsafe_code)]`를 강제합니다. 예외 2개 크레이트인 [`crates/android-ffi`](crates/android-ffi/README.md)와 [`crates/stylo-bridge`](crates/stylo-bridge/src/lib.rs) 역시 `#![deny(unsafe_code)]` 아래 **직접 작성한 `unsafe {}` 블록과 raw pointer가 0줄**이며, 각각 JNI 심볼 바인딩용 `#[no_mangle]` 5개 및 `style::dom::TElement` 트레이트 계약상 필수인 `unsafe fn` 시그니처 5개(크레이트당 한도 10개 이내)만 사용합니다.
 
 | 크레이트 | 파일:라인 | 구분 | 줄 수 | 안전성 근거 (`// SAFETY:`) |
 |---|---|---|---|---|

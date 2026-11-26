@@ -1,16 +1,23 @@
 //! Low-power CPU rasterizer backend built on `tiny-skia` with cached clip `Mask`s,
 //! pooled `PushLayer`/`PopLayer` compositing, exact inset borders, gradients, shadows, and blur.
 
+mod rgb565_dither;
 mod tiny_skia_blur;
+pub(crate) mod tiny_skia_canvas;
 mod tiny_skia_clip_cache;
+mod tiny_skia_conic;
+mod tiny_skia_damage;
 mod tiny_skia_effects;
+mod tiny_skia_filter;
 mod tiny_skia_glyphs;
 mod tiny_skia_images;
+mod tiny_skia_perspective;
 mod tiny_skia_radial;
 mod tiny_skia_shadow_cache;
 mod tiny_skia_shapes;
 
-use crate::wgpu_compositor::MAX_LAYER_POOL_DEPTH;
+pub use rgb565_dither::convert_rgba8_to_rgb565_le_dithered;
+
 use crate::RendererBackend;
 use krui_core::{
     ActiveBackendKind, DrawPrimitive, FrameRenderStats, GpuResourceLimits, PaintScene,
@@ -20,25 +27,11 @@ use krui_style::{Affine2, Color};
 use tiny_skia_blur::render_backdrop_blur_skia;
 use tiny_skia_clip_cache::{aabb_needs_clip_mask, ClipMaskCache};
 use tiny_skia_effects::{render_box_shadow_skia, SkiaBoxEffectCtx};
+use tiny_skia_filter::step_layer_op_skia;
 use tiny_skia_glyphs::{rasterize_glyphs_skia, GlyphBlitParams};
-use tiny_skia_images::{composite_layer_skia, SkiaImageCache};
+use tiny_skia_images::SkiaImageCache;
 use tiny_skia_shadow_cache::ShadowPatchCache;
-use tiny_skia_shapes::{
-    paint_styled_box_surfaces_skia, render_canvas_cmd_skia, to_skia_color, to_skia_transform,
-    StyledBoxSkiaArgs,
-};
-
-enum SkiaLayerEntry {
-    Offscreen(
-        tiny_skia::Pixmap,
-        Option<LayoutRect>,
-        f32,
-        [f32; 4],
-        Option<(LayoutRect, [f32; 4], Affine2)>,
-        f32,
-    ),
-    Overflow(f32),
-}
+use tiny_skia_shapes::{paint_styled_box_surfaces_skia, to_skia_color, StyledBoxSkiaArgs};
 
 /// Pure-Rust CPU rasterizer backend built on `tiny-skia` (Section 3.5).
 pub struct TinySkiaRenderer {
@@ -110,80 +103,6 @@ impl TinySkiaRenderer {
         }
         tiny_skia::Pixmap::new(w, h)
     }
-    fn step_layer_op_skia(
-        &mut self,
-        prim: &DrawPrimitive,
-        layer_stack: &mut Vec<SkiaLayerEntry>,
-        active_offscreens: &mut usize,
-        inline_opacity: &mut f32,
-        (pw, ph): (u32, u32),
-        scale: f32,
-    ) -> bool {
-        match prim {
-            DrawPrimitive::PushLayer {
-                clip,
-                clip_radius,
-                clip_radii,
-                local_clip,
-                opacity,
-                ..
-            } => {
-                let entry = if *active_offscreens < MAX_LAYER_POOL_DEPTH {
-                    if let Some(fresh) = self.acquire_layer_pixmap(pw, ph) {
-                        *active_offscreens += 1;
-                        let prev = std::mem::replace(&mut self.pixmap, fresh);
-                        SkiaLayerEntry::Offscreen(
-                            prev,
-                            *clip,
-                            *clip_radius,
-                            *clip_radii,
-                            *local_clip,
-                            *opacity,
-                        )
-                    } else {
-                        let prev_op = *inline_opacity;
-                        *inline_opacity = (prev_op * opacity.clamp(0.0, 1.0)).clamp(0.0, 1.0);
-                        SkiaLayerEntry::Overflow(prev_op)
-                    }
-                } else {
-                    let prev_op = *inline_opacity;
-                    *inline_opacity = (prev_op * opacity.clamp(0.0, 1.0)).clamp(0.0, 1.0);
-                    SkiaLayerEntry::Overflow(prev_op)
-                };
-                layer_stack.push(entry);
-                true
-            }
-            DrawPrimitive::PopLayer => {
-                if let Some(popped) = layer_stack.pop() {
-                    match popped {
-                        SkiaLayerEntry::Offscreen(
-                            mut parent_px,
-                            clip,
-                            clip_radius,
-                            clip_radii,
-                            local_clip,
-                            opacity,
-                        ) => {
-                            *active_offscreens = active_offscreens.saturating_sub(1);
-                            composite_layer_skia(
-                                &mut parent_px,
-                                &self.pixmap,
-                                &mut self.mask_cache,
-                                (clip, clip_radius, clip_radii, local_clip),
-                                opacity,
-                                scale,
-                            );
-                            let child_px = std::mem::replace(&mut self.pixmap, parent_px);
-                            self.layer_pool.push(child_px);
-                        }
-                        SkiaLayerEntry::Overflow(prev_op) => *inline_opacity = prev_op,
-                    }
-                }
-                true
-            }
-            _ => false,
-        }
-    }
 }
 
 struct SkiaRenderCaches<'a> {
@@ -243,7 +162,15 @@ impl TinySkiaRenderer {
         let (mut verts_eq, mut idx_eq) = (0_usize, 0_usize);
         let (mut stack, mut active, mut inline_op) = (Vec::new(), 0, 1.0_f32);
         for prim in primitives {
-            if self.step_layer_op_skia(prim, &mut stack, &mut active, &mut inline_op, vp, scale) {
+            if step_layer_op_skia(
+                self,
+                prim,
+                &mut stack,
+                &mut active,
+                &mut inline_op,
+                vp,
+                scale,
+            ) {
                 continue;
             }
             let (est_v, est_i) = estimate_primitive_mesh_cost(prim);
@@ -271,8 +198,15 @@ impl TinySkiaRenderer {
         }
         while !stack.is_empty() {
             let pop = DrawPrimitive::PopLayer;
-            let _ =
-                self.step_layer_op_skia(&pop, &mut stack, &mut active, &mut inline_op, vp, scale);
+            let _ = step_layer_op_skia(
+                self,
+                &pop,
+                &mut stack,
+                &mut active,
+                &mut inline_op,
+                vp,
+                scale,
+            );
         }
         (clamped, verts_eq, idx_eq)
     }
@@ -312,7 +246,7 @@ fn render_primitive_skia(
             transform,
             opacity,
             commands,
-        } => render_canvas_batch_skia(
+        } => tiny_skia_canvas::render_canvas_batch_skia(
             pixmap,
             caches.mask,
             *viewport,
@@ -409,35 +343,6 @@ fn render_image_prim_skia(
             source,
         },
     )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn render_canvas_batch_skia(
-    pixmap: &mut tiny_skia::Pixmap,
-    mask_cache: &mut ClipMaskCache,
-    viewport: LayoutRect,
-    (clip, clip_radius, clip_radii): (Option<LayoutRect>, f32, [f32; 4]),
-    (transform, scale, scale_tx): (Affine2, f32, Affine2),
-    opacity: f32,
-    commands: &[krui_core::CanvasCommand],
-) -> (usize, usize) {
-    if opacity <= 0.0 {
-        return (0, 0);
-    }
-    let skia_tx =
-        to_skia_transform(scale_tx * (transform * Affine2::translation(viewport.x, viewport.y)));
-    let mask = mask_cache.get_or_build_4(
-        pixmap.width(),
-        pixmap.height(),
-        clip,
-        clip_radius,
-        clip_radii,
-        scale,
-    );
-    for cmd in commands {
-        render_canvas_cmd_skia(pixmap, cmd, skia_tx, opacity, mask);
-    }
-    (commands.len() * 8, commands.len() * 12)
 }
 
 #[allow(clippy::too_many_arguments)]

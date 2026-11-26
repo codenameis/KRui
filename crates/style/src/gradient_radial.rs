@@ -2,6 +2,7 @@
 //! and pointer-bound coordinate tokens (`--krui-pointer-x/y/xp/yp`, `--krui-hover-x/y`).
 
 use crate::color::Color;
+use crate::gradient_stops::GradientStopsRef;
 
 /// Axis coordinate for a CSS `radial-gradient` or `background-position`.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -81,6 +82,10 @@ pub struct RadialGradient {
     pub inner_stop: f32,
     /// Normalized position (`0.0..=1.0`) of the outer stop.
     pub outer_stop: f32,
+    /// Full stop list when > 2 stops or repeating radial gradient is authored.
+    pub extra_stops: GradientStopsRef,
+    /// `true` for `repeating-radial-gradient(...)`.
+    pub repeating: bool,
 }
 
 impl Default for RadialGradient {
@@ -95,6 +100,8 @@ impl Default for RadialGradient {
             outer_color: Color::TRANSPARENT,
             inner_stop: 0.0,
             outer_stop: 1.0,
+            extra_stops: GradientStopsRef::Empty,
+            repeating: false,
         }
     }
 }

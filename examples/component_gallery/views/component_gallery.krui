@@ -114,7 +114,7 @@
         <GalleryDrawer />
     </if>
 
-    <main class="m3-doc-viewport">
+    <main id="m3-doc-viewport" class="m3-doc-viewport">
         <if test="{controller.active_section == 3 && controller.active_doc_page > 0}">
             <div id="m3-doc-header" class="m3-doc-page-header">
                 <h1 id="m3-doc-title" class="m3-doc-page-title">{controller.doc_title}</h1>
@@ -165,27 +165,9 @@
                 <else-if test="{controller.active_section == 2}">
                     <GalleryStyles />
                 <else-if test="{controller.active_section == 4}">
-                    <Card variant="elevated" title="Develop · Debug-Only Live Preview &amp; Zero Release Parser" subtitle="프로덕션 바이너리에서 파서 완전 분리 · Debug 전용 핫리로드">
-                        <div class="gallery-col">
-                            <span class="m3-hero-sub">krui!/include_krui! 매크로는 컴파일 타임에 `.krui`/`.css`를 네이티브 Rust 코드로 컴파일합니다.</span>
-                            <span class="m3-hero-sub">실행 중 스타일·마크업 패치는 `cfg!(debug_assertions)` 가드 하에서만 허용되며 `themes/material.css` · `themes/tailwind.css` 순수 CSS 테마팩을 그대로 교체·이식할 수 있습니다.</span>
-                            <div class="gallery-row">
-                                <Button variant="filled" onclick="{controller.select_section(3)}">Components 보기</Button>
-                                <Button variant="outlined" onclick="{controller.open_search_overlay()}">전체 카탈로그 검색</Button>
-                            </div>
-                        </div>
-                    </Card>
+                    <GalleryDevelop />
                 <else-if test="{controller.active_section == 5}">
-                    <Card variant="elevated" title="Foundations · Zero-Relayout Motion &amp; Native IME" subtitle="W3C cubic-bezier &amp; linear() easing · OS 조합 창 위치 추적">
-                        <div class="gallery-col">
-                            <span class="m3-hero-sub">transform, opacity, background-color, box-shadow 전환은 Taffy 재계산 0회로 컴포지터에서 120Hz 보간됩니다.</span>
-                            <span class="m3-hero-sub">한국어·일본어·영어 IME 조합 상태는 `ime_target`이 소유하여 포커스 전환 중에도 조합 글자를 유실하지 않습니다.</span>
-                            <div class="gallery-row">
-                                <Button variant="filled" onclick="{controller.select_category(5)}">IME 입력 데모</Button>
-                                <Button variant="tonal" onclick="{controller.toggle_animations_paused()}">모션 일시정지 토글</Button>
-                            </div>
-                        </div>
-                    </Card>
+                    <GalleryFoundations />
                 <else-if test="{controller.active_section == 6}">
                     <Card variant="elevated" title="Blog &amp; Releases · Material 3 &amp; Tailwind v4 Pure CSS" subtitle="Material 3 · Tailwind v4 순수 CSS 테마 스위칭">
                         <div class="gallery-col">
@@ -214,15 +196,18 @@
                                 <GalleryTextInputs />
                             </if>
                         <else-if test="{controller.active_doc_tab == 1}">
-                            <Card variant="elevated" title="{controller.doc_title} · M3 Design Token Specs" subtitle="{controller.theme_shape_spec}">
-                                <div class="gallery-col">
-                                    <span class="m3-hero-sub">{controller.doc_spec_note}</span>
-                                    <span class="m3-hero-sub">Active theme preset ({controller.theme_name}): shared KRui UI controls cascade --krui-* and --md-sys-* tokens purely via CSS ([data-theme]).</span>
-                                    <div class="gallery-row">
-                                        <Button variant="filled" onclick="{controller.set_doc_tab(0)}">Overview</Button>
+                            <div class="gallery-col">
+                                <Card variant="elevated" title="{controller.doc_title} · M3 Design Token Specs" subtitle="{controller.theme_shape_spec}">
+                                    <div class="gallery-col">
+                                        <span class="m3-hero-sub">{controller.doc_spec_note}</span>
+                                        <span class="m3-hero-sub">Active theme preset ({controller.theme_name}): shared KRui UI controls cascade --krui-* and --md-sys-* tokens purely via CSS ([data-theme]).</span>
+                                        <div class="gallery-row">
+                                            <Button variant="filled" onclick="{controller.set_doc_tab(0)}">Overview</Button>
+                                        </div>
                                     </div>
-                                </div>
-                            </Card>
+                                </Card>
+                                <GallerySpecMatrix />
+                            </div>
                         <else-if test="{controller.active_doc_tab == 2}">
                             <Card variant="outlined" title="{controller.doc_title} · Guidelines &amp; Resources" subtitle="{controller.doc_summary}">
                                 <div class="gallery-col">
@@ -273,6 +258,13 @@
                     <button class="m3-toc-link" onclick="{controller.select_section(2)}">Styles &amp; tokens</button>
                     <button class="m3-toc-link" onclick="{controller.select_section(3)}">Components</button>
                 </if>
+                <span class="m3-toc-eyebrow">Studio Demos</span>
+                <button id="toc-canvas-studio" class="m3-toc-link" onclick="{controller.open_canvas_studio()}">2D Canvas Studio (Canva)</button>
+                <button id="toc-viewport-3d" class="m3-toc-link" onclick="{controller.open_viewport_3d()}">3D Viewport (wgpu / Bevy)</button>
+                <div id="gallery-status-banner" class="m3-toc-status">
+                    <span class="m3-toc-eyebrow">Activity</span>
+                    <span id="gallery-status-text" class="gallery-note">{controller.status_banner}</span>
+                </div>
             </div>
         </div>
     </main>

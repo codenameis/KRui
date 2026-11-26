@@ -1,0 +1,21 @@
+[package]
+name = "krui-bevy"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Optional Bevy 0.15 engine adapter for KRui (Mode A offscreen RenderTarget host + Mode B in-pass HUD compositor sharing wgpu 23)"
+
+[features]
+default = []
+bevy-ecs = ["dep:bevy_ecs", "dep:bevy_app"]
+
+[dependencies]
+krui-core = { workspace = true }
+krui-engine-host = { workspace = true }
+krui-renderer = { workspace = true, features = ["gpu"] }
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+tokio = { workspace = true }
+wgpu = { workspace = true }
+bevy_ecs = { version = "0.15", optional = true }
+bevy_app = { version = "0.15", optional = true }

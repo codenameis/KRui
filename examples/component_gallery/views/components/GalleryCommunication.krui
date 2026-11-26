@@ -38,10 +38,10 @@
             <div class="m3-stage-duo-grid">
                 <div class="m3-stage-surface-box">
                     <LinearProgress id="linear-progress-demo" value_px="{controller.progress_px}" track_width="220" label="{controller.progress_label}" />
-                    <progress id="micl-native-progress" class="micl-progress" value="64" max="100"></progress>
+                    <progress id="micl-native-progress" class="micl-progress" value="{controller.progress_pct}" max="100"></progress>
                     <div class="gallery-row">
-                        <Button variant="outlined" onclick="{controller.step_progress(false)}">-20px</Button>
-                        <Button variant="filled" onclick="{controller.step_progress(true)}">+20px</Button>
+                        <Button id="progress-dec-btn" variant="outlined" onclick="{controller.step_progress(false)}">-20px</Button>
+                        <Button id="progress-inc-btn" variant="filled" onclick="{controller.step_progress(true)}">+20px</Button>
                     </div>
                 </div>
                 <div class="m3-stage-surface-box">
@@ -100,6 +100,7 @@
                         <div id="circular-progress-paused" class="micl-spinner-idle"></div>
                     </if>
                     <span class="gallery-note">Determinate + pure CSS @keyframes spinner</span>
+                    <Button id="spinner-toggle-btn" variant="outlined" onclick="{controller.toggle_spinner()}">스피너 일시정지/재개</Button>
                 </div>
             </div>
         </div>
@@ -119,7 +120,8 @@
         <div class="m3-cards-stage">
             <div class="m3-stage-col-center">
                 <Button id="reopen-snackbar-btn" variant="filled" onclick="{controller.reopen_snackbar()}">Show snackbar</Button>
-                <Snackbar id="snackbar-demo" open="{controller.snackbar.open}" message="{controller.snackbar.message}" action_label="{controller.snackbar.action_label}" on_action="{controller.snackbar.trigger_action()}" on_dismiss="{controller.snackbar.dismiss()}" />
+                <Snackbar id="snackbar-demo" action_id="snackbar-action-btn" dismiss_id="snackbar-dismiss-btn" open="{controller.snackbar.open}" message="{controller.snackbar.message}" action_label="{controller.snackbar.action_label}" on_action="{controller.snackbar.trigger_action()}" on_dismiss="{controller.snackbar.dismiss()}" />
+                <span id="snackbar-action-count" class="gallery-note">스낵바 액션 실행: {controller.snackbar.action_count}회</span>
             </div>
         </div>
 

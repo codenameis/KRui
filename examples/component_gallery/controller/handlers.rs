@@ -56,6 +56,18 @@ pub fn density_name_for_code(mode: i32) -> &'static str {
     }
 }
 
+/// `LinearProgress` 및 `<progress>` 최소 채움 폭(px)입니다.
+pub const PROGRESS_MIN_PX: f32 = 20.0;
+/// `LinearProgress` 및 `<progress>` 전체 트랙 폭(px)입니다.
+pub const PROGRESS_MAX_PX: f32 = 220.0;
+/// `LinearProgress` 1회 증감 폭(px)입니다.
+pub const PROGRESS_STEP_PX: f32 = 20.0;
+
+/// 채움 폭(px)을 `0..=100` 백분율 정수로 변환합니다.
+pub fn progress_pct_from_px(px: f32) -> i32 {
+    ((px / PROGRESS_MAX_PX) * 100.0).round() as i32
+}
+
 /// `GalleryController`의 파생 `Computed<String>` 시그널 묶음입니다.
 pub struct GalleryComputeds {
     /// 배지가 0 이하일 때 빈 문자열을 반환하는 unread 배지 텍스트입니다.
@@ -66,6 +78,8 @@ pub struct GalleryComputeds {
     pub name_counter: Computed<String>,
     /// 슬라이더 백분율 표시 문자열입니다.
     pub slider_label: Computed<String>,
+    /// 선형 진행률 백분율 정수(`0..=100`, `<progress value>` 바인딩용)입니다.
+    pub progress_pct: Computed<i32>,
 }
 
 /// 배지·사용자 이름·슬라이더 파생 계산 시그널을 생성합니다.
@@ -73,6 +87,7 @@ pub fn build_input_computeds(
     unread_count: Signal<i32>,
     user_name: Signal<String>,
     slider_pct: Signal<i32>,
+    progress_px: Signal<f32>,
 ) -> GalleryComputeds {
     let unread_text = Computed::new(move || {
         let count = unread_count.get();
@@ -94,11 +109,13 @@ pub fn build_input_computeds(
         format!("{len} / 32자")
     });
     let slider_label = Computed::new(move || format!("{}%", slider_pct.get()));
+    let progress_pct = Computed::new(move || progress_pct_from_px(progress_px.get()));
     GalleryComputeds {
         unread_text,
         name_error,
         name_counter,
         slider_label,
+        progress_pct,
     }
 }
 
@@ -114,6 +131,8 @@ pub struct GalleryInitBundle {
     pub thm: Signal<i32>,
     /// 읽지 않은 알림 배지 카운트입니다.
     pub unread_count: Signal<i32>,
+    /// LinearProgress 채움 폭(px) 시그널입니다.
+    pub progress_px: Signal<f32>,
     /// 볼륨 슬라이더 값입니다.
     pub slider_pct: Signal<i32>,
     /// 사용자 이름 입력 시그널입니다.
@@ -131,9 +150,10 @@ pub fn build_gallery_init_bundle() -> GalleryInitBundle {
     let doc = Signal::new(0);
     let thm = Signal::new(0);
     let unread_count = Signal::new(4);
+    let progress_px = Signal::new(140.0);
     let slider_pct = Signal::new(65);
     let user_name_text = Signal::new("김보현 (KRui)".to_string());
-    let c = build_input_computeds(unread_count, user_name_text, slider_pct);
+    let c = build_input_computeds(unread_count, user_name_text, slider_pct, progress_px);
     let s = build_site_computeds(sec, cat, doc, thm);
     GalleryInitBundle {
         sec,
@@ -141,6 +161,7 @@ pub fn build_gallery_init_bundle() -> GalleryInitBundle {
         doc,
         thm,
         unread_count,
+        progress_px,
         slider_pct,
         user_name_text,
         c,

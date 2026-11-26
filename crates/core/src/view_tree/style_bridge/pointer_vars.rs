@@ -2,7 +2,7 @@
 //! pointerdown local coordinate latching (`--krui-pointer-x/y/xp/yp`), hover tracking
 //! (`--krui-hover-x/y`), and `ResolvedRadialGradient` resolution.
 
-use crate::scene::ResolvedRadialGradient;
+use crate::scene::{ResolvedConicGradient, ResolvedRadialGradient};
 use crate::view_tree::hit_test::effective_node_world_matrix_and_rect;
 use crate::view_tree::{NodeId, ViewTree, ViewTreeInner};
 use krui_layout::LayoutRect;
@@ -203,15 +203,13 @@ pub(crate) fn pseudo_host_of(inner: &ViewTreeInner, id: NodeId) -> Option<NodeId
 }
 
 pub(crate) fn node_or_pseudo_uses_radial_gradient(inner: &ViewTreeInner, cid: NodeId) -> bool {
+    let uses = |p: &PaintStyle| p.radial_gradient.is_some() || p.conic_gradient.is_some();
     let Some(n) = inner.node(cid) else {
         return false;
     };
-    n.style.paint.radial_gradient.is_some()
+    uses(&n.style.paint)
         || n.children.iter().any(|&pid| {
-            is_pseudo_node(inner, pid)
-                && inner
-                    .node(pid)
-                    .is_some_and(|pn| pn.style.paint.radial_gradient.is_some())
+            is_pseudo_node(inner, pid) && inner.node(pid).is_some_and(|pn| uses(&pn.style.paint))
         })
 }
 
@@ -366,5 +364,34 @@ pub(crate) fn resolve_radial_gradient_for_node(
         outer_color: grad.outer_color,
         inner_stop: grad.inner_stop,
         outer_stop: grad.outer_stop,
+        extra_stops: grad.extra_stops,
+        repeating: grad.repeating,
+    })
+}
+
+/// Resolves conic gradient center offset in logical px relative to box center.
+pub(crate) fn resolve_conic_gradient_for_node(
+    inner: &ViewTreeInner,
+    node_id: NodeId,
+    world_rect: LayoutRect,
+    paint: &PaintStyle,
+) -> Option<ResolvedConicGradient> {
+    let grad = paint.conic_gradient?;
+    let coord_source = pseudo_host_of(inner, node_id).unwrap_or(node_id);
+    let entry = inner.sparse.pseudo_pointer.get(&coord_source);
+    let latched = entry.and_then(|e| e.latched_pointer_xy);
+    let hover = entry.and_then(|e| e.hover_pointer_xy);
+    let cx = grad
+        .center_x
+        .resolve_px(world_rect.width, latched.map(|p| p.0), hover.map(|p| p.0));
+    let cy = grad
+        .center_y
+        .resolve_px(world_rect.height, latched.map(|p| p.1), hover.map(|p| p.1));
+    Some(ResolvedConicGradient {
+        center_dx: cx - 0.5 * world_rect.width,
+        center_dy: cy - 0.5 * world_rect.height,
+        from_angle_deg: grad.from_angle_deg,
+        stops: grad.stops,
+        repeating: grad.repeating,
     })
 }

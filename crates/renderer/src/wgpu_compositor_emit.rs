@@ -225,39 +225,14 @@ impl WgpuFrameResources {
                 AuxBinding::BlurredHalfB,
             );
         }
-        if let Some(rg) = spec
-            .radial_gradient
-            .filter(|_| spec.background_gradient.is_some())
-        {
-            let mut base_spec = *spec;
-            base_spec.border_width = 0.0;
-            if let Some(inst) = SdfQuadInstance::styled_box(&base_spec, env.sf) {
-                self.segment.push_sdf(
-                    target_id,
-                    initialized,
-                    env.clear_color,
-                    inst,
-                    AuxBinding::Dummy,
-                );
-            }
-            if let Some(rad_inst) = SdfQuadInstance::radial_overlay(spec, rg, env.sf) {
-                self.segment.push_sdf(
-                    target_id,
-                    initialized,
-                    env.clear_color,
-                    rad_inst,
-                    AuxBinding::Dummy,
-                );
-            }
-        } else if let Some(inst) = SdfQuadInstance::styled_box(spec, env.sf) {
-            self.segment.push_sdf(
-                target_id,
-                initialized,
-                env.clear_color,
-                inst,
-                AuxBinding::Dummy,
-            );
-        }
+        crate::wgpu_compositor_wave4::emit_box_gradient_stack(
+            &mut self.segment,
+            &mut self.gradient_luts,
+            target_id,
+            initialized,
+            spec,
+            env,
+        );
         if let Some(sh) = box_shadow.filter(|s| s.inset) {
             if let Some(sh_inst) = SdfQuadInstance::box_shadow(spec, sh, env.sf) {
                 self.segment.push_sdf(
@@ -364,7 +339,10 @@ fn handle_layer_op(
             clip_radius,
             clip_radii,
             local_clip,
+            clip_path,
+            perspective,
             opacity,
+            filter,
             ..
         } => {
             let kind = if let Some(pool_idx) = free_layers.pop() {
@@ -383,7 +361,10 @@ fn handle_layer_op(
                 clip_radius: *clip_radius,
                 clip_radii: *clip_radii,
                 local_clip: *local_clip,
+                clip_path: clip_path.clone(),
+                perspective: *perspective,
                 opacity: *opacity,
+                filter: *filter,
                 drawn_bounds: None,
             });
             true
@@ -428,21 +409,67 @@ pub(crate) fn pop_layer_into_parent(
         return;
     };
     if initialized[1 + pool_idx] {
-        if let Some(inst) = SdfQuadInstance::composite_layer(
-            popped.clip,
-            popped.clip_radius,
-            popped.clip_radii,
-            popped.local_clip,
-            popped.drawn_bounds,
-            popped.opacity,
-            env.sf,
-        ) {
-            segment.push_sdf(
+        let mut bounds = popped.drawn_bounds;
+        let aux = if popped.filter.blur_px > 0.5 {
+            if let Some(b) = bounds {
+                let pad = (popped.filter.blur_px * env.sf.surface_scale * 2.5).ceil();
+                let padded = [
+                    (b[0] - pad).max(0.0),
+                    (b[1] - pad).max(0.0),
+                    (b[2] + pad).min(env.sf.phys_w),
+                    (b[3] + pad).min(env.sf.phys_h),
+                ];
+                bounds = Some(padded);
+                let mut steps = Vec::with_capacity(5);
+                plan_dual_kawase_steps(
+                    1 + pool_idx,
+                    env.vp_size,
+                    padded,
+                    popped.filter.blur_px * env.sf.surface_scale,
+                    env.ctx.blur.uniform_align,
+                    &mut segment.blur_uniform_bytes,
+                    &mut steps,
+                );
+                segment.blur_count += steps.len();
+                segment.ops.push(SegmentOp::BlurChain { steps });
+                AuxBinding::BlurredHalfB
+            } else {
+                AuxBinding::Layer(pool_idx)
+            }
+        } else {
+            AuxBinding::Layer(pool_idx)
+        };
+        let inst_opt = if let Some((src_rect, mat4)) = popped.perspective {
+            crate::wgpu_compositor_wave4::build_perspective_composite_instance(
+                popped.clip,
+                popped.clip_radius,
+                popped.clip_radii,
+                (src_rect, mat4),
+                popped.opacity,
+                popped.filter,
+                env.sf,
+            )
+        } else {
+            SdfQuadInstance::composite_layer(
+                popped.clip,
+                popped.clip_radius,
+                popped.clip_radii,
+                popped.local_clip,
+                bounds,
+                popped.opacity,
+                popped.filter,
+                env.sf,
+            )
+        };
+        if let Some(inst) = inst_opt {
+            crate::wgpu_compositor_wave4::push_popped_composite_op(
+                segment,
+                popped,
                 parent_tid,
+                env,
                 initialized,
-                env.clear_color,
                 inst,
-                AuxBinding::Layer(pool_idx),
+                aux,
             );
         }
     }
@@ -462,6 +489,7 @@ fn unpack_styled_box_spec(
             background_color,
             background_gradient,
             radial_gradient,
+            conic_gradient,
             border_color,
             border_width,
             border_radius,
@@ -479,6 +507,7 @@ fn unpack_styled_box_spec(
                 background_color: *background_color,
                 background_gradient: *background_gradient,
                 radial_gradient: *radial_gradient,
+                conic_gradient: *conic_gradient,
                 border_color: *border_color,
                 border_width: *border_width,
                 border_radius: *border_radius,

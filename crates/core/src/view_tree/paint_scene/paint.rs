@@ -1,7 +1,7 @@
 //! Layout computation and `PaintScene` assembly (`build_paint_scene`, `emit_node_primitives_recursive`,
 //! and Top-Layer `<select>` overlay emission).
 
-use crate::scene::{DrawPrimitive, PaintScene, ResolvedRadialGradient};
+use crate::scene::{DrawPrimitive, PaintScene, ResolvedConicGradient, ResolvedRadialGradient};
 use crate::view_tree::clip_shape::{resolve_node_visibility, ClipState};
 use crate::view_tree::hit_test::update_world_rects_recursive;
 use crate::view_tree::node::ElementNode;
@@ -10,23 +10,39 @@ use crate::view_tree::paint_box_layers::{
     emit_base_and_shadow_boxes, emit_extra_box_layers, paint_has_extra_box_layers,
 };
 use crate::view_tree::paint_canvas::{
-    emit_control_indicator_primitives, emit_node_canvas_primitives, emit_node_media_primitives,
-    refresh_dirty_canvases,
+    emit_node_indicator_or_canvas_primitives, refresh_dirty_canvases,
 };
 use crate::view_tree::paint_text::emit_node_text_primitives;
 use crate::view_tree::select_popup_paint::emit_select_popup_overlay;
 use crate::view_tree::{A11yId, NodeId, ViewTree, ViewTreeInner};
 use krui_a11y::SemanticRole;
 use krui_layout::LayoutRect;
-use krui_style::{Affine2, Color, DisplayMode, PositionMode};
+use krui_style::{Affine2, Color, DamageRect, DamageTrackingMode, DisplayMode, PositionMode};
 
 /// Minimum highlight box height (logical px).
 pub const MIN_TEXT_HIGHLIGHT_HEIGHT_PX: f32 = 12.0;
 
 impl ViewTree {
-    /// Computes layout when the tree or viewport is dirty and assembles a `PaintScene`,
-    /// including top-layer `<select>` and tooltip overlays.
-    pub fn build_paint_scene(&mut self, viewport_w: u32, viewport_h: u32) -> (PaintScene, bool) {
+    /// Configures whether [`Self::build_paint_scene_into`] tracks damaged bounding rectangles
+    /// (`BoundingRects`) or skips rect diffing (`DirtyFlagOnly`, default for 120 FPS engine hosts).
+    pub fn set_damage_tracking_mode(&mut self, mode: DamageTrackingMode) {
+        self.inner.borrow_mut().damage_tracker.set_mode(mode);
+    }
+
+    /// Returns the currently configured [`DamageTrackingMode`].
+    #[must_use]
+    pub fn damage_tracking_mode(&self) -> DamageTrackingMode {
+        self.inner.borrow().damage_tracker.mode()
+    }
+
+    /// Computes layout when dirty and refills `scene` in-place (preserving `Vec` capacity),
+    /// returning `(did_relayout, dirty_rects)`.
+    pub fn build_paint_scene_into(
+        &mut self,
+        viewport_w: u32,
+        viewport_h: u32,
+        scene: &mut PaintScene,
+    ) -> (bool, Vec<DamageRect>) {
         let did_relayout =
             relayout_roots_if_dirty(&mut self.inner.borrow_mut(), viewport_w, viewport_h);
         refresh_dirty_canvases(self);
@@ -34,46 +50,67 @@ impl ViewTree {
         let mut inner = self.inner.borrow_mut();
         let (clear_color, prop_node) = crate::view_tree::sync::resolve_canvas_clear_color(&inner);
         inner.propagated_canvas_node = prop_node;
-        let mut scene = PaintScene::new(viewport_w, viewport_h, clear_color);
+        scene.width = viewport_w;
+        scene.height = viewport_h;
+        scene.clear_color = clear_color;
         scene.scale_factor = inner.scale_factor;
+        scene.primitives.clear();
         crate::view_tree::stacking::emit_stacked_paint_scene(
             &mut inner,
             (viewport_w, viewport_h),
-            &mut scene,
+            scene,
         );
-        emit_select_popup_overlay(&mut inner, &mut scene);
+        emit_select_popup_overlay(&mut inner, scene);
         crate::view_tree::tooltip_paint::emit_hover_tooltip_overlay(
             &mut inner,
             (viewport_w as f32, viewport_h as f32),
-            &mut scene,
+            scene,
         );
-
         inner.paint_dirty = false;
+        let dirty = inner.damage_tracker.compute_damage(scene);
+        (did_relayout, dirty)
+    }
+
+    /// Computes layout when the tree or viewport is dirty and assembles a `PaintScene`,
+    /// including top-layer `<select>` and tooltip overlays.
+    pub fn build_paint_scene(&mut self, viewport_w: u32, viewport_h: u32) -> (PaintScene, bool) {
+        let mut scene = PaintScene::new(viewport_w.max(1), viewport_h.max(1), Color::TRANSPARENT);
+        let (did_relayout, _) = self.build_paint_scene_into(viewport_w, viewport_h, &mut scene);
         (scene, did_relayout)
     }
+}
+
+fn run_layout_pass(inner: &mut ViewTreeInner, vw: f32, vh: f32) -> bool {
+    let ViewTreeInner {
+        layout_engine,
+        stylo,
+        text_engine,
+        ..
+    } = inner;
+    layout_engine.compute_if_dirty_with_stylo(stylo, vw, vh, |ctx, max_w| {
+        let mw = if ctx.single_line { None } else { max_w };
+        if let Some(spans) = ctx.rich_spans.as_deref().filter(|s| !s.is_empty()) {
+            text_engine.measure_rich_text(spans, &ctx.text_style, mw)
+        } else if ctx.text.is_empty() {
+            (0.0, text_engine.measure_empty_line_height(&ctx.text_style))
+        } else {
+            text_engine.measure_styled_text(&ctx.text, &ctx.text_style, mw)
+        }
+    })
 }
 
 fn relayout_roots_if_dirty(inner: &mut ViewTreeInner, viewport_w: u32, viewport_h: u32) -> bool {
     let (vw, vh) = (viewport_w as f32, viewport_h as f32);
     let _ = crate::view_tree::sync::sync_viewport_and_flush_restyle(inner, vw, vh);
-    let did_relayout = {
-        let ViewTreeInner {
-            layout_engine,
-            stylo,
-            text_engine,
-            ..
-        } = inner;
-        layout_engine.compute_if_dirty_with_stylo(stylo, vw, vh, |ctx, max_w| {
-            let mw = if ctx.single_line { None } else { max_w };
-            if let Some(spans) = ctx.rich_spans.as_deref().filter(|s| !s.is_empty()) {
-                text_engine.measure_rich_text(spans, &ctx.text_style, mw)
-            } else if ctx.text.is_empty() {
-                (0.0, text_engine.measure_empty_line_height(&ctx.text_style))
-            } else {
-                text_engine.measure_styled_text(&ctx.text, &ctx.text_style, mw)
+    let mut did_relayout = run_layout_pass(inner, vw, vh);
+    if did_relayout || inner.stylo.has_container_queries() {
+        for _ in 0..4 {
+            if !crate::view_tree::style_bridge::resolver::sync_container_sizes_and_restyle(inner) {
+                break;
             }
-        })
-    };
+            did_relayout |= run_layout_pass(inner, vw, vh);
+        }
+    }
     if did_relayout {
         let roots = inner.roots.clone();
         for &root_id in &roots {
@@ -124,6 +161,7 @@ pub(crate) fn push_flat_box(
         background_color,
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color: Color::TRANSPARENT,
         border_width: 0.0,
         border_radius,
@@ -142,6 +180,7 @@ pub(super) fn paint_has_base_box_visuals(
     p.background_color.a > 0
         || p.background_gradient.is_some()
         || p.radial_gradient.is_some()
+        || p.conic_gradient.is_some()
         || has_border
         || p.box_shadow.is_some()
         || p.secondary_shadow.is_some()
@@ -167,7 +206,8 @@ pub(super) fn node_needs_group_opacity(inner: &ViewTreeInner, f: &NodePaintFrame
             | SemanticRole::Slider
             | SemanticRole::ComboBox
             | SemanticRole::Canvas
-    ) || inner.sparse.media.contains_key(&f.node_id);
+    ) || inner.sparse.media.contains_key(&f.node_id)
+        || crate::view_tree::semantics::progress_fill_ratio(inner, f.node_id).is_some();
     let is_scroll = f.layout.is_scroll_container();
     paint_has_box_visuals(&f.effective_paint, &f.layout)
         && (f.flags.0 || has_indicator || is_scroll)
@@ -177,7 +217,8 @@ fn node_has_text_or_input(inner: &ViewTreeInner, node_id: NodeId, n: &ElementNod
     if matches!(
         n.role,
         SemanticRole::Checkbox | SemanticRole::RadioButton | SemanticRole::Slider
-    ) {
+    ) || crate::view_tree::semantics::progress_fill_ratio(inner, node_id).is_some()
+    {
         return (false, false);
     }
     if n.role == SemanticRole::ComboBox {
@@ -217,6 +258,7 @@ pub(super) struct NodePaintFrame {
     pub(super) flags: (bool, bool, bool),
     pub(super) clip: ClipState,
     pub(super) radial_gradient: Option<ResolvedRadialGradient>,
+    pub(super) conic_gradient: Option<ResolvedConicGradient>,
     pub(super) effective_transform: Affine2,
     pub(super) effective_opacity: f32,
     pub(super) next_inherited_text_color: Option<Color>,
@@ -235,6 +277,7 @@ pub(super) fn emit_backdrop_blur_prelayer(f: &mut NodePaintFrame, scene: &mut Pa
             background_color: Color::TRANSPARENT,
             background_gradient: None,
             radial_gradient: None,
+            conic_gradient: None,
             border_color: Color::TRANSPARENT,
             border_width: 0.0,
             border_radius: f.effective_paint.border_radius,
@@ -361,6 +404,12 @@ fn finish_node_paint_frame(
         world_rect,
         &effective_paint,
     );
+    let conic_gradient = crate::view_tree::pointer_vars::resolve_conic_gradient_for_node(
+        inner,
+        node_id,
+        world_rect,
+        &effective_paint,
+    );
     let scroll_pair = inner.scroll(node_id).map_or(((0.0, 0.0), 0.0), |s| {
         ((s.scroll_x, s.scroll_y), s.cached_max_scroll_y)
     });
@@ -377,6 +426,7 @@ fn finish_node_paint_frame(
         flags,
         clip,
         radial_gradient,
+        conic_gradient,
         effective_transform,
         effective_opacity,
         next_inherited_text_color,
@@ -395,6 +445,7 @@ fn compute_paint_and_transform(
     if inner.propagated_canvas_node == Some(node_id)
         && effective_paint.background_gradient.is_none()
         && effective_paint.radial_gradient.is_none()
+        && effective_paint.conic_gradient.is_none()
     {
         effective_paint.background_color = Color::TRANSPARENT;
     }
@@ -479,45 +530,5 @@ pub(super) fn emit_node_self_content_primitives(
             );
         }
     }
-    emit_node_indicator_or_canvas_primitives(inner, f, scene);
-}
-
-fn emit_node_indicator_or_canvas_primitives(
-    inner: &mut ViewTreeInner,
-    f: &NodePaintFrame,
-    scene: &mut PaintScene,
-) {
-    emit_control_indicator_primitives(
-        inner,
-        f.node_id,
-        f.world_rect,
-        &f.layout,
-        f.clip,
-        f.effective_transform,
-        f.effective_opacity,
-        &f.effective_paint,
-        scene,
-    );
-    emit_node_media_primitives(
-        inner,
-        f.node_id,
-        &f.layout,
-        f.world_rect,
-        f.clip,
-        f.effective_transform,
-        f.effective_opacity,
-        &f.effective_paint,
-        scene,
-    );
-    if f.role == SemanticRole::Canvas {
-        emit_node_canvas_primitives(
-            inner,
-            f.node_id,
-            f.world_rect,
-            f.clip,
-            f.effective_transform,
-            f.effective_opacity,
-            scene,
-        );
-    }
+    emit_node_indicator_or_canvas_primitives(inner, f, f.role == SemanticRole::Canvas, scene);
 }

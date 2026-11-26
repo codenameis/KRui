@@ -39,6 +39,7 @@
     flex-direction: row;
     align-items: center;
     flex-shrink: 0;
+    pointer-events: none;
     width: 52px;
     height: 30px;
     padding: 2px;
@@ -53,6 +54,7 @@
 }
 .krui-ui-switch-thumb {
     flex-shrink: 0;
+    pointer-events: none;
     width: 22px;
     height: 22px;
     border-radius: var(--krui-pill-radius);
@@ -200,29 +202,29 @@
     </label>
 </template>
 
-<template name="RadioField" label="" group="radio" value="" checked="" bind_checked="" onchange="" disabled="{false}" id="" class="" title="">
+<template name="RadioField" label="" group="radio" value="" checked="" bind_checked="" onchange="" disabled="{false}" id="" input_id="" class="" title="">
     <label id="{id}" class="krui-ui-check-row {class}" title="{title}">
-        <input type="radio" name="{group}" value="{value}" checked="{checked}" bind:checked="{bind_checked}" disabled="{disabled}" onchange="{onchange}" />
+        <input id="{input_id}" type="radio" name="{group}" value="{value}" checked="{checked}" bind:checked="{bind_checked}" disabled="{disabled}" onchange="{onchange}" />
         <span class="krui-ui-field-lbl">{label}<slot/></span>
     </label>
 </template>
 
-<template name="Switch" label="" checked="{false}" disabled="{false}" onclick="" id="" class="" title="">
+<template name="Switch" label="" checked="{false}" disabled="{false}" onclick="" id="" thumb_id="" class="" title="">
     <button type="button" id="{id}" class="krui-ui-switch-btn {class}" aria-label="{label}" title="{title}" disabled="{disabled}" onclick="{onclick}">
         <span class="krui-ui-field-lbl">{label}<slot/></span>
         <span class="krui-ui-switch-track krui-ui-switch-track-{checked}">
-            <span class="krui-ui-switch-thumb krui-ui-switch-thumb-{checked}"></span>
+            <span id="{thumb_id}" class="krui-ui-switch-thumb krui-ui-switch-thumb-{checked}"></span>
         </span>
     </button>
 </template>
 
-<template name="SliderField" label="" value_text="" min="0" max="100" step="1" value="" bind_value="" oninput="" onchange="" disabled="{false}" id="" class="" title="">
+<template name="SliderField" label="" value_text="" min="0" max="100" step="1" value="" bind_value="" oninput="" onchange="" disabled="{false}" id="" input_id="" class="" title="">
     <div id="{id}" class="krui-ui-slider-field {class}" title="{title}">
         <div class="krui-ui-slider-head">
             <span class="krui-ui-field-lbl">{label}</span>
             <if test="{value_text != ''}"><span class="krui-ui-field-sub">{value_text}</span></if>
         </div>
-        <input type="range" min="{min}" max="{max}" step="{step}" value="{value}" bind:value="{bind_value}" disabled="{disabled}" oninput="{oninput}" onchange="{onchange}" />
+        <input id="{input_id}" type="range" min="{min}" max="{max}" step="{step}" value="{value}" bind:value="{bind_value}" disabled="{disabled}" oninput="{oninput}" onchange="{onchange}" />
     </div>
 </template>
 
@@ -241,10 +243,10 @@
     </div>
 </template>
 
-<template name="SelectField" label="" supporting="" value="" bind_value="" onchange="" disabled="{false}" id="" class="" title="">
+<template name="SelectField" label="" supporting="" value="" bind_value="" onchange="" disabled="{false}" id="" select_id="" class="" title="">
     <div id="{id}" class="krui-ui-select-field {class}" title="{title}">
         <if test="{label != ''}"><label class="krui-ui-field-lbl">{label}</label></if>
-        <select value="{value}" bind:value="{bind_value}" disabled="{disabled}" onchange="{onchange}"><slot/></select>
+        <select id="{select_id}" value="{value}" bind:value="{bind_value}" disabled="{disabled}" onchange="{onchange}"><slot/></select>
         <if test="{supporting != ''}"><span class="krui-ui-field-sub">{supporting}</span></if>
     </div>
 </template>

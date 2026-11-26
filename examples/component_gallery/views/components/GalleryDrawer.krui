@@ -115,4 +115,10 @@
     <button id="drawer-page-24" class="m3-drawer-btn m3-drawer-btn-{controller.active_doc_page == 24}" onclick="{controller.select_doc_page(24)}">
         <span>Tooltips</span>
     </button>
+    <button id="drawer-studio-canvas" class="m3-drawer-btn" onclick="{controller.open_canvas_studio()}">
+        <span>2D Canvas Studio</span>
+    </button>
+    <button id="drawer-studio-3d" class="m3-drawer-btn" onclick="{controller.open_viewport_3d()}">
+        <span>3D Viewport (wgpu / Bevy)</span>
+    </button>
 </div>

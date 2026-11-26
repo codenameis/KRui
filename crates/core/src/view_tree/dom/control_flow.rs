@@ -116,6 +116,18 @@ impl ViewTree {
         branch_mounters: Vec<BranchMountFn>,
     ) -> NodeId {
         let anchor_id = self.create_anchor_node(parent);
+        self.attach_if_to_anchor(parent, anchor_id, branch_selector, branch_mounters)
+    }
+
+    /// Attaches a reactive `<if>`/`<else-if>`/`<else>` controller to an existing pre-allocated
+    /// control-flow anchor node (used by D1 static UI descriptor mounters).
+    pub fn attach_if_to_anchor(
+        &mut self,
+        parent: Option<NodeId>,
+        anchor_id: NodeId,
+        branch_selector: impl Fn() -> Option<usize> + 'static,
+        branch_mounters: Vec<BranchMountFn>,
+    ) -> NodeId {
         let state = Rc::new(RefCell::new(IfBranchState {
             active_branch: None,
             active_scope: None,
@@ -164,6 +176,30 @@ impl ViewTree {
         K: Eq + Clone + 'static,
     {
         let anchor_id = self.create_anchor_node(parent);
+        self.attach_for_to_anchor(
+            parent,
+            anchor_id,
+            items_fn,
+            key_fn,
+            item_mounter,
+            empty_mounter,
+        )
+    }
+
+    /// Attaches a reactive keyed `<for>` controller to an existing pre-allocated anchor node.
+    pub fn attach_for_to_anchor<T, K>(
+        &mut self,
+        parent: Option<NodeId>,
+        anchor_id: NodeId,
+        items_fn: impl Fn() -> Vec<T> + 'static,
+        key_fn: impl Fn(&T) -> K + 'static,
+        item_mounter: impl Fn(&mut ViewTree, Option<NodeId>, Signal<T>) -> Vec<NodeId> + 'static,
+        empty_mounter: Option<BranchMountFn>,
+    ) -> NodeId
+    where
+        T: Clone + 'static,
+        K: Eq + Clone + 'static,
+    {
         let state = Rc::new(RefCell::new(ForListState::<T, K> {
             entries: Vec::new(),
             empty_scope: None,

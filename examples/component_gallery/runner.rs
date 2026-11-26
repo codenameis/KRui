@@ -1,7 +1,7 @@
 //! `component_gallery` 및 `krui-showcase` 공용 실행기 (헤드리스 120Hz 검증·스크린샷·창 실행).
 
 use super::controller::GalleryController;
-use super::{geometry_gates, screenshots};
+use super::{geometry_gates, interaction_gates, screenshots};
 use krui::*;
 
 pub(crate) const WINDOW_WIDTH: u32 = 1280;
@@ -15,6 +15,8 @@ struct GalleryWindowHooks {
     applied_dark_mode: bool,
     applied_scheme_mode: i32,
     applied_anim_paused: bool,
+    host_3d: Option<crate::viewport3d::Gallery3dHost>,
+    last_3d_mode: Option<i32>,
 }
 
 impl GalleryWindowHooks {
@@ -25,7 +27,57 @@ impl GalleryWindowHooks {
             applied_scheme_mode: controller.color_scheme_mode.get_untracked(),
             applied_anim_paused: controller.animations_paused.get_untracked(),
             controller,
+            host_3d: None,
+            last_3d_mode: None,
         }
+    }
+
+    fn studio_3d_active(
+        &self,
+    ) -> Option<(crate::controller::viewport3d_ctrl::StudioController, i32)> {
+        let studio = &self.controller.w4.studio;
+        if self.controller.active_section.get_untracked() != 4
+            || studio.develop_subroute.get_untracked() != 2
+        {
+            return None;
+        }
+        Some((
+            studio.clone(),
+            studio.engine_mode.get_untracked().clamp(0, 1),
+        ))
+    }
+
+    fn tick_studio_3d(&mut self, session: &mut EngineSession) -> bool {
+        let Some((studio, mode)) = self.studio_3d_active() else {
+            return false;
+        };
+        let Some(vp_node) = session.tree.find_by_id("dev-3d-viewport-slot") else {
+            return false;
+        };
+        if self.host_3d.is_none() {
+            if let Some(gpu) = session.gpu_context() {
+                self.host_3d = Some(crate::viewport3d::Gallery3dHost::new(gpu));
+            }
+        }
+        let mut redraw = false;
+        if let Some(host) = self.host_3d.as_mut() {
+            if host.ensure_bound(&mut session.tree, vp_node, mode)
+                || self.last_3d_mode != Some(mode)
+            {
+                self.last_3d_mode = Some(mode);
+                let summary = host.mode_summary(mode);
+                session
+                    .reactive_session
+                    .clone()
+                    .enter(|| studio.ecs_telemetry.set(summary));
+                redraw = true;
+            }
+        }
+        session
+            .reactive_session
+            .clone()
+            .enter(|| studio.tick_auto_spin(1.0 / 60.0))
+            || redraw
     }
 
     fn sync_theme_and_scheme(&mut self, session: &mut EngineSession) -> bool {
@@ -59,10 +111,33 @@ impl WindowEventHooks for GalleryWindowHooks {
             self.applied_anim_paused = paused;
             session.tree.set_animations_paused(paused);
         }
-        if self.sync_theme_and_scheme(session) {
-            return Some(None);
-        }
-        None
+        let mut redraw = self.sync_theme_and_scheme(session);
+        redraw |= self.tick_studio_3d(session);
+        redraw.then_some(None)
+    }
+
+    fn on_before_present(&mut self, session: &mut EngineSession, _dt_secs: f32) {
+        let Some((studio, mode)) = self.studio_3d_active() else {
+            return;
+        };
+        let Some(vp_node) = session.tree.find_by_id("dev-3d-viewport-slot") else {
+            return;
+        };
+        let Some(host) = self.host_3d.as_mut() else {
+            return;
+        };
+        let _ = host.sync_and_render(
+            &mut session.tree,
+            vp_node,
+            session.scale_factor as f32,
+            crate::viewport3d::Viewport3dFrameInput {
+                engine_mode: mode,
+                yaw_deg: studio.orbit_yaw.get_untracked(),
+                pitch_deg: studio.orbit_pitch.get_untracked(),
+                distance: studio.orbit_dist.get_untracked(),
+                model_scale: studio.model_scale.get_untracked(),
+            },
+        );
     }
 
     fn on_key_down(
@@ -71,7 +146,19 @@ impl WindowEventHooks for GalleryWindowHooks {
         key_info: &KeyInfo,
         _mods: Mods,
     ) -> Option<Option<String>> {
-        let idx = match key_name_for_keydown(key_info).as_str() {
+        let key_name = key_name_for_keydown(key_info);
+        if key_name == "Escape" {
+            if session.tree.active_select_popup().is_some() {
+                return None;
+            }
+            let ctrl = self.controller.clone();
+            let dismissed = session
+                .reactive_session
+                .clone()
+                .enter(|| ctrl.dismiss_top_overlay());
+            return dismissed.then_some(None);
+        }
+        let idx = match key_name.as_str() {
             "F5" => 0,
             "F6" => 1,
             _ => return None,
@@ -417,6 +504,7 @@ fn run_headless_verification() {
     verify_responsive_pwa_breakpoints(&mut session, &controller);
     verify_carousel_and_inputs(&mut session, &controller);
     geometry_gates::verify_gallery_geometry_gates(&mut session, &controller);
+    interaction_gates::verify_gallery_interactions(&mut session, &controller);
     println!(
         "[component_gallery] Headless 120-Frame Verified | Theme: {} | Nodes: {} | Catalog: {}",
         controller.theme_name.get_untracked(),

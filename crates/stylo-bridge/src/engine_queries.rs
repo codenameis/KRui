@@ -99,6 +99,20 @@ impl StyloStyleEngine {
         Some(extract_layout_style(&cv))
     }
 
+    /// Returns `(tracks_inline_size, tracks_block_size)` from CSS `container-type` on `node`.
+    #[must_use]
+    pub fn container_type_axes(&self, node: StyloNodeId) -> (bool, bool) {
+        use style::values::specified::box_::ContainerType;
+        let Some(cv) = self.computed_values(node) else {
+            return (false, false);
+        };
+        let ct = cv.get_box().clone_container_type();
+        (
+            ct.intersects(ContainerType::INLINE_SIZE | ContainerType::SIZE),
+            ct.contains(ContainerType::SIZE),
+        )
+    }
+
     /// Returns resolved pseudo-element [`PaintStyle`] (`::before`, `::after`, `::selection`,
     /// `::placeholder`, `::backdrop`).
     #[must_use]

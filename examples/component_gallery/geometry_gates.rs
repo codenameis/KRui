@@ -310,6 +310,7 @@ fn verify_text_unclipped_across_controls(
 
     controller.set_dialog_open(true);
     let _ = session.step_frame(1.0 / 120.0);
+    let _ = session.step_frame(0.45);
     let (dlg_scene, _) = session.tree.build_paint_scene(1280, 840);
     assert_glyphs_inside_box(
         &dlg_scene,
@@ -319,6 +320,7 @@ fn verify_text_unclipped_across_controls(
     );
     controller.set_dialog_open(false);
     let _ = session.step_frame(1.0 / 120.0);
+    let _ = session.step_frame(0.30);
     verify_before_state_layer_and_category4(session, controller);
     println!(
         "[component_gallery] Gate 4 (Text unclipped + ::before state layer): 14 controls + modal verified"

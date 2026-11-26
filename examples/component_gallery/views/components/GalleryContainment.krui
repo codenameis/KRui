@@ -26,7 +26,7 @@
         <div class="m3-cards-stage">
             <div class="m3-cards-trio-grid">
                 <div class="m3-cards-trio-col">
-                    <div id="demo-card-elevated" class="m3-doc-card md-card-elevated" onclick="{controller.select_list_item(0)}">
+                    <div id="demo-card-elevated" class="m3-doc-card md-card-elevated m3-doc-card-selected-{controller.selected_list_idx == 0}" onclick="{controller.select_list_item(0)}">
                         <div class="m3-doc-card-top">
                             <button class="m3-doc-card-more" onclick="{controller.record_action(1)}">
                                 <IconMoreVert class="m3-icon-sm" />
@@ -40,7 +40,7 @@
                 </div>
 
                 <div class="m3-cards-trio-col">
-                    <div id="demo-card-filled" class="m3-doc-card md-card-filled" onclick="{controller.select_list_item(1)}">
+                    <div id="demo-card-filled" class="m3-doc-card md-card-filled m3-doc-card-selected-{controller.selected_list_idx == 1}" onclick="{controller.select_list_item(1)}">
                         <div class="m3-doc-card-top">
                             <button class="m3-doc-card-more" onclick="{controller.record_action(1)}">
                                 <IconMoreVert class="m3-icon-sm" />
@@ -54,7 +54,7 @@
                 </div>
 
                 <div class="m3-cards-trio-col">
-                    <div id="demo-card-outlined" class="m3-doc-card md-card-outlined" onclick="{controller.select_list_item(2)}">
+                    <div id="demo-card-outlined" class="m3-doc-card md-card-outlined m3-doc-card-selected-{controller.selected_list_idx == 2}" onclick="{controller.select_list_item(2)}">
                         <div class="m3-doc-card-top">
                             <button class="m3-doc-card-more" onclick="{controller.record_action(1)}">
                                 <IconMoreVert class="m3-icon-sm" />
@@ -90,7 +90,7 @@
                 <input id="micl-card-checkbox" type="checkbox" bind:checked="{controller.micl_card_checked}" />
             </div>
             <details id="micl-details-demo" class="micl-details" open="true">
-                <summary class="micl-summary">MICL Native &lt;details&gt; &amp; &lt;summary&gt;</summary>
+                <summary id="micl-summary-demo" class="micl-summary">MICL Native &lt;details&gt; &amp; &lt;summary&gt;</summary>
                 <span class="gallery-note">@layer micl 토큰 + W3C 전방 호환 스타일시트가 무수정 적용됩니다.</span>
             </details>
         </div>

@@ -17,6 +17,9 @@
     "onCommand:krui.openLivePreview"
   ],
   "main": "./src/extension.js",
+  "scripts": {
+    "test": "node --test test/protocol_parity.test.js"
+  },
   "contributes": {
     "languages": [
       {
@@ -73,17 +76,15 @@
           "default": "",
           "description": "Optional path to the `krui` CLI binary. When empty, tries `krui` on PATH and falls back to `cargo run -q -p krui-cli` in the workspace."
         },
-        "krui.defaultTheme": {
+        "krui.defaultColorScheme": {
           "type": "string",
           "enum": [
-            "auto",
-            "fluent",
-            "material",
-            "liquid-glass",
-            "cosmic"
+            "system",
+            "light",
+            "dark"
           ],
-          "default": "auto",
-          "description": "Initial design system theme preset for new Live Preview panels (`auto` keeps each app's own default preset)."
+          "default": "system",
+          "description": "Initial CSS @media (prefers-color-scheme) mode for new Live Preview panels (`system` follows the OS preference)."
         },
         "krui.defaultDeviceFrame": {
           "type": "string",

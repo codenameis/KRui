@@ -17,6 +17,7 @@ mod codegen_slots;
 mod expr_vars;
 mod media_codegen;
 mod select_bindings;
+mod static_codegen;
 mod view_model;
 
 use codegen::expand_compiled_doc;

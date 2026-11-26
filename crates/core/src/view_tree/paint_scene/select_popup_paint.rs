@@ -43,6 +43,7 @@ pub(crate) fn emit_select_popup_overlay(inner: &mut ViewTreeInner, scene: &mut P
         background_color: UA_POPUP_BG_COLOR,
         background_gradient: None,
         radial_gradient: None,
+        conic_gradient: None,
         border_color: UA_POPUP_BORDER_COLOR,
         border_width: SELECT_POPUP_BORDER_WIDTH_PX,
         border_radius: SELECT_POPUP_CORNER_RADIUS_PX,

@@ -17,7 +17,7 @@
                 <SearchView id="m3-catalog-searchview" open="{true}" title="M3 카탈로그 검색 결과 ({controller.search_query})">
                     <List>
                         <for each="{row in controller.search_results}" key="{row.id}">
-                            <ListItem headline="{row.name}" supporting="{row.summary}" trailing="{row.category}" onclick="{controller.open_search_item(row.category_idx)}" />
+                            <ListItem headline="{row.name}" supporting="{row.summary}" trailing="{row.category}" onclick="{controller.open_search_item(row.doc_page)}" />
                         </for>
                         <empty>
                             <span class="gallery-note">일치하는 컴포넌트가 없습니다.</span>
