@@ -5,10 +5,10 @@
 
 use krui::{
     krui, CameraBasis3D, CanvasContext2D, CanvasDraw, Color, ColorPickerController,
-    ContextMenuController, ContextMenuItem, DockLayoutController, DockPane, DropPlacement,
-    ExternalTextureId, GizmoAxis, GizmoController, GizmoMode, GizmoPalette, GpuContext,
-    GpuResourceLimits, Mods, RendererBackend, Size, TreeNodeData, TreeViewController, UndoHistory,
-    Vec3Controller, ViewTree, WgpuRenderer,
+    ContextMenuController, ContextMenuItem, DockLayoutController, DockPane, DrawPrimitive,
+    DropPlacement, ExternalTextureId, GizmoAxis, GizmoController, GizmoMode, GizmoPalette,
+    GpuContext, GpuResourceLimits, ImageSource, Mods, RendererBackend, Size, TreeNodeData,
+    TreeViewController, UndoHistory, Vec3Controller, ViewTree, WgpuRenderer,
 };
 use krui_engine_host::{RawWgpuViewport, RawWgpuViewportConfig};
 
@@ -372,4 +372,82 @@ fn editor_scrubber_color_picker_context_menu_undo_and_gizmo() {
     assert!(gizmo.position.get_untracked()[0].abs() > 0.1);
     gizmo.mode.set(GizmoMode::Scale);
     gizmo.end_drag();
+}
+
+fn mount_hidpi_vp_tree() -> ViewTree {
+    let mut tree = ViewTree::new();
+    tree.set_scale_factor(1.5);
+    krui!(
+        r#"
+        <style>
+            .root { display: flex; flex-direction: column; width: 100%; height: 100%; }
+            .bar { height: 48px; flex-shrink: 0; }
+            .sub { height: 38px; flex-shrink: 0; }
+            .main { flex-grow: 1; display: flex; flex-direction: row; width: 100%; min-height: 0; }
+            .vp { flex-grow: 1; height: 100%; min-width: 0; min-height: 0; }
+            .ins { width: 280px; height: 100%; flex-shrink: 0; }
+        </style>
+        <div class="root"><div class="bar"></div><div class="sub"></div><div class="main"><div id="vp" class="vp"></div><div class="ins"></div></div></div>
+        "#
+    )
+    .mount(&mut tree, None);
+    tree
+}
+
+#[test]
+fn raw_wgpu_sync_with_node_hidpi_no_feedback_loop_and_zero_relayout() {
+    let Some(gpu) = GpuContext::try_new() else {
+        return;
+    };
+    let mut raw_vp = RawWgpuViewport::new(
+        gpu,
+        ExternalTextureId(88),
+        RawWgpuViewportConfig {
+            width: 320,
+            height: 240,
+            color_format: wgpu::TextureFormat::Rgba8Unorm,
+            sample_count: 1,
+            depth_format: None,
+        },
+    );
+    let mut tree = mount_hidpi_vp_tree();
+    let vp_node = tree.find_by_id("vp").expect("vp node");
+    let _ = tree.build_paint_scene(1280, 800);
+    let r1 = tree.node_layout(vp_node).expect("vp layout");
+    assert!((r1.width - 1000.0).abs() < 1.0 && (r1.height - 714.0).abs() < 1.0);
+    assert!(raw_vp.sync_with_node(&mut tree, vp_node, 1.5));
+    assert_eq!(raw_vp.size(), (1500, 1071));
+    assert!(tree.is_paint_dirty());
+
+    let (scene1, _) = tree.build_paint_scene(1280, 800);
+    let ext_ok = scene1.primitives.iter().any(|p| match p {
+        DrawPrimitive::Image {
+            rect,
+            source:
+                ImageSource::External {
+                    id: ExternalTextureId(88),
+                    ..
+                },
+            ..
+        } => (rect.width - r1.width).abs() < 1.0 && (rect.height - r1.height).abs() < 1.0,
+        _ => false,
+    });
+    assert!(
+        ext_ok,
+        "expected ExternalTexture primitive matching logical vp_rect"
+    );
+
+    let relayout_before = tree.relayout_passes();
+    for _ in 0..10 {
+        assert!(!raw_vp.sync_with_node(&mut tree, vp_node, 1.5));
+        assert!(!tree.is_paint_dirty());
+        let _ = tree.build_paint_scene(1280, 800);
+    }
+    assert_eq!(tree.relayout_passes(), relayout_before);
+    let r2 = tree.node_layout(vp_node).expect("vp layout steady");
+    assert!((r2.width - 1000.0).abs() < 1.0 && (r2.height - 714.0).abs() < 1.0);
+
+    let _ = tree.build_paint_scene(800, 500);
+    assert!(raw_vp.sync_with_node(&mut tree, vp_node, 1.5));
+    assert_eq!(raw_vp.size(), (780, 621));
 }

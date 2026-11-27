@@ -110,8 +110,13 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
         self.map_logical_point_to_tree(self.cursor_pos.0, self.cursor_pos.1)
     }
 
+    #[inline]
+    pub(crate) fn hook_has_pointer_capture(&self) -> bool {
+        self.hook_pointer_buttons != 0
+    }
+
     pub(crate) fn map_cursor_for_capture_or_hover(&self) -> Option<(f32, f32)> {
-        if self.session.tree.captured_pointer_node().is_some() {
+        if self.hook_has_pointer_capture() || self.session.tree.captured_pointer_node().is_some() {
             #[cfg(feature = "preview")]
             if let Some(frame) = self.hot_reloader.as_ref().and_then(|w| w.device_frame()) {
                 return Some(
@@ -125,19 +130,38 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
     }
 
     pub(crate) fn handle_cursor_moved(&mut self, position: PhysicalPosition<f64>) {
+        let prev_pos = self.cursor_pos;
         let logical = position.to_logical::<f32>(self.session.scale_factor);
         self.cursor_pos = (logical.x, logical.y);
         if self.pointer_lock_active {
             return;
         }
         let mapped = self.map_cursor_for_capture_or_hover();
+        let rs = self.session.reactive_session.clone();
+        if self.hook_has_pointer_capture() {
+            if is_same_logical_pos(prev_pos, self.cursor_pos) {
+                return;
+            }
+            let hook_changed = mapped.is_some_and(|(mx, my)| {
+                rs.enter(|| {
+                    self.hooks
+                        .on_pointer_moved(&mut self.session, mx, my, self.mods)
+                })
+            });
+            if hook_changed {
+                if let Some(win) = &self.window {
+                    win.request_redraw();
+                }
+            }
+            return;
+        }
         let is_down = self.is_left_mouse_down;
         if is_down {
             self.last_caret_activity = std::time::Instant::now();
         }
         let mods = self.mods;
         let tree = &mut self.session.tree;
-        let (drag_changed, hover_changed) = self.session.reactive_session.enter(|| {
+        let (drag_changed, hover_changed) = rs.enter(|| {
             let drag = is_down && mapped.is_some_and(|(mx, my)| tree.dispatch_pointer_drag(mx, my));
             let hover = match mapped {
                 Some((mx, my)) => tree.dispatch_pointer_move_with_mods(mx, my, mods),
@@ -146,8 +170,10 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
             (drag, hover)
         });
         let hook_changed = mapped.is_some_and(|(mx, my)| {
-            self.hooks
-                .on_pointer_moved(&mut self.session, mx, my, self.mods)
+            rs.enter(|| {
+                self.hooks
+                    .on_pointer_moved(&mut self.session, mx, my, self.mods)
+            })
         });
         self.sync_window_cursor_and_pointer_lock();
         if drag_changed || hover_changed || hook_changed {
@@ -183,25 +209,62 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
             }
         };
         if let Some((mx, my)) = self.map_cursor_to_tree() {
-            if let Some(hook_effect) =
+            let rs = self.session.reactive_session.clone();
+            if let Some(hook_effect) = rs.enter(|| {
                 self.hooks
                     .on_mouse_wheel(&mut self.session, mx, my, dy, self.mods)
-            {
+            }) {
                 self.apply_hook_effect(Some(hook_effect));
                 return;
             }
             let mods = self.mods;
             let tree = &mut self.session.tree;
-            if self
-                .session
-                .reactive_session
-                .enter(|| tree.dispatch_wheel(mx, my, dx, dy, mods))
-            {
+            if rs.enter(|| tree.dispatch_wheel(mx, my, dx, dy, mods)) {
                 if let Some(win) = &self.window {
                     win.request_redraw();
                 }
             }
         }
+    }
+
+    fn try_route_button_to_hook(&mut self, code: u8, pressed: bool) -> (Option<(f32, f32)>, bool) {
+        let bit = button_capture_bit(code);
+        let rs = self.session.reactive_session.clone();
+        if pressed {
+            let pos = self.map_cursor_to_tree();
+            if let Some((mx, my)) = pos {
+                let eff = rs.enter(|| {
+                    self.hooks
+                        .on_pointer_button(&mut self.session, mx, my, code, true, self.mods)
+                });
+                if let Some(hook_effect) = eff {
+                    self.hook_pointer_buttons |= bit;
+                    self.apply_hook_effect(Some(hook_effect));
+                    return (pos, true);
+                }
+            }
+            return (pos, false);
+        }
+        let was_hook = (self.hook_pointer_buttons & bit) != 0;
+        self.hook_pointer_buttons &= !bit;
+        let release_pos = if was_hook {
+            self.map_cursor_for_capture_or_hover()
+                .or(Some(self.cursor_pos))
+        } else {
+            self.map_cursor_for_capture_or_hover()
+                .or_else(|| self.map_cursor_to_tree())
+        };
+        if let Some((mx, my)) = release_pos {
+            let eff = rs.enter(|| {
+                self.hooks
+                    .on_pointer_button(&mut self.session, mx, my, code, false, self.mods)
+            });
+            if let Some(hook_effect) = eff {
+                self.apply_hook_effect(Some(hook_effect));
+                return (release_pos, true);
+            }
+        }
+        (release_pos, was_hook)
     }
 
     pub(crate) fn handle_mouse_button(&mut self, button: MouseButton, pressed: bool) {
@@ -214,20 +277,9 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
         if pressed {
             self.last_caret_activity = std::time::Instant::now();
         }
-        let hook_pos = if pressed {
-            self.map_cursor_to_tree()
-        } else {
-            self.map_cursor_for_capture_or_hover()
-                .or_else(|| self.map_cursor_to_tree())
-        };
-        if let Some((mx, my)) = hook_pos {
-            if let Some(hook_effect) =
-                self.hooks
-                    .on_pointer_button(&mut self.session, mx, my, code, pressed, self.mods)
-            {
-                self.apply_hook_effect(Some(hook_effect));
-                return;
-            }
+        let (hook_pos, consumed) = self.try_route_button_to_hook(code, pressed);
+        if consumed {
+            return;
         }
         if code == 0 {
             if pressed {
@@ -306,6 +358,12 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
         } else {
             self.is_left_mouse_down = false;
             self.mods = krui_core::Mods::default();
+            if self.hook_pointer_buttons != 0 {
+                self.hook_pointer_buttons = 0;
+                let rs = self.session.reactive_session.clone();
+                let cancel_effect = rs.enter(|| self.hooks.on_pointer_cancel(&mut self.session));
+                self.apply_hook_effect(cancel_effect);
+            }
             let tree = &mut self.session.tree;
             self.session
                 .reactive_session
@@ -341,5 +399,71 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
         let tick_effect = self.hooks.on_tick(&mut self.session);
         self.apply_hook_effect(tick_effect);
         self.sync_and_redraw();
+    }
+}
+
+#[inline]
+const fn button_capture_bit(code: u8) -> u8 {
+    if code < 8 {
+        1u8 << code
+    } else {
+        0
+    }
+}
+
+#[inline]
+fn is_same_logical_pos(a: (f32, f32), b: (f32, f32)) -> bool {
+    (a.0 - b.0).abs() < 1e-4 && (a.1 - b.1).abs() < 1e-4
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{button_capture_bit, is_same_logical_pos};
+    use crate::session::EngineSession;
+    use crate::window_helpers::WindowEventHooks;
+    use krui_core::RenderBackendPreference;
+    use krui_signals::{ReactiveSession, Signal};
+
+    struct CancelHook(bool, Signal<i32>);
+
+    impl WindowEventHooks for CancelHook {
+        fn on_pointer_cancel(&mut self, _session: &mut EngineSession) -> Option<Option<String>> {
+            self.0 = true;
+            self.1.set(42);
+            Some(None)
+        }
+    }
+
+    #[test]
+    fn button_capture_bit_tracks_press_and_release_independently() {
+        let mut mask = 0u8;
+        mask |= button_capture_bit(0);
+        mask |= button_capture_bit(2);
+        assert_eq!(mask, 0b101);
+        mask &= !button_capture_bit(0);
+        assert_eq!(mask, 0b100);
+        mask &= !button_capture_bit(2);
+        assert_eq!(mask, 0);
+        assert_eq!(button_capture_bit(9), 0);
+    }
+
+    #[test]
+    fn hook_cancel_and_reactive_session_enter_update_session_signal() {
+        let mut session =
+            EngineSession::new_isolated(320, 240, RenderBackendPreference::ForceTinySkia);
+        let sig = session.reactive_session.enter(|| Signal::new(1));
+        let outer = ReactiveSession::new();
+        let rs = session.reactive_session.clone();
+        let mut hook = CancelHook(false, sig);
+        let res = outer.enter(|| rs.enter(|| hook.on_pointer_cancel(&mut session)));
+        assert_eq!(res, Some(None));
+        assert!(hook.0);
+        assert_eq!(session.reactive_session.enter(|| sig.get()), 42);
+    }
+
+    #[test]
+    fn same_logical_pos_suppresses_zero_delta_moves() {
+        assert!(is_same_logical_pos((100.0, 200.0), (100.0, 200.0)));
+        assert!(!is_same_logical_pos((100.0, 200.0), (100.5, 200.0)));
     }
 }

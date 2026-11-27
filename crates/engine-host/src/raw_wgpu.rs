@@ -120,8 +120,10 @@ impl RawWgpuViewport {
         let scale = scale_factor.clamp(1.0, 4.0);
         let pw = (rect.width * scale).round().max(1.0) as u32;
         let ph = (rect.height * scale).round().max(1.0) as u32;
+        let lw = rect.width.round().max(1.0) as u32;
+        let lh = rect.height.round().max(1.0) as u32;
         let resized = self.resize(pw, ph);
-        tree.mount_external_texture(node_id, self.texture_id, pw, ph);
+        tree.mount_external_texture(node_id, self.texture_id, lw, lh);
         resized
     }
 

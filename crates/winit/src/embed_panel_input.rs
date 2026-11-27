@@ -200,8 +200,9 @@ fn apply_pointer_event<H: WindowEventHooks>(
             apply_pointer_up(session, hooks, frame, is_left_down, x, y)
         }
         PanelInputEvent::PointerLeave => {
-            let _ = session.tree.dispatch_pointer_leave();
-            None
+            let rs = session.reactive_session.clone();
+            let _ = rs.enter(|| session.tree.dispatch_pointer_leave());
+            rs.enter(|| hooks.on_pointer_cancel(session))
         }
         PanelInputEvent::Wheel { x, y, delta_y } => {
             if let Some((mx, my)) = map_panel_point(session, frame, x, y, false) {

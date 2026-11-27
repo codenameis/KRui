@@ -180,17 +180,20 @@ impl ViewTree {
         width: u32,
         height: u32,
     ) {
+        let next = ImageSource::External { id, width, height };
         let mut inner = self.inner.borrow_mut();
         if inner.node(node_id).is_none() {
             return;
         }
-        let media = inner.ensure_media(node_id);
-        media.image_source = Some(ImageSource::External { id, width, height });
-        media.host_mounted_image = true;
-        if let Some(n) = inner.node_mut(node_id) {
-            n.set_text_dirty(true);
+        if inner
+            .media(node_id)
+            .is_some_and(|m| m.host_mounted_image && m.image_source.as_ref() == Some(&next))
+        {
+            return;
         }
-        sync_node_text_context(&mut inner, node_id);
+        let media = inner.ensure_media(node_id);
+        media.image_source = Some(next);
+        media.host_mounted_image = true;
         inner.paint_dirty = true;
     }
 
@@ -408,16 +411,15 @@ fn resolve_asset_path(raw: &str, base_dir: Option<&Path>) -> std::path::PathBuf 
     }
 }
 
-/// Synchronizes Taffy intrinsic measurement when `node_id` backs an `<img>`, `ExternalTexture`, or `<svg>`.
+/// Synchronizes Taffy intrinsic measurement when `node_id` backs an `<img>` or `<svg>`.
 pub(crate) fn try_sync_media_intrinsic_context(
     inner: &mut ViewTreeInner,
     node_id: NodeId,
     taffy_node: taffy::NodeId,
 ) -> bool {
     let intrinsic = inner.media(node_id).and_then(|m| {
-        if let Some(src) = &m.image_source {
-            let (w, h) = src.intrinsic_dimensions();
-            Some((w as f32, h as f32))
+        if let Some(ImageSource::Decoded(img)) = &m.image_source {
+            Some((img.width as f32, img.height as f32))
         } else {
             m.svg_template.as_ref().map(|t| t.intrinsic_size)
         }

@@ -70,6 +70,7 @@ pub fn run_app_window_with_hooks<H: WindowEventHooks>(
         proxy,
         cursor_pos: (0.0, 0.0),
         is_left_mouse_down: false,
+        hook_pointer_buttons: 0,
         is_window_focused: true,
         mods: Mods::default(),
         current_cursor_kind: HoveredCursorKind::Default,
@@ -100,6 +101,7 @@ pub(crate) struct StandardWindowHost<H: WindowEventHooks> {
     pub(crate) proxy: EventLoopProxy<KruiWinitEvent>,
     pub(crate) cursor_pos: (f32, f32),
     pub(crate) is_left_mouse_down: bool,
+    pub(crate) hook_pointer_buttons: u8,
     pub(crate) is_window_focused: bool,
     pub(crate) mods: Mods,
     pub(crate) current_cursor_kind: HoveredCursorKind,
@@ -139,10 +141,11 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
     fn handle_key_pressed(&mut self, event: KeyEvent) {
         self.last_caret_activity = Instant::now();
         let key_info = key_info_from_winit(&event);
-        if let Some(hook_effect) = self
-            .hooks
-            .on_key_down(&mut self.session, &key_info, self.mods)
-        {
+        let rs = self.session.reactive_session.clone();
+        if let Some(hook_effect) = rs.enter(|| {
+            self.hooks
+                .on_key_down(&mut self.session, &key_info, self.mods)
+        }) {
             self.apply_hook_effect(Some(hook_effect));
             return;
         }
@@ -185,20 +188,11 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
                 let _ = session.tree.tick_pointer_drag_autoscroll(dt);
             }
         });
-        #[cfg(feature = "preview")]
-        let mut scene = self.build_preview_or_standard_scene();
-        #[cfg(not(feature = "preview"))]
-        let (scene, _) = self.session.reactive_session.enter(|| {
-            self.session
-                .tree
-                .build_paint_scene(self.session.width, self.session.height)
-        });
-        #[cfg(feature = "preview")]
-        if let Some(watcher) = &mut self.hot_reloader {
-            let build_us = frame_start.elapsed().as_micros();
-            watcher.decorate_paint_scene(&self.session.tree, &mut scene, build_us);
-        }
+        let mut scene = self.build_frame_scene(frame_start);
         self.hooks.on_before_present(&mut self.session, dt);
+        if self.session.tree.is_paint_dirty() {
+            scene = self.build_frame_scene(frame_start);
+        }
         if let Some(presenter) = &mut self.presenter {
             let _ = presenter.present_scene(&scene);
         } else {
@@ -209,6 +203,29 @@ impl<H: WindowEventHooks> StandardWindowHost<H> {
             adapter.update_if_active(|| self.session.tree.build_a11y_tree_update());
         }
         self.update_window_title_after_frame(frame_start.elapsed().as_micros());
+    }
+
+    fn build_frame_scene(&mut self, _frame_start: Instant) -> krui_core::PaintScene {
+        #[cfg(feature = "preview")]
+        {
+            let mut scene = self.build_preview_or_standard_scene();
+            if let Some(watcher) = &mut self.hot_reloader {
+                let build_us = _frame_start.elapsed().as_micros();
+                watcher.decorate_paint_scene(&self.session.tree, &mut scene, build_us);
+            }
+            scene
+        }
+        #[cfg(not(feature = "preview"))]
+        {
+            self.session
+                .reactive_session
+                .enter(|| {
+                    self.session
+                        .tree
+                        .build_paint_scene(self.session.width, self.session.height)
+                })
+                .0
+        }
     }
 
     #[cfg(feature = "preview")]

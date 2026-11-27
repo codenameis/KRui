@@ -146,6 +146,12 @@ pub trait WindowEventHooks {
         None
     }
 
+    /// Invoked when an active hook-captured pointer interaction is cancelled
+    /// (for example, window focus loss). Returning `Some(...)` triggers redraw.
+    fn on_pointer_cancel(&mut self, _session: &mut EngineSession) -> Option<Option<String>> {
+        None
+    }
+
     /// Invoked after pointer movement has been routed through the view tree.
     fn on_pointer_moved(
         &mut self,
