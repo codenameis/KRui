@@ -1,10 +1,11 @@
 //! Derived reactive signals (`Computed`, `Effect`).
 
+use crate::arena_types::BatchDepthGuard;
 use crate::propagation::{
     allocate_subscriber_slot, run_computed_tracking, run_effect_tracking, set_subscriber_callback,
     EFFECT_TOPO_DEPTH,
 };
-use crate::runtime::{ComputedId, EffectId, SubscriberId};
+use crate::runtime::{ComputedId, EffectId, SubscriberId, RUNTIME};
 use crate::Signal;
 use std::fmt;
 use std::marker::PhantomData;
@@ -80,6 +81,10 @@ impl<T: Clone + 'static> Computed<T> {
         set_subscriber_callback(
             sub_id,
             Rc::new(move || {
+                RUNTIME.with(|rt| rt.borrow_mut().batch_depth += 1);
+                let _batch = BatchDepthGuard {
+                    flush_on_zero: true,
+                };
                 let next_val = run_computed_tracking(sub_id, &compute);
                 inner_signal.set_computed_output(next_val);
             }),
@@ -103,6 +108,10 @@ impl<T: Clone + 'static> Computed<T> {
         set_subscriber_callback(
             sub_id,
             Rc::new(move || {
+                RUNTIME.with(|rt| rt.borrow_mut().batch_depth += 1);
+                let _batch = BatchDepthGuard {
+                    flush_on_zero: true,
+                };
                 let next_val = run_computed_tracking(sub_id, &compute);
                 inner_signal.set_computed_output_if_changed(next_val);
             }),

@@ -161,14 +161,18 @@ impl ApplicationHandler<KruiMultiWindowEvent> for MultiWindowRunner {
                     mw.window.request_redraw();
                 }
             }
+            let is_min = mw.window.is_minimized() == Some(true)
+                || mw.window.inner_size().width == 0
+                || mw.window.inner_size().height == 0;
             let drag = mw.is_left_mouse_down && mw.session.tree.is_text_drag_selecting();
-            let has_anim = mw
-                .session
-                .reactive_session
-                .enter(|| mw.session.clock.has_active_animations())
-                || mw.session.tree.has_active_transitions()
-                || drag;
-            let dirty = mw.session.tree.is_paint_dirty();
+            let has_anim = !is_min
+                && (mw
+                    .session
+                    .reactive_session
+                    .enter(|| mw.session.clock.has_active_animations())
+                    || mw.session.tree.has_active_transitions()
+                    || drag);
+            let dirty = !is_min && mw.session.tree.is_paint_dirty();
             if dirty || (has_anim && now.duration_since(mw.last_frame) >= FRAME_PACE_120HZ) {
                 mw.window.request_redraw();
             }

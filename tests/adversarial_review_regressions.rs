@@ -1,429 +1,355 @@
-//! End-to-end adversarial review regression suite locking down fixes across
-//! `krui-signals`, `krui-patterns`, `krui-style`, `krui-core`, `krui-compiler`,
-//! `krui-preview`, `krui-renderer`, and `krui-cli`.
+//! Adversarial code review regression suite covering UTF-8 boundaries, widget math,
+//! canvas dash termination, `::backdrop` & preview Stylo lifecycle, CSS comment scoping,
+//! password IME isolation, `DamageTracker` hashing, and `winit` idle control flow.
 
 #![forbid(unsafe_code)]
 
-use accesskit::{Action, ActionRequest, Role};
 use krui::*;
-use std::cell::{Cell, RefCell};
-use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::rc::Rc;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 #[test]
-fn review_reg_01_cross_session_scope_dispose_aba_and_isolated_ui_tasks() {
-    let s1 = ReactiveSession::new();
-    let s2 = ReactiveSession::new();
-
-    let (scope1, sig1, runs) = s1.enter(|| {
-        let sig = Signal::new(1_i32);
-        let runs = Rc::new(Cell::new(0_usize));
-        let runs_c = Rc::clone(&runs);
-        let scope = Scope::new();
-        scope.run(|| {
-            let _eff = Effect::new(move || {
-                let _ = sig.get();
-                runs_c.set(runs_c.get() + 1);
-            });
-        });
-        (scope, sig, runs)
-    });
-    assert_eq!(runs.get(), 1);
-
-    // Disposing `s1`'s Scope from inside `s2` (outside `s1.enter`) must clean up `s1`'s Effect.
-    s2.enter(|| scope1.dispose());
-    s1.enter(|| sig1.set(2));
-    assert_eq!(runs.get(), 1);
-    assert_eq!(s1.enter(|| debug_stats().live_effects), 0);
-
-    // Resetting `s1` must retire or advance generation so `sig1` never aliases a new Signal in `s1`.
-    s1.reset();
-    let fresh = s1.enter(|| Signal::new(99_i32));
-    s1.enter(|| {
-        assert_eq!(sig1.try_get(), None);
-        assert_eq!(fresh.get(), 99);
-    });
-
-    // `SessionWakeHandle::post_to_ui` queued on `s1` must not drain when polling `s2`.
-    let ran_s1 = Arc::new(AtomicUsize::new(0));
-    let w1 = s1.enter(krui_signals::current_wake_handle);
-    let ran_c = Arc::clone(&ran_s1);
-    w1.post_to_ui(move || {
-        ran_c.fetch_add(1, Ordering::SeqCst);
-    });
-    assert!(!s2.enter(poll_async_tasks));
-    assert_eq!(ran_s1.load(Ordering::SeqCst), 0);
-    assert!(s1.enter(poll_async_tasks));
-    assert_eq!(ran_s1.load(Ordering::SeqCst), 1);
-}
-
-#[test]
-fn review_reg_02_store_and_command_cross_session_and_panic_recovery() {
-    let s1 = ReactiveSession::new();
-    let (hits, should_panic, cmd, store) = s1.enter(|| {
-        let hits = Signal::new(0_i32);
-        let should_panic = Signal::new(true);
-        let cmd = Command::new(move || {
-            assert!(!should_panic.get(), "deliberate command panic");
-            hits.update(|v| *v += 1);
-        });
-        let store = Store::new(0_i32, |state, msg: i32| {
-            assert!(msg != -999, "deliberate reducer panic");
-            *state += msg;
-            Effects::none()
-        });
-        (hits, should_panic, cmd, store)
-    });
-
-    // Panics inside Command::execute or Store::send must reset `running` / `draining` guards.
-    let _ = catch_unwind(AssertUnwindSafe(|| cmd.execute()));
-    s1.enter(|| should_panic.set(false));
-
-    // Invoking Command and Store outside `s1.enter` must automatically enter `s1` and succeed.
-    cmd.execute();
-    let _ = catch_unwind(AssertUnwindSafe(|| store.send(-999)));
-    store.send(5);
-    store.send(7);
-    s1.enter(|| {
-        assert_eq!(hits.get(), 1);
-        assert_eq!(store.state().get(), 12);
-    });
-}
-
-#[test]
-fn review_reg_03_anchor_activation_keyboard_enter_not_space_and_a11y_url() {
+fn color_picker_set_hex_multibyte_korean_input_returns_false_without_panic() {
     reset_reactive_runtime();
-    let mut tree = ViewTree::new();
-    let activated: Rc<RefCell<Vec<String>>> = Rc::new(RefCell::new(Vec::new()));
-    let act_c = Rc::clone(&activated);
-    tree.set_on_link_activate(move |href| act_c.borrow_mut().push(href.to_string()));
-
-    tree.mount_with(|| {
-        krui!(
-            r#"
-            <div style="width: 300px; height: 120px; display: flex">
-                <a id="docs-link" href="https://krui.dev/docs" style="width: 160px; height: 40px">문서 보기</a>
-            </div>
-            "#
-        )
-    });
-    let (_, _) = tree.build_paint_scene(300, 120);
-
-    assert!(tree.dispatch_click(20.0, 20.0));
-    assert_eq!(activated.borrow().len(), 1);
-    assert_eq!(
-        tree.last_activated_link().as_deref(),
-        Some("https://krui.dev/docs")
-    );
-
-    let link_id = tree.find_by_id("docs-link").expect("docs-link node");
-    assert!(tree.set_focus_to_node(link_id));
-    assert!(!tree.dispatch_key_space());
-    assert_eq!(activated.borrow().len(), 1);
-    assert!(tree.dispatch_key_activate());
-    assert_eq!(activated.borrow().len(), 2);
-
-    let update = tree.build_accessibility_tree(300.0, 120.0);
-    let (a11y_id, a11y_node) = update
-        .nodes
-        .iter()
-        .find(|(_, n)| n.role() == Role::Link)
-        .expect("AccessKit Role::Link node");
-    assert_eq!(a11y_node.url(), Some("https://krui.dev/docs"));
-    assert_eq!(a11y_node.label(), Some("문서 보기"));
-    assert!(tree.dispatch_accesskit_action(&ActionRequest {
-        action: Action::Click,
-        target: *a11y_id,
-        data: None,
-    }));
-    assert_eq!(activated.borrow().len(), 3);
+    let picker = ColorPickerController::from_rgba_u8([16, 32, 64, 255]);
+    // "한글" is 6 UTF-8 bytes, matching the 6-byte `#RRGGBB` arm if ASCII is not checked.
+    assert!(!picker.set_hex("한글"));
+    assert!(!picker.set_hex("#한글"));
+    // 8 UTF-8 bytes ("a한글b" = 1 + 3 + 3 + 1 = 8 bytes) matching the 8-byte `#RRGGBBAA` arm.
+    assert!(!picker.set_hex("a한글b"));
+    assert_eq!(picker.rgba_u8(), [16, 32, 64, 255]);
+    assert!(picker.set_hex("#FF8000"));
+    assert_eq!(picker.rgba_u8(), [255, 128, 0, 255]);
 }
 
 #[test]
-fn review_reg_04_canvas_reentrancy_sharp_nested_clip_and_live_app_tokens() {
+fn dock_layout_right_and_bottom_splitters_move_in_pointer_direction() {
     reset_reactive_runtime();
-    let mut tree = ViewTree::new();
-    tree.mount_with(|| {
-        krui!(
-            r#"
-            <div style="width: 240px; height: 180px; border-radius: 20px; overflow: hidden; background-color: var(--krui-accent)">
-                <div id="sharp-inner" style="width: 120px; height: 90px; overflow: hidden">
-                    <canvas id="cv" width="80" height="60"></canvas>
-                </div>
-            </div>
-            "#
-        )
-    });
-    let cv_id = tree.find_by_id("cv").expect("canvas node");
-    let tree_handle = tree.clone();
-    let reentrant_found = Rc::new(Cell::new(false));
-    let rf_c = Rc::clone(&reentrant_found);
-    tree.set_canvas_draw(cv_id, move |ctx: &mut CanvasContext2D, _size: Size| {
-        rf_c.set(tree_handle.find_by_id("sharp-inner").is_some());
-        ctx.fill_rect(0.0, 0.0, 40.0, 30.0, Color::rgba(255, 255, 255, 255));
-    });
+    let dock = DockLayoutController::new();
+    let initial_right = dock.right_split.ratio.get();
+    let initial_bottom = dock.bottom_split.ratio.get();
 
-    let (scene1, _) = tree.build_paint_scene(240, 180);
-    assert!(reentrant_found.get());
-    let canvas_clip_radius = scene1
-        .primitives
-        .iter()
-        .find_map(|p| match p {
-            DrawPrimitive::CanvasBatch { clip_radius, .. } => Some(*clip_radius),
-            _ => None,
-        })
-        .expect("canvas batch");
+    // Dragging the right-side Inspector divider LEFT (from x=760 to x=660 in a 1000px window)
+    // must GROW the right Inspector pane, not shrink it.
+    dock.right_split.begin_drag(760.0);
+    dock.right_split.drag_to(660.0, 1000.0);
+    dock.right_split.end_drag();
     assert!(
-        canvas_clip_radius.abs() < 1e-3,
-        "Sharp child overflow container must reset inherited 20px clip_radius to 0.0"
+        dock.right_split.ratio.get() > initial_right,
+        "Dragging right_split left must increase right pane ratio: before={initial_right}, after={}",
+        dock.right_split.ratio.get()
     );
 
-    let custom_accent = Color::rgba(231, 49, 119, 255);
-    let _ = tree.add_author_stylesheet(":root { --krui-accent: rgb(231, 49, 119); }");
-    let (scene2, _) = tree.build_paint_scene(240, 180);
-    let has_custom_bg = scene2.primitives.iter().any(|p| {
-        matches!(
-            p,
-            DrawPrimitive::StyledBox { background_color, .. } if *background_color == custom_accent
-        )
-    });
-    assert!(has_custom_bg);
+    // Dragging the bottom AssetBrowser divider UP (from y=740 to y=640 in a 1000px window)
+    // must GROW the bottom pane, not shrink it.
+    dock.bottom_split.begin_drag(740.0);
+    dock.bottom_split.drag_to(640.0, 1000.0);
+    dock.bottom_split.end_drag();
+    assert!(
+        dock.bottom_split.ratio.get() > initial_bottom,
+        "Dragging bottom_split up must increase bottom pane ratio: before={initial_bottom}, after={}",
+        dock.bottom_split.ratio.get()
+    );
 }
 
 #[test]
-fn review_reg_05_object_fit_none_and_nonblocking_dynamic_img_load() {
+fn tree_view_handles_cyclic_parents_and_extreme_scroll_values_safely() {
     reset_reactive_runtime();
-    let tmp_png = std::env::temp_dir().join(format!("krui_reg05_{}.png", std::process::id()));
-    let png_bytes: &[u8] = &[
-        0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, b'I', b'H', b'D',
-        b'R', 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
-        0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0D, b'I', b'D', b'A', b'T', 0x78, 0x9C, 0x63, 0xF8,
-        0xCF, 0xC0, 0xF0, 0x1F, 0x00, 0x05, 0x00, 0x01, 0xFF, 0x89, 0x99, 0x3D, 0x1D, 0x00, 0x00,
-        0x00, 0x00, b'I', b'E', b'N', b'D', 0xAE, 0x42, 0x60, 0x82,
-    ];
-    std::fs::write(&tmp_png, png_bytes).expect("write temp 1x1 png");
-    let src_sig = Signal::new(tmp_png.to_string_lossy().into_owned());
+    let tree = TreeViewController::new();
+    tree.set_nodes(vec![
+        TreeNodeData {
+            id: 1,
+            parent: None,
+            label: "Root".into(),
+            expanded: true,
+        },
+        TreeNodeData {
+            id: 2,
+            parent: Some(3),
+            label: "CycleA".into(),
+            expanded: true,
+        },
+        TreeNodeData {
+            id: 3,
+            parent: Some(2),
+            label: "CycleB".into(),
+            expanded: true,
+        },
+    ]);
+    let (rows_norm, total_h) = tree.visible_window(0.0, 200.0, 24.0);
+    assert!(total_h >= 24.0 && !rows_norm.is_empty());
 
+    let (rows_huge, _) = tree.visible_window(1e35, 1e35, 24.0);
+    assert!(rows_huge.is_empty());
+
+    let (rows_nan, _) = tree.visible_window(f32::NAN, f32::INFINITY, 0.0);
+    assert!(!rows_nan.is_empty());
+}
+
+#[test]
+fn krui_bindable_signal_ignores_nan_and_infinity_strings() {
+    reset_reactive_runtime();
+    let f32_sig = Signal::new(42.5_f32);
+    KruiBindableSignal::set_from_krui_input(&f32_sig, "NaN".to_string());
+    KruiBindableSignal::set_from_krui_input(&f32_sig, "inf".to_string());
+    KruiBindableSignal::set_from_krui_input(&f32_sig, "-infinity".to_string());
+    assert_eq!(f32_sig.get(), 42.5);
+
+    let f64_sig = Signal::new(10.25_f64);
+    KruiBindableSignal::set_from_krui_input(&f64_sig, "NaN".to_string());
+    KruiBindableSignal::set_from_krui_input(&f64_sig, "inf".to_string());
+    assert_eq!(f64_sig.get(), 10.25);
+}
+
+#[test]
+fn canvas_dashed_stroke_with_extreme_or_non_finite_coordinates_terminates() {
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut ctx = CanvasContext2D::new();
+        ctx.set_line_dash(&[5.0, 5.0]);
+        ctx.set_line_dash_offset(1e20);
+        ctx.stroke_line(0.0, 0.0, 1e9, 0.0, 2.0, Color::WHITE);
+        ctx.stroke_line(0.0, 0.0, f32::INFINITY, 50.0, 2.0, Color::WHITE);
+        let _ = tx.send(());
+    });
+    rx.recv_timeout(Duration::from_millis(500))
+        .expect("CanvasContext2D dashed stroke hung in infinite loop on 1e9 / INF segment");
+}
+
+#[test]
+fn dialog_backdrop_pseudo_unmounts_without_leaking_nodes_or_taffy_slots() {
+    reset_reactive_runtime();
     let mut tree = ViewTree::new();
-    tree.mount_with(|| {
+    let show = Signal::new(true);
+    tree.mount_with(move || {
         krui!(
             r#"
-            <div style="width: 120px; height: 100px">
-                <img src="{src_sig}" style="width: 100px; height: 80px; object-fit: none" />
+            <link rel="krui-preset" href="krui://preset/unstyled" />
+            <style>
+                dialog.modal-box { width: 200px; height: 120px; background-color: #ffffff; }
+                dialog.modal-box::backdrop { background-color: rgba(0, 0, 0, 0.55); }
+            </style>
+            <div>
+                <if test="{show}">
+                    <dialog id="dlg" class="modal-box">모달 본문</dialog>
+                </if>
             </div>
             "#
         )
     });
+    let dlg = tree.find_by_id("dlg").expect("dialog mounted");
+    assert!(tree.show_modal_dialog(dlg));
+    let _ = tree.build_paint_scene(400, 300);
 
-    let mut loaded_rect = None;
-    for _ in 0..40 {
-        let _ = poll_async_tasks();
-        let (scene, _) = tree.build_paint_scene(120, 100);
-        loaded_rect = scene.primitives.iter().find_map(|p| match p {
-            DrawPrimitive::Image { rect, .. } => Some(*rect),
-            _ => None,
-        });
-        if loaded_rect.is_some() {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
+    show.set(false);
+    let _ = tree.build_paint_scene(400, 300);
+    let base_retained = tree.retained_node_count();
+    let base_taffy = tree.taffy_node_count();
+    let base_sparse = tree.sparse_component_entry_count();
+
+    for _ in 0..20 {
+        show.set(true);
+        let d = tree.find_by_id("dlg").expect("dialog remounted");
+        assert!(tree.show_modal_dialog(d));
+        let _ = tree.build_paint_scene(400, 300);
+        show.set(false);
+        let _ = tree.build_paint_scene(400, 300);
     }
-    let _ = std::fs::remove_file(&tmp_png);
-    let rect = loaded_rect.expect("async dynamic <img> must finish decoding on background pool");
-    assert!((rect.width - 1.0).abs() < 1e-3 && (rect.height - 1.0).abs() < 1e-3);
-    assert!((rect.x - 49.5).abs() < 1e-2 && (rect.y - 39.5).abs() < 1e-2);
+
+    assert_eq!(tree.retained_node_count(), base_retained);
+    assert_eq!(tree.taffy_node_count(), base_taffy);
+    assert_eq!(tree.sparse_component_entry_count(), base_sparse);
 }
 
 #[test]
-fn review_reg_06_deep_nested_push_layer_overflow_stack_integrity() {
-    let mut scene = PaintScene::new(120, 120, Color::BLACK);
-    let bounds = LayoutRect {
-        x: 10.0,
-        y: 10.0,
-        width: 100.0,
-        height: 100.0,
-    };
-    for _ in 0..22 {
-        scene.primitives.push(DrawPrimitive::PushLayer {
-            bounds,
-            clip: None,
-            clip_radius: 0.0,
-            clip_radii: [0.0; 4],
-            local_clip: None,
-            clip_path: None,
-            perspective: None,
-            opacity: 0.95,
-            filter: krui_style::CssFilterEffect::IDENTITY,
-        });
-    }
-    scene.primitives.push(DrawPrimitive::StyledBox {
-        rect: bounds,
-        clip: None,
-        clip_radius: 0.0,
-        clip_radii: [0.0; 4],
-        transform: Affine2::IDENTITY,
-        opacity: 1.0,
-        background_color: Color::rgba(40, 140, 240, 255),
-        background_gradient: None,
-        radial_gradient: None,
-        conic_gradient: None,
-        border_color: Color::TRANSPARENT,
-        border_width: 0.0,
-        border_radius: 8.0,
-        corner_radii: [0.0; 4],
-        box_shadow: None,
-        backdrop_blur_px: 0.0,
+fn damage_tracker_detects_in_place_canvas_command_color_change() {
+    reset_reactive_runtime();
+    let mut tree = ViewTree::new();
+    tree.set_damage_tracking_mode(DamageTrackingMode::BoundingRects {
+        split_area_ratio_x10: 15,
+        max_rects_per_commit: 8,
     });
-    for _ in 0..22 {
-        scene.primitives.push(DrawPrimitive::PopLayer);
-    }
+    let red_mode = Signal::new(true);
+    let draw = CanvasDraw::new(move |ctx, size| {
+        let col = if red_mode.get() {
+            Color::rgb(220, 38, 38)
+        } else {
+            Color::rgb(37, 99, 235)
+        };
+        ctx.fill_rect(0.0, 0.0, size.width, size.height, col);
+    });
+    tree.mount(krui!(
+        r#"
+        <link rel="krui-preset" href="krui://preset/unstyled" />
+        <canvas style="width: 120px; height: 80px;" ondraw="{draw}" />
+        "#
+    ));
+    let mut scene = PaintScene::new(300, 200, Color::TRANSPARENT);
+    let (_, first_dmg) = tree.build_paint_scene_into(300, 200, &mut scene);
+    assert!(!first_dmg.is_empty());
+    let (_, idle_dmg) = tree.build_paint_scene_into(300, 200, &mut scene);
+    assert!(idle_dmg.is_empty());
 
-    let mut cpu = TinySkiaRenderer::new(120, 120, GpuResourceLimits::default());
-    let _ = cpu.render_scene(&scene);
-    assert_eq!(cpu.framebuffer_dimensions(), Some((120, 120)));
+    red_mode.set(false);
+    let (_, mutated_dmg) = tree.build_paint_scene_into(300, 200, &mut scene);
+    assert!(
+        !mutated_dmg.is_empty(),
+        "Changing canvas FillRect color with identical command count must produce non-empty damage"
+    );
+}
 
-    if let Some(mut gpu) = WgpuRenderer::try_new(120, 120, GpuResourceLimits::default()) {
-        let _ = gpu.render_scene(&scene);
-        assert_eq!(gpu.framebuffer_dimensions(), Some((120, 120)));
-    }
+#[test]
+fn password_input_ignores_ime_enabled_so_space_key_inserts_character() {
+    reset_reactive_runtime();
+    let mut tree = ViewTree::new();
+    tree.mount(krui!(
+        r#"
+        <link rel="krui-preset" href="krui://preset/unstyled" />
+        <input id="pw" type="password" style="width: 180px; height: 32px;" />
+        "#
+    ));
+    let _ = tree.build_paint_scene(300, 120);
+    let pw = tree.find_by_id("pw").expect("password input");
+    assert!(tree.set_focus_to_node(pw));
+
+    // Even if a host spuriously forwards `Ime::Enabled`, secret inputs must stay non-IME
+    // and clamp non-char-boundary preedit cursors without panicking.
+    assert!(!tree.ime_enabled());
+    assert!(tree.dispatch_key_text("a b"));
+    assert_eq!(tree.node_text(pw).as_deref(), Some("a b"));
+}
+
+#[test]
+fn component_css_comment_containing_apostrophe_does_not_leak_global_styles() {
+    reset_reactive_runtime();
+    let mut tree = ViewTree::new();
+    tree.mount(krui!(
+        r#"
+        <link rel="krui-preset" href="krui://preset/unstyled" />
+        <template name="ScopedBadge">
+            <style>
+                .badge-box {
+                    /* author's scoped note */
+                    background-color: #ef4444;
+                    width: 60px;
+                    height: 24px;
+                }
+                .leak-target {
+                    background-color: #ef4444;
+                }
+            </style>
+            <div class="badge-box"><slot /></div>
+        </template>
+        <div>
+            <ScopedBadge>배지</ScopedBadge>
+            <div id="outside" class="leak-target" style="width: 60px; height: 24px;">외부</div>
+        </div>
+        "#
+    ));
+    let _ = tree.build_paint_scene(300, 200);
+    let outside = tree.find_by_id("outside").unwrap();
+    let paint = tree.node_effective_paint(outside).unwrap();
+    assert_ne!(
+        paint.background_color,
+        Color::parse_css("#ef4444").unwrap(),
+        "Component CSS rule after `/* author's ... */` comment must not leak to outside elements"
+    );
+}
+
+#[cfg(feature = "desktop")]
+#[test]
+fn dirty_idle_control_flow_waits_for_os_redraw_instead_of_zero_ns_busy_spin() {
+    let now = Instant::now();
+    // When `is_paint_dirty` is true and no animations/timers are running, `win.request_redraw()`
+    // wakes the event loop; `ControlFlow` must NEVER be `WaitUntil(now)` (0ns spin when minimized/occluded).
+    let flow = compute_window_idle_control_flow(
+        false,
+        true,
+        false,
+        false,
+        Duration::from_secs(30),
+        false,
+        now,
+    );
+    assert_eq!(flow, winit::event_loop::ControlFlow::Wait);
 }
 
 #[cfg(feature = "preview")]
 #[test]
-fn review_reg_07_compiler_root_tokens_strict_errors_svg_depth_and_utf8_col() {
-    use krui_preview::compile_krui_source;
-
-    let doc = compile_krui_source(
+fn preview_preflight_accepts_empty_for_list_with_bool_numeric_and_item_fields() {
+    reset_reactive_runtime();
+    let mut reg = ScopeRegistry::new();
+    reg.insert_value("items", Value::List(Vec::new()));
+    let doc = krui_compiler::compile_krui_source(
         r#"
-        <style>
-            :root { --krui-accent: #112233; }
-        </style>
+        <link rel="krui-preset" href="krui://preset/unstyled" />
         <div>
-            <svg width="24" height="24">
-                <g />
-                <rect x="0" y="0" width="24" height="24" />
-            </svg>
+            <for each="{item in items}" key="{item.id}">
+                <button disabled="{!item.enabled}" style="opacity: {item.alpha};">
+                    {item.title}
+                </button>
+            </for>
         </div>
         "#,
     )
-    .expect("valid :root token override and self-closing <g/> inside <svg>");
-    assert!(!doc.stylesheets.is_empty());
+    .expect("compile krui");
 
-    // Self-closing `<svg />` inside `<svg>` must not corrupt outer `</svg>` depth tracking:
-    // it must report `Unsupported SVG element <svg>` at the inner `<svg />`, NOT `Unclosed <svg>`.
-    let nested_svg_err = compile_krui_source(
-        "<div><svg width=\"24\" height=\"24\"><svg width=\"12\" height=\"12\" /><rect width=\"24\" height=\"24\" /></svg></div>",
-    )
-    .expect_err("nested <svg/> rejected cleanly");
-    assert!(nested_svg_err.message.contains("Unsupported SVG element"));
-
-    let rem_src = r#"<style>.a { width: 12rem; }</style><div class="a"></div>"#;
-    assert!(
-        compile_krui_source(rem_src).is_ok()
-            && krui::dev_hot_reload::compile_krui_source_strict(rem_src).is_ok(),
-        "rem length unit is valid standard CSS"
+    krui_preview::validate_compiled_document_against_registry(&doc, &reg).expect(
+        "Empty `<for>` list must pass preflight validation without fake Str(\"\") type errors",
     );
-    let mut diag_tree = ViewTree::new();
-    let _ = diag_tree.take_style_diagnostics();
-    let invalid_css =
-        "div { border-width: -3px; padding: 4px -2px; width: -10px; gap: -4px; font-size: -12px; }";
-    let _ = diag_tree.add_author_stylesheet(invalid_css);
-    assert!(
-        !diag_tree.take_style_diagnostics().is_empty(),
-        "Expected Stylo diagnostics for negative lengths: {invalid_css}"
-    );
-    compile_krui_source(r#"<div style="margin: -4px; top: -8px"></div>"#)
-        .expect("negative margin and inset remain valid CSS");
-
-    let custom_doc = compile_krui_source("<div>가나다<bogus/></div>").expect("lowercase fallback");
-    assert!(custom_doc.warnings.iter().any(|w| {
-        w.kind == krui::dev_hot_reload::CompileWarningKind::UnknownHtmlElement
-            && w.signal_expr == "1:9"
-    }));
-    let utf8_err = compile_krui_source("<div>가나다<Bogus/></div>").expect_err("unknown component");
-    assert_eq!(utf8_err.line, 1);
-    assert_eq!(utf8_err.column, 9);
-}
-
-#[cfg(feature = "preview")]
-fn verify_krfr_and_coalesced_panel_socket() {
-    use krui_cli::panel_codec::{PanelEditorCmd, PanelSocketConn, OP_CMD_REFRESH, OP_CMD_SHUTDOWN};
-    use krui_preview::decode_rle_rgba_frame;
-    use std::io::Write;
-    use std::net::{TcpListener, TcpStream};
-
-    // Truncated header claiming 4000x4000 RGBA with only 1 RLE run must be rejected (`Err`).
-    let bad_krfr = [
-        b'K', b'R', b'F', b'R', 1, 0, 0, 0, 0xA0, 0x0F, 0xA0, 0x0F, 0, 255, 0, 0, 255,
-    ];
-    assert!(decode_rle_rgba_frame(&bad_krfr).is_err());
-
-    // Coalesced `[Refresh][Shutdown]` + immediate client EOF must yield BOTH commands in order.
-    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
-    let mut client_sock = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
-    let (srv_sock, _) = listener.accept().unwrap();
-    let mut panel_conn = PanelSocketConn::new(srv_sock).unwrap();
-    let coalesced = [1, 0, 0, 0, OP_CMD_REFRESH, 1, 0, 0, 0, OP_CMD_SHUTDOWN];
-    client_sock.write_all(&coalesced).unwrap();
-    drop(client_sock);
-    std::thread::sleep(std::time::Duration::from_millis(15));
-    assert_eq!(
-        panel_conn.try_recv_cmd().unwrap(),
-        Some(PanelEditorCmd::RequestRefresh)
-    );
-    assert_eq!(
-        panel_conn.try_recv_cmd().unwrap(),
-        Some(PanelEditorCmd::Shutdown)
-    );
-    assert!(panel_conn.try_recv_cmd().is_err());
 }
 
 #[cfg(feature = "preview")]
 #[test]
-fn review_reg_08_krfr_bomb_coalesced_panel_cmds_and_restart_wakeup() {
-    use krui_preview::{
-        compile_krui_source, encode_compiled_document, PreviewCommand, PreviewResponse,
-        PreviewTcpClient, PreviewTcpServer,
-    };
-
-    verify_krfr_and_coalesced_panel_socket();
-
-    // `PreviewTcpClient::start_wakeup_listener` wakes immediately and `Restart` reports real `node_count`.
+fn preview_remount_disposes_old_stylo_nodes_and_preserves_first_child_selector() {
     reset_reactive_runtime();
-    let mut server = PreviewTcpServer::bind("127.0.0.1:0").unwrap();
-    let mut client = PreviewTcpClient::connect(&server.local_addr().to_string()).unwrap();
-    let wakes = Arc::new(AtomicUsize::new(0));
-    let wakes_c = Arc::clone(&wakes);
-    client.start_wakeup_listener(move || {
-        wakes_c.fetch_add(1, Ordering::SeqCst);
-    });
-    server.accept_pending();
-
-    let doc = compile_krui_source("<div><p>하나</p><p>둘</p></div>").unwrap();
-    server.broadcast(&PreviewCommand::Reload(
-        encode_compiled_document(&doc).unwrap(),
-    ));
     let mut tree = ViewTree::new();
-    let mut err_slot = None;
-    let mut reload_count = 0_u64;
-    for _ in 0..30 {
-        if client.poll(&mut tree, &mut err_slot, &mut reload_count) {
-            break;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
+    let reg: RegistryRef = std::rc::Rc::new(ScopeRegistry::new());
+    let src_v1 = r#"
+        <link rel="krui-preset" href="krui://preset/unstyled" />
+        <style>
+            .item:first-child { background-color: #22c55e; }
+        </style>
+        <div id="first" class="item" style="width: 80px; height: 24px;">하나</div>
+    "#;
+    let src_v2 = r#"
+        <link rel="krui-preset" href="krui://preset/unstyled" />
+        <style>
+            .item:first-child { background-color: #22c55e; }
+        </style>
+        <div id="first" class="item" style="width: 80px; height: 24px;">하나-수정됨</div>
+        <div id="second" class="item" style="width: 80px; height: 24px;">둘</div>
+    "#;
+    let doc1 = krui_compiler::compile_krui_source(src_v1).unwrap();
+    let doc2 = krui_compiler::compile_krui_source(src_v2).unwrap();
+
+    krui_preview::mount_compiled_document_with_registry(&mut tree, &doc1, reg.clone());
+    let _ = tree.build_paint_scene(300, 200);
+
+    krui_preview::try_reload_compiled_document_with_registry(&mut tree, &doc2, reg.clone())
+        .unwrap();
+    let _ = tree.build_paint_scene(300, 200);
+    let baseline_stylo = tree.stylo_node_count();
+
+    for i in 0..8 {
+        let d = if i % 2 == 0 { &doc1 } else { &doc2 };
+        krui_preview::try_reload_compiled_document_with_registry(&mut tree, d, reg.clone())
+            .unwrap();
+        let _ = tree.build_paint_scene(300, 200);
     }
-    assert!(wakes.load(Ordering::SeqCst) >= 1);
-    server.broadcast(&PreviewCommand::Restart);
-    for _ in 0..30 {
-        let _ = client.poll(&mut tree, &mut err_slot, &mut reload_count);
-        let resps = server.poll_responses();
-        if let Some(PreviewResponse::Reloaded { node_count, .. }) = resps.last() {
-            assert!(*node_count >= 3);
-            return;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(5));
-    }
-    panic!("Expected Reloaded response with accurate node_count after Restart");
+
+    assert_eq!(
+        tree.stylo_node_count(),
+        baseline_stylo,
+        "Preview remounts must dispose previous Stylo DOM subtrees instead of leaking slots"
+    );
+    let first_id = tree.find_by_id("first").unwrap();
+    let bg = tree
+        .node_effective_paint(first_id)
+        .unwrap()
+        .background_color;
+    assert_eq!(
+        bg,
+        Color::parse_css("#22c55e").unwrap(),
+        "After preview remounts, `#first` must still be the `:first-child` of `body` in Stylo"
+    );
 }

@@ -96,7 +96,8 @@ pub use transition_layout::{
 };
 pub use typography::{
     parse_css_font_weight, parse_text_box_shorthand, FontVariation, FontVariationList, LineHeight,
-    TextBoxEdge, TextBoxTrim, TextOverEdge, TextUnderEdge, MAX_FONT_VARIATIONS,
+    OverflowWrapMode, TextBoxEdge, TextBoxTrim, TextOverEdge, TextUnderEdge, WhiteSpaceMode,
+    WordBreakMode, MAX_FONT_VARIATIONS,
 };
 
 /// Default body font size in logical pixels.
@@ -195,6 +196,20 @@ pub struct TextStyle {
     pub text_box_edge: TextBoxEdge,
     /// CSS Fonts 4 `font-variation-settings` OpenType `fvar` overrides (inherited).
     pub variations: FontVariationList,
+    /// Italic/oblique font posture (`font-style: italic | oblique`, inherited).
+    pub italic: bool,
+    /// Additional inter-character advance in logical pixels (`letter-spacing`, inherited).
+    pub letter_spacing_px: f32,
+    /// CSS Text 3 `white-space` collapsing and wrapping mode (inherited).
+    pub white_space: WhiteSpaceMode,
+    /// CSS Text 3 `word-break` mode (inherited).
+    pub word_break: WordBreakMode,
+    /// CSS Text 3 `overflow-wrap` mode (inherited).
+    pub overflow_wrap: OverflowWrapMode,
+    /// `true` when `text-overflow: ellipsis` is active on this box (not inherited).
+    pub text_overflow_ellipsis: bool,
+    /// Maximum visible line count from `line-clamp` / `-webkit-line-clamp` (not inherited).
+    pub line_clamp: Option<u16>,
 }
 
 impl Default for TextStyle {
@@ -210,6 +225,13 @@ impl Default for TextStyle {
             text_box_trim: TextBoxTrim::None,
             text_box_edge: TextBoxEdge::AUTO,
             variations: FontVariationList::EMPTY,
+            italic: false,
+            letter_spacing_px: 0.0,
+            white_space: WhiteSpaceMode::PreWrap,
+            word_break: WordBreakMode::Normal,
+            overflow_wrap: OverflowWrapMode::Normal,
+            text_overflow_ellipsis: false,
+            line_clamp: None,
         }
     }
 }
@@ -227,6 +249,11 @@ pub struct InheritedTextProps {
     pub direction: Option<TextDirection>,
     pub text_box_edge: Option<TextBoxEdge>,
     pub variations: Option<FontVariationList>,
+    pub italic: Option<bool>,
+    pub letter_spacing_px: Option<f32>,
+    pub white_space: Option<WhiteSpaceMode>,
+    pub word_break: Option<WordBreakMode>,
+    pub overflow_wrap: Option<OverflowWrapMode>,
     pub caret_color: Option<Color>,
     pub caret_uses_current_color: Option<bool>,
     pub selection_background: Option<Color>,
@@ -248,6 +275,11 @@ impl InheritedTextProps {
         direction: None,
         text_box_edge: None,
         variations: None,
+        italic: None,
+        letter_spacing_px: None,
+        white_space: None,
+        word_break: None,
+        overflow_wrap: None,
         caret_color: None,
         caret_uses_current_color: None,
         selection_background: None,
@@ -279,6 +311,11 @@ impl InheritedTextProps {
             direction: inh!(direction),
             text_box_edge: inh!(text_box_edge),
             variations: inh!(variations),
+            italic: inh!(italic),
+            letter_spacing_px: inh!(letter_spacing_px),
+            white_space: inh!(white_space),
+            word_break: inh!(word_break),
+            overflow_wrap: inh!(overflow_wrap),
             caret_color: if own_caret {
                 self.caret_color
             } else {
@@ -326,6 +363,21 @@ impl InheritedTextProps {
         }
         if let Some(vars) = self.variations {
             text.variations = vars;
+        }
+        if let Some(it) = self.italic {
+            text.italic = it;
+        }
+        if let Some(ls) = self.letter_spacing_px {
+            text.letter_spacing_px = ls;
+        }
+        if let Some(ws) = self.white_space {
+            text.white_space = ws;
+        }
+        if let Some(wb) = self.word_break {
+            text.word_break = wb;
+        }
+        if let Some(ow) = self.overflow_wrap {
+            text.overflow_wrap = ow;
         }
         if let Some(cur) = self.caret_uses_current_color {
             paint.caret_uses_current_color = cur;

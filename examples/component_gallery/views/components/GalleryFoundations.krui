@@ -33,7 +33,7 @@
     <else>
         <Card variant="elevated" title="Foundations · Cascading Design Token Layers" subtitle="krui://preset/unstyled + @layer + @property + [data-theme]">
             <div class="gallery-col">
-                <span class="m3-hero-sub">Material 3(`--md-sys-*`)와 Tailwind v4(`--krui-*`) 테마가 동일한 무스타일 DOM 위에서 CSS 변수 캐스케이드만으로 교체됩니다.</span>
+                <span class="m3-hero-sub">Material 3(`--md-sys-color-*`)와 Tailwind v4(`--krui-*` / `--gallery-*`) 테마가 동일한 무스타일 DOM 위에서 CSS 변수 캐스케이드만으로 교체됩니다.</span>
                 <div class="gallery-row">
                     <Button variant="filled" onclick="{controller.select_theme(0)}">Material 3</Button>
                     <Button variant="outlined" onclick="{controller.select_theme(1)}">Tailwind v4</Button>

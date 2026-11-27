@@ -218,7 +218,7 @@ where
     let abort_handle = join.abort_handle();
     let abort_on_dispose = abort_handle.clone();
     let active_on_dispose = is_active.clone();
-    crate::runtime::register_scope_cleanup(scope_id, move || {
+    crate::runtime::register_scope_cleanup(scope_id, Some(is_active.clone()), move || {
         abort_on_dispose.abort();
         active_on_dispose.store(false, Ordering::Release);
     });
@@ -307,7 +307,7 @@ where
     let abort_handle = join.abort_handle();
     let abort_on_dispose = abort_handle.clone();
     let active_on_dispose = is_active.clone();
-    crate::runtime::register_scope_cleanup(scope_id, move || {
+    crate::runtime::register_scope_cleanup(scope_id, Some(is_active.clone()), move || {
         abort_on_dispose.abort();
         active_on_dispose.store(false, Ordering::Release);
     });
@@ -425,7 +425,7 @@ fn register_interval_poller(
     let tick_cb = Rc::new(RefCell::new(on_tick));
     let abort_on_dispose = abort_handle.clone();
     let active_on_dispose = is_active.clone();
-    crate::runtime::register_scope_cleanup(scope_id, move || {
+    crate::runtime::register_scope_cleanup(scope_id, Some(is_active.clone()), move || {
         abort_on_dispose.abort();
         active_on_dispose.store(false, Ordering::Release);
     });

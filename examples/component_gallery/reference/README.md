@@ -4,8 +4,8 @@
 - **Target Site**: `https://m3.material.io`
 - **Viewport & Color Scheme**: `1280×840`, `prefers-color-scheme: light`
 - **Scripts**:
-  - `tools/m3_reference/measure_m3.mjs` (captures `section_*.json`, `doc_page_00..40.json`, `_site_inventory.json`, and gitignored `reference/screens/*.png`)
-  - `tools/m3_reference/measure_m3_details.mjs` (captures `_component_anatomy.json` deep ancestor/descendant chains and flyout drawer metrics)
+  - `examples/component_gallery/tools/m3_reference/measure_m3.mjs` (captures `section_*.json`, `doc_page_00..40.json`, `_site_inventory.json`, and gitignored `reference/screens/*.png`)
+  - `examples/component_gallery/tools/m3_reference/measure_m3_details.mjs` (captures `_component_anatomy.json` deep ancestor/descendant chains and flyout drawer metrics)
   - Distilled runtime gate metrics stored in `examples/component_gallery/reference/m3_core_spec.json`.
 - **Coverage**:
   - Top-level sections: **`7 / 7` measured** (`section_home`, `section_get_started`, `section_develop`, `section_foundations`, `section_styles`, `section_components`, `section_blog`)

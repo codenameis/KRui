@@ -55,6 +55,10 @@ impl ViewTree {
     /// Notifies the focused `<input>` that the platform IME session has been enabled (`Ime::Enabled`).
     pub fn ime_enabled(&mut self) -> bool {
         self.with_focused_input(|ctx| {
+            if ctx.node.is_secret() {
+                ctx.edit.ime_state.enabled = false;
+                return None;
+            }
             ctx.edit.ime_state.enabled = true;
             ctx.edit.ime_state.pending_blur_commit = None;
             Some(())
@@ -67,6 +71,9 @@ impl ViewTree {
     pub fn ime_preedit(&mut self, preedit: &str, cursor_offset: Option<(usize, usize)>) -> bool {
         let was_pinned = self.inner.borrow().ime_target.is_some();
         self.with_ime_target_or_focused_input_opts(true, |ctx, _nid| {
+            if ctx.node.is_secret() {
+                return None;
+            }
             let clean = if ctx.node.role == SemanticRole::MultilineTextInput {
                 sanitize_multiline_text(preedit)
             } else {
@@ -88,8 +95,8 @@ impl ViewTree {
                     || ctx.edit.ime_state.pending_blur_commit.is_some()
             };
             let clamped_cursor = cursor_offset.map(|(s, e)| {
-                let a = s.min(clean.len());
-                let b = e.min(clean.len());
+                let a = clean.floor_char_boundary(s.min(clean.len()));
+                let b = clean.floor_char_boundary(e.min(clean.len()));
                 (a.min(b), a.max(b))
             });
             let text_changed = sel_deleted || ctx.edit.ime_state.preedit != clean;
@@ -338,10 +345,14 @@ fn shape_ime_node(
     display_string: &str,
     style: &CompiledStyle,
 ) {
+    let role = inner
+        .node(nid)
+        .map_or(krui_a11y::SemanticRole::TextInput, |n| n.role);
+    let eff_text = crate::view_tree::content_box::effective_node_text_style(role, style.text);
     let scale = inner.scale_factor;
     let shaped = inner
         .text_engine
-        .shape_styled_text(display_string, &style.text, max_w, scale);
+        .shape_styled_text(display_string, &eff_text, max_w, scale);
     if let Some(node) = inner.node_mut(nid) {
         node.cached_text_layout = Some(shaped);
         node.last_shaped_key = shaped_key;

@@ -55,6 +55,14 @@ fn effective_node_world_matrix_rect_and_clip_state(
         let mut rect = n.world_rect;
         rect.x -= scroll_offset_x;
         rect.y -= scroll_offset_y;
+        let (rect, sticky_d) = crate::view_tree::sticky_pos::resolve_sticky_world_rect(
+            inner,
+            cid,
+            (scroll_offset_x, scroll_offset_y),
+            rect,
+        );
+        scroll_offset_x -= sticky_d.0;
+        scroll_offset_y -= sticky_d.1;
         accum_affine = accum_affine
             * eff_paint.effective_affine_for_rect(rect.x, rect.y, rect.width, rect.height);
         current_rect = rect;
@@ -227,6 +235,12 @@ pub(crate) fn compute_node_hit_geometry(
     let mut world_rect = n.world_rect;
     world_rect.x -= scroll_offset.0;
     world_rect.y -= scroll_offset.1;
+    let (world_rect, _) = crate::view_tree::sticky_pos::resolve_sticky_world_rect(
+        inner,
+        node_id,
+        scroll_offset,
+        world_rect,
+    );
     let eff_transform = parent_affine
         * eff_paint.effective_affine_for_rect(
             world_rect.x,

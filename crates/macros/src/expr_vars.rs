@@ -316,6 +316,7 @@ fn collect_free_idents_from_element(
         .chain(node.link_href.iter())
         .chain(node.class_parts.iter())
         .chain(node.dynamic_inline_style_parts.iter())
+        .chain(node.dynamic_attrs.iter().flat_map(|a| a.parts.iter()))
     {
         if let CompiledTextPart::Dynamic { expr, .. } = p {
             collect_free_idents_from_template_expr(expr, span, loop_vars, out)?;
@@ -349,6 +350,8 @@ fn collect_free_idents_from_element_events(
         &node.on_pointer_down,
         &node.on_pointer_up,
         &node.on_pointer_move,
+        &node.on_context_menu,
+        &node.on_wheel,
         &node.on_scroll,
         &node.on_input,
         &node.on_change,

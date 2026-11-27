@@ -6,7 +6,7 @@ import { chromium } from "playwright";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(__dirname, "..");
 const fixtureDir = path.join(repoRoot, "tests", "fixtures", "real_css", "tailwind_v4");
-const appKruiPath = path.join(repoRoot, "examples", "09_tailwind_v4", "views", "app.krui");
+const appKruiPath = path.join(fixtureDir, "app.krui");
 
 function buildTailwindAppHtml(cssText) {
   let raw = fs.readFileSync(appKruiPath, "utf8");

@@ -49,11 +49,21 @@ impl ControlActivationCallbacks {
 
 /// Quantizes `raw` to `(min, max, step)` and clamps to `[min, max]`.
 pub(crate) fn quantize_range_value(raw: f32, (min, max, step): (f32, f32, f32)) -> f32 {
-    let hi = max.max(min);
-    let st = step.max(0.000_001);
-    let clamped = raw.clamp(min, hi);
-    let steps = ((clamped - min) / st).round();
-    (min + steps * st).clamp(min, hi)
+    let lo = if min.is_finite() { min } else { 0.0 };
+    let hi = if max.is_finite() {
+        max.max(lo)
+    } else {
+        lo.max(100.0)
+    };
+    let st = if step.is_finite() {
+        step.abs().max(0.000_001)
+    } else {
+        1.0
+    };
+    let safe_raw = if raw.is_finite() { raw } else { lo };
+    let clamped = safe_raw.clamp(lo, hi);
+    let steps = ((clamped - lo) / st).round();
+    (lo + steps * st).clamp(lo, hi)
 }
 
 /// Parses `text` as a range value, falling back to `min` if empty or invalid, and quantizes to `(min, max, step)`.

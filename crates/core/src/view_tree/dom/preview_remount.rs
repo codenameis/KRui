@@ -314,11 +314,31 @@ fn extract_remount_snapshot(
         .and_then(|ak| NodeId::try_from(ak).ok());
     let old_ime = inner.ime_target;
     let old_scope = std::mem::replace(&mut inner.root_scope, next_scope);
+    let mut to_dispose = Vec::new();
     for idx in 0..inner.nodes.len() {
         if inner.nodes[idx].alive() {
             inner.generations[idx] = inner.generations[idx].wrapping_add(1);
+            if let Some(tid) = inner.nodes[idx].text_stylo_node.take() {
+                to_dispose.push(tid);
+            }
+            if let Some(sid) = inner.nodes[idx].stylo_node.take() {
+                to_dispose.push(sid);
+            }
         }
     }
+    for sid in to_dispose {
+        inner
+            .stylo
+            .apply_mutation(krui_stylo_bridge::StyloDomMutation::DisposeSubtree(sid));
+    }
+    inner.stylo_to_view.clear();
+    inner.propagated_canvas_node = None;
+    inner.keyframes.clear_all();
+    inner.fixed_nodes.clear();
+    inner.open_popovers.clear();
+    inner.mount_batch_depth = 0;
+    inner.pending_mount_selector_eval = false;
+    inner.stylo_dirty = true;
     let old_nodes = std::mem::take(&mut inner.nodes);
     let old_edits = std::mem::take(&mut inner.sparse.text_edits);
     let old_scrolls = std::mem::take(&mut inner.sparse.scrolls);

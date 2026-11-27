@@ -2,8 +2,8 @@
 
 use crate::MIN_SHAPING_FONT_SIZE_PX;
 use krui_style::{
-    FontFamilyStack, FontVariationList, LineHeight, TextAlign, TextBoxEdge, TextBoxTrim,
-    TextDirection, TextStyle,
+    FontFamilyStack, FontVariationList, LineHeight, OverflowWrapMode, TextAlign, TextBoxEdge,
+    TextBoxTrim, TextDirection, TextStyle, WhiteSpaceMode, WordBreakMode,
 };
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
@@ -102,6 +102,14 @@ pub(crate) fn quantize_scale(scale_factor: f32) -> u32 {
     (scale_factor.clamp(1.0, 4.0) * SCALE_FACTOR_QUANT_SCALE).round() as u32
 }
 
+pub(crate) fn quantize_letter_spacing(px: f32) -> i32 {
+    if px.is_finite() {
+        (px.clamp(-512.0, 512.0) * FONT_SIZE_QUANT_SCALE).round() as i32
+    } else {
+        0
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(crate) struct SpanStyleKey {
     pub(crate) text: String,
@@ -117,8 +125,14 @@ pub(crate) struct TextCacheKey {
     pub(crate) spans: Vec<SpanStyleKey>,
     pub(crate) font_size_q: u32,
     pub(crate) line_height_q: QuantizedLineHeight,
+    pub(crate) letter_spacing_q: i32,
     pub(crate) text_box_trim: TextBoxTrim,
     pub(crate) text_box_edge: TextBoxEdge,
+    pub(crate) white_space: WhiteSpaceMode,
+    pub(crate) word_break: WordBreakMode,
+    pub(crate) overflow_wrap: OverflowWrapMode,
+    pub(crate) text_overflow_ellipsis: bool,
+    pub(crate) line_clamp: Option<u16>,
     pub(crate) max_width_q: Option<u32>,
     pub(crate) text_align: TextAlign,
     pub(crate) direction: TextDirection,
@@ -139,15 +153,21 @@ impl TextCacheKey {
             spans: vec![SpanStyleKey {
                 text: sanitized_text,
                 font_weight: normalize_font_weight(style.font_weight),
-                italic: false,
+                italic: style.italic,
                 font_family: style.font_family,
                 color: None,
                 variations: quantize_variations(style.variations),
             }],
             font_size_q: quantize_font_size(style.font_size),
             line_height_q: quantize_style_line_height(style.line_height, style.font_size),
+            letter_spacing_q: quantize_letter_spacing(style.letter_spacing_px),
             text_box_trim: style.text_box_trim,
             text_box_edge: style.text_box_edge,
+            white_space: style.white_space,
+            word_break: style.word_break,
+            overflow_wrap: style.overflow_wrap,
+            text_overflow_ellipsis: style.text_overflow_ellipsis,
+            line_clamp: style.line_clamp,
             max_width_q: quantize_max_width(max_width),
             text_align: effective_align,
             direction: style.direction,

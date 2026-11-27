@@ -8,7 +8,7 @@ use krui_core::{
     FocusableCandidate, FrameRenderStats, GpuResourceLimits, NodeId, PaintScene, ViewTree,
 };
 use krui_renderer::{RendererBackend, TinySkiaRenderer};
-use krui_signals::{init_async_runtime_mode, AsyncRuntimeMode, FrameClock};
+use krui_signals::{init_async_runtime_mode, poll_async_tasks, AsyncRuntimeMode, FrameClock};
 use krui_style::{
     Color, ColorDepthBits, DamageTrackingMode, DisplayShape, RootProfileAttrs, TierProfile,
 };
@@ -84,6 +84,7 @@ pub struct KioskAppHost {
     config: KioskHostConfig,
     timings: BootStageTimings,
     first_frame_done: bool,
+    last_render_instant: Option<Instant>,
 }
 
 impl KioskAppHost {
@@ -128,12 +129,21 @@ impl KioskAppHost {
             config,
             timings,
             first_frame_done: false,
+            last_render_instant: None,
         }
     }
 
     /// Evaluates layout/paint if dirty, rasterizes only damaged sub-rects, plans `DIRTYFB`
     /// commits, and hands off encoding/SPI transfer to [`FlushWorker`] without blocking UI work.
     pub fn render_and_submit(&mut self) -> KioskFrameReport {
+        let now = Instant::now();
+        let dt_secs = self
+            .last_render_instant
+            .replace(now)
+            .map_or(0.0, |prev| (now - prev).as_secs_f32().clamp(0.0, 0.1));
+        let _ = poll_async_tasks();
+        self.clock.tick(dt_secs);
+        let _ = self.tree.tick_transitions(dt_secs);
         let layout_t0 = Instant::now();
         let (did_relayout, dirty_rects) = self.tree.build_paint_scene_into(
             self.config.width,

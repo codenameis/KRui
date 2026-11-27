@@ -164,9 +164,9 @@ impl LayoutEngine {
         self.append_child(self.synthetic_root, root_node);
     }
 
-    /// Appends `child` to `parent` in the layout tree.
+    /// Appends `child` to `parent` in the layout tree (ignoring self-loops and ancestor cycles).
     pub fn append_child(&mut self, parent: NodeId, child: NodeId) {
-        if parent == child || child == self.synthetic_root {
+        if parent == child || child == self.synthetic_root || self.is_ancestor(child, parent) {
             return;
         }
         let old_parent = self.slots.get(child.into()).and_then(|s| s.parent);
@@ -241,6 +241,21 @@ impl LayoutEngine {
     /// Returns the total number of live layout nodes (including the synthetic root).
     pub fn total_node_count(&self) -> usize {
         self.slots.len()
+    }
+
+    fn is_ancestor(&self, candidate: NodeId, mut node: NodeId) -> bool {
+        let mut hops = 0_usize;
+        while let Some(p) = self.slots.get(node.into()).and_then(|s| s.parent) {
+            if p == candidate {
+                return true;
+            }
+            node = p;
+            hops += 1;
+            if hops > self.slots.len() {
+                break;
+            }
+        }
+        false
     }
 
     /// Replaces the ordered children of `parent` (or the synthetic root if `parent` is `None`).

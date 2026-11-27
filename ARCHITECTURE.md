@@ -20,15 +20,15 @@ Crates are organized strictly by domain capability (`DSL -> Slim IR / static_ir 
 | [`a11y`](crates/a11y/src/lib.rs) | `accesskit` (`0.17`) semantic tree builder (`Role`, `Action`, `url`, focus order, password masking) | `#![forbid(unsafe_code)]` |
 | [`core`](crates/core/src/lib.rs) | Platform-neutral `ViewTree` split into cohesive submodules (`view_tree/{dom,style_bridge,input,ime,controls,paint_scene}`), `static_ir`, `EditingState` + `TextInputHost`, `Hangul2BulsikAutomaton`, and `PaintScene` | `#![forbid(unsafe_code)]` |
 | [`renderer`](crates/renderer/src/lib.rs) | `WgpuRenderer` (instanced SDF + Kawase dual-filter blur + premultiplied LRU texture cache + `<canvas>`) and `TinySkiaRenderer` CPU fallback | `#![forbid(unsafe_code)]` |
-| [`winit`](crates/winit/src/lib.rs) | Desktop single/multi-window `winit` event loop, IME adapter, AccessKit bridge, and `KRUI_EMBED_PANEL` headless driver | `#![forbid(unsafe_code)]` |
-| [`kms`](crates/kms/src/lib.rs) | Linux DRM DumbBuffer (`RGB565`/`XRGB8888`) + `DIRTYFB` union-bbox commit planner, flush worker, and `evdev` kiosk host | `#![forbid(unsafe_code)]` |
-| [`engine-host`](crates/engine-host/src/lib.rs) | In-pass 3D engine UI host (`EngineUiHost`) sharing external `wgpu::Device`/`Queue`, `tokio::runtime::Handle`, and ping-pong `PaintScenePool` | `#![forbid(unsafe_code)]` |
-| [`web`](crates/web-dom/src/lib.rs) | Browser DOM + native CSS + `<canvas>` external slot backend (`krui-web`, excluding `wgpu`/`stylo`/`taffy`) | `#![forbid(unsafe_code)]` |
+| [`winit`](crates/winit/src/lib.rs) | **Primary Production Host**: Desktop single/multi-window `winit` event loop, IME adapter, AccessKit bridge, and `KRUI_EMBED_PANEL` headless driver | `#![forbid(unsafe_code)]` |
+| [`kms`](crates/kms/src/lib.rs) | **Experimental / Adapter Preview**: Trait-backed Linux DRM DumbBuffer (`RGB565`/`XRGB8888`) + `DIRTYFB` union-bbox commit planner, flush worker, and `evdev` kiosk router | `#![forbid(unsafe_code)]` |
+| [`engine-host`](crates/engine-host/src/lib.rs) | **Primary Production Host**: In-pass 3D engine UI host (`EngineUiHost`) sharing external `wgpu::Device`/`Queue`, `tokio::runtime::Handle`, and ping-pong `PaintScenePool` | `#![forbid(unsafe_code)]` |
+| [`web`](crates/web-dom/src/lib.rs) | **Experimental Prototype**: Standalone browser DOM + native CSS + `<canvas>` slot backend (`krui-web`, independent of `ViewTree`/`stylo`/`taffy`) | `#![forbid(unsafe_code)]` |
 | [`patterns`](crates/patterns/src/lib.rs) | Opt-in MVVM (`Command`, `InputCommand`), MVC (`#[controller]`), and Flux/Elm/MVI (`Store<State, Msg>`, `Effects<Msg>`) | `#![forbid(unsafe_code)]` |
 | [`preview`](crates/preview/src/lib.rs) | Dev-only (`preview` feature) TCP framing, event-driven `PreviewTcpClient`, `DevFileWatcher`, `"KRFR"` RLE codec, and device bezels sharing `CompiledDocument` IR | `#![forbid(unsafe_code)]` |
-| [`cli`](crates/cli/src/lib.rs) | `krui serve` live preview TCP server, Windows lock-free staged binary rebuilds, ADB port reverse, and `--panel` IDE bridge | `#![forbid(unsafe_code)]` |
-| [`android-ffi`](crates/android-ffi/src/lib.rs) | Safe Android/Wear OS JNI + Kotlin `SurfaceView` / `Choreographer` / `InputConnection` host (`0` `unsafe {}` blocks, `5` `#[no_mangle]` exports) | `#![deny(unsafe_code)]` |
-| [`krui` (root)](src/lib.rs) | Public facade, showcase application (`krui-showcase`), M3 component gallery example (`component_gallery`), and controlled 120Hz release benchmark (`krui-bench`) | `#![forbid(unsafe_code)]` |
+| [`cli`](crates/cli/src/lib.rs) | `krui serve` live preview TCP server, PID-scoped Windows lock-free staged binary rebuilds, ADB port reverse, and `--panel` IDE bridge | `#![forbid(unsafe_code)]` |
+| [`android-ffi`](crates/android-ffi/src/lib.rs) | **Experimental / Adapter Preview**: Safe Android JNI + Kotlin CPU `SurfaceView` / `Choreographer` / `InputConnection` bridge (`0` `unsafe {}` blocks, `5` `#[no_mangle]` exports) | `#![deny(unsafe_code)]` |
+| [`krui` (root)](src/lib.rs) | Public facade, showcase application (`krui-showcase`), starter component gallery example (`component_gallery`), and controlled 120Hz release benchmark (`krui-bench`) | `#![forbid(unsafe_code)]` |
 
 ---
 

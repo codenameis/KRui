@@ -507,6 +507,9 @@ pub(crate) fn needs_taffy_relayout(
         || ita.text_align != itb.text_align
         || ita.text_wrap_mode != itb.text_wrap_mode
         || ita.white_space_collapse != itb.white_space_collapse
+        || ita.word_break != itb.word_break
+        || ita.overflow_wrap != itb.overflow_wrap
+        || ita.letter_spacing != itb.letter_spacing
         || a.get_text().text_overflow != b.get_text().text_overflow
         || crate::servo_ext::text_box_props_differ(a, b)
 }

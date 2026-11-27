@@ -179,6 +179,8 @@ fn step_ancestor_3d(
     let ep = inner.active_transition_paint(cid, resolve_node_paint_state(inner, cid, n, dis, foc));
     let mut wr = n.world_rect;
     (wr.x, wr.y) = (wr.x - cur.scroll.0, wr.y - cur.scroll.1);
+    let (wr, sticky_d) = super::sticky_pos::resolve_sticky_world_rect(inner, cid, cur.scroll, wr);
+    cur.scroll = (cur.scroll.0 - sticky_d.0, cur.scroll.1 - sticky_d.1);
     let eval = evaluate_perspective_layer(cur.p3d, cur.aff, &ep, wr);
     let next_aff = cur.aff * ep.effective_affine_for_rect(wr.x, wr.y, wr.width, wr.height);
     if is_target {

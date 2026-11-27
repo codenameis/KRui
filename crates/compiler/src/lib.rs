@@ -303,11 +303,24 @@ fn compile_krui_with_options_inner(
         None,
         &mut collector,
     )?;
-    for (css_text, start) in &inline_styles {
-        collector.push_author_css(source, *start, css_text, krui_path, virtual_buffers)?;
-    }
-
     let (inline_templates, unexpanded_roots) = parse_html_document(&html_text)?;
+    for (css_text, start) in &inline_styles {
+        if let Some(tpl) = inline_templates
+            .iter()
+            .find(|t| *start >= t.tag_offset && *start < t.end_offset)
+        {
+            collector.push_component_css(
+                source,
+                *start,
+                css_text,
+                krui_path,
+                Some(&tpl.name),
+                virtual_buffers,
+            )?;
+        } else {
+            collector.push_author_css(source, *start, css_text, krui_path, virtual_buffers)?;
+        }
+    }
     let mut external_component_paths = Vec::new();
     let raw_nodes = {
         let mut expander = ComponentExpander::new(

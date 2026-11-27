@@ -1,34 +1,24 @@
 //! Styled multi-span rich paragraph measurement and shaping helpers for [`TextEngine`].
 
 use crate::cache::{
-    normalize_font_weight, quantize_font_size, quantize_max_width, quantize_scale,
-    quantize_style_line_height, quantize_variations, SpanStyleKey, TextCacheKey,
+    normalize_font_weight, quantize_font_size, quantize_letter_spacing, quantize_max_width,
+    quantize_scale, quantize_style_line_height, quantize_variations, SpanStyleKey, TextCacheKey,
 };
 use crate::fallback::measure_fallback_dimensions;
 use crate::font_stacks::SanitizedRichSpan;
 use crate::rasterize::{measure_with_cosmic, LineLayoutConfig};
+use crate::text_wrap_ellipsis::normalize_spans_white_space;
 use crate::{build_shaped_layout, ShapedTextLayout, TextEngine, MIN_SHAPING_FONT_SIZE_PX};
 use krui_style::{sanitize_untrusted_text, FontFamilyStack, StyledTextSpan, TextAlign, TextStyle};
 
 fn prepare_styled_spans(
     spans: &[StyledTextSpan],
+    style: &TextStyle,
 ) -> (Vec<SanitizedRichSpan>, Vec<SpanStyleKey>, String) {
     let mut clean_spans = Vec::with_capacity(spans.len());
-    let mut span_keys = Vec::with_capacity(spans.len());
-    let mut full_text = String::new();
     for sp in spans {
-        let clean = sanitize_untrusted_text(&sp.text);
-        full_text.push_str(&clean);
-        span_keys.push(SpanStyleKey {
-            text: clean.clone(),
-            font_weight: normalize_font_weight(sp.font_weight),
-            italic: sp.italic,
-            font_family: sp.font_family,
-            color: sp.color.map(|c| [c.r, c.g, c.b, c.a]),
-            variations: quantize_variations(sp.variations),
-        });
         clean_spans.push(SanitizedRichSpan {
-            text: clean,
+            text: sanitize_untrusted_text(&sp.text),
             font_weight: sp.font_weight,
             italic: sp.italic,
             font_family: sp.font_family,
@@ -36,6 +26,18 @@ fn prepare_styled_spans(
             variations: sp.variations,
         });
     }
+    let full_text = normalize_spans_white_space(&mut clean_spans, style.white_space);
+    let span_keys = clean_spans
+        .iter()
+        .map(|sp| SpanStyleKey {
+            text: sp.text.clone(),
+            font_weight: normalize_font_weight(sp.font_weight),
+            italic: sp.italic,
+            font_family: sp.font_family,
+            color: sp.color.map(|c| [c.r, c.g, c.b, c.a]),
+            variations: quantize_variations(sp.variations),
+        })
+        .collect();
     (clean_spans, span_keys, full_text)
 }
 
@@ -51,8 +53,14 @@ fn build_rich_cache_key(
         spans: span_keys,
         font_size_q: quantize_font_size(style.font_size),
         line_height_q: quantize_style_line_height(style.line_height, style.font_size),
+        letter_spacing_q: quantize_letter_spacing(style.letter_spacing_px),
         text_box_trim: style.text_box_trim,
         text_box_edge: style.text_box_edge,
+        white_space: style.white_space,
+        word_break: style.word_break,
+        overflow_wrap: style.overflow_wrap,
+        text_overflow_ellipsis: style.text_overflow_ellipsis,
+        line_clamp: style.line_clamp,
         max_width_q: quantize_max_width(max_width),
         text_align: eff_align,
         direction: style.direction,
@@ -69,7 +77,7 @@ impl TextEngine {
         style: &TextStyle,
         max_width: Option<f32>,
     ) -> (f32, f32) {
-        let (clean_spans, span_keys, full_text) = prepare_styled_spans(spans);
+        let (clean_spans, span_keys, full_text) = prepare_styled_spans(spans, style);
         if full_text.is_empty() {
             return (0.0, 0.0);
         }
@@ -87,20 +95,12 @@ impl TextEngine {
             return (shaped.measured_width.ceil(), shaped.measured_height.ceil());
         }
         let safe_fs = style.font_size.max(MIN_SHAPING_FONT_SIZE_PX);
-        let cfg = LineLayoutConfig {
-            font_size: safe_fs,
-            line_height: style.line_height,
-            text_box_trim: style.text_box_trim,
-            text_box_edge: style.text_box_edge,
-            max_width,
-            align: eff_align,
-            direction: style.direction,
-        };
+        let cfg = LineLayoutConfig::from_style(style, max_width, eff_align);
         let result = self.with_font_context(|ctx| {
             let (mut mw, mut mh) = measure_with_cosmic(ctx, &clean_spans, &full_text, cfg);
             if mw == 0.0 && !full_text.trim().is_empty() {
                 let lh = style.line_height.resolve_px(safe_fs, safe_fs * 1.2);
-                (mw, mh) = measure_fallback_dimensions(&full_text, safe_fs, lh, max_width);
+                (mw, mh) = measure_fallback_dimensions(&full_text, safe_fs, lh, cfg.max_width);
             }
             (mw.ceil(), mh.ceil())
         });
@@ -117,7 +117,7 @@ impl TextEngine {
         scale_factor: f32,
     ) -> ShapedTextLayout {
         let scale = scale_factor.clamp(1.0, 4.0);
-        let (clean_spans, span_keys, full_text) = prepare_styled_spans(spans);
+        let (clean_spans, span_keys, full_text) = prepare_styled_spans(spans, style);
         let eff_align = if max_width.is_some() {
             style.text_align
         } else {
@@ -128,22 +128,13 @@ impl TextEngine {
         if let Some(cached) = self.layout_cache.get_and_touch(&cache_key) {
             return cached;
         }
-        let safe_fs = style.font_size.max(MIN_SHAPING_FONT_SIZE_PX);
-        let cfg = LineLayoutConfig {
-            font_size: safe_fs,
-            line_height: style.line_height,
-            text_box_trim: style.text_box_trim,
-            text_box_edge: style.text_box_edge,
-            max_width,
-            align: eff_align,
-            direction: style.direction,
-        };
+        let cfg = LineLayoutConfig::from_style(style, max_width, eff_align);
         let mut fallback_spans = clean_spans;
         if fallback_spans.is_empty() {
             fallback_spans.push(SanitizedRichSpan {
                 text: String::new(),
                 font_weight: style.font_weight,
-                italic: false,
+                italic: style.italic,
                 font_family: FontFamilyStack::FluentUI,
                 color: None,
                 variations: style.variations,

@@ -9,6 +9,8 @@ use crate::font_presets::{
     expand_stack_candidates, generic_fallback_family, purge_symbol_and_dingbat_faces,
     resolve_builtin_multilingual_stacks, ResolvedFontStack,
 };
+use crate::rasterize::LineLayoutConfig;
+use crate::text_wrap_ellipsis::{cosmic_wrap_for_config, shape_keep_all_cosmic_buffer};
 use cosmic_text::fontdb::ID as FontId;
 use cosmic_text::{
     Align, Attrs, AttrsList, AttrsOwned, Buffer, BufferLine, Family, FontSystem, LineEnding,
@@ -16,7 +18,7 @@ use cosmic_text::{
 };
 use krui_style::{
     Color, FontFaceRule, FontFamilyStack, FontStyleSlope, FontVariationList, TextAlign,
-    TextDirection,
+    TextDirection, WordBreakMode,
 };
 use std::collections::HashMap;
 use std::ops::Range;
@@ -415,23 +417,13 @@ fn make_span_attrs(
     AttrsOwned::new(attrs)
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn shape_rich_cosmic_buffer(
     ctx: &mut FontContext,
     spans: &[SanitizedRichSpan],
     full_text: &str,
-    safe_font_size: f32,
-    max_width: Option<f32>,
-    align: TextAlign,
-    direction: TextDirection,
-) -> (Buffer, CachedFaceMeta) {
-    let safe_cosmic_lh = (safe_font_size * 4.0).max(16.0);
-    let mut buffer = Buffer::new(
-        &mut ctx.font_system,
-        Metrics::new(safe_font_size, safe_cosmic_lh),
-    );
-    buffer.set_size(&mut ctx.font_system, max_width, None);
-
+    cfg: LineLayoutConfig,
+) -> ((Buffer, Vec<usize>), CachedFaceMeta) {
+    let safe_cosmic_lh = (cfg.font_size * 4.0).max(16.0);
     let (base_fam, base_w, base_it) = spans
         .first()
         .map_or((FontFamilyStack::FluentUI, 400, false), |s| {
@@ -439,27 +431,83 @@ pub(crate) fn shape_rich_cosmic_buffer(
         });
     let (strut_attrs, strut_meta) = ctx.resolve_strut(base_fam, base_w, base_it);
     let ranged_attrs = build_ranged_span_attrs(ctx, spans);
-    let line_align = resolve_cosmic_align(align, direction, max_width.is_some());
-    let mut lines = Vec::new();
-    let mut line_start_b = 0_usize;
+    let line_align = resolve_cosmic_align(cfg.align, cfg.direction, cfg.max_width.is_some());
 
-    for raw_line in full_text.split('\n') {
-        let line_end_b = line_start_b + raw_line.len();
-        let mut attrs_list = AttrsList::new(strut_attrs.as_attrs());
-        for (range, owned) in &ranged_attrs {
-            let s = range.start.max(line_start_b);
-            let e = range.end.min(line_end_b);
-            if s < e {
-                attrs_list.add_span((s - line_start_b)..(e - line_start_b), owned.as_attrs());
-            }
-        }
-        let mut buf_line = BufferLine::new(raw_line, LineEnding::Lf, attrs_list, Shaping::Advanced);
-        buf_line.set_align(line_align);
-        lines.push(buf_line);
-        line_start_b = line_end_b + 1;
+    if cfg.white_space.allows_wrap()
+        && cfg.word_break == WordBreakMode::KeepAll
+        && cfg.max_width.is_some()
+    {
+        let res = shape_keep_all_cosmic_buffer(
+            ctx,
+            full_text,
+            cfg,
+            safe_cosmic_lh,
+            &strut_attrs,
+            &ranged_attrs,
+            line_align,
+        );
+        return (res, strut_meta);
     }
 
-    buffer.lines = lines;
+    let mut buffer = Buffer::new(
+        &mut ctx.font_system,
+        Metrics::new(cfg.font_size, safe_cosmic_lh),
+    );
+    buffer.set_wrap(&mut ctx.font_system, cosmic_wrap_for_config(&cfg));
+    buffer.set_size(&mut ctx.font_system, cfg.max_width, None);
+    let offsets = populate_buffer_lines(
+        &mut buffer,
+        full_text,
+        None,
+        &strut_attrs,
+        &ranged_attrs,
+        line_align,
+    );
     buffer.shape_until_scroll(&mut ctx.font_system, false);
-    (buffer, strut_meta)
+    ((buffer, offsets), strut_meta)
+}
+
+pub(crate) fn populate_buffer_lines(
+    buffer: &mut Buffer,
+    full_text: &str,
+    explicit_slices: Option<&[(usize, usize)]>,
+    strut_attrs: &AttrsOwned,
+    ranged_attrs: &[(Range<usize>, AttrsOwned)],
+    line_align: Option<Align>,
+) -> Vec<usize> {
+    let mut lines = Vec::new();
+    let mut offsets = Vec::new();
+    let mut push_slice = |s_b: usize, e_b: usize| {
+        offsets.push(s_b);
+        let mut attrs_list = AttrsList::new(strut_attrs.as_attrs());
+        for (range, owned) in ranged_attrs {
+            let s = range.start.max(s_b);
+            let e = range.end.min(e_b);
+            if s < e {
+                attrs_list.add_span((s - s_b)..(e - s_b), owned.as_attrs());
+            }
+        }
+        let mut buf_line = BufferLine::new(
+            &full_text[s_b..e_b],
+            LineEnding::Lf,
+            attrs_list,
+            Shaping::Advanced,
+        );
+        buf_line.set_align(line_align);
+        lines.push(buf_line);
+    };
+    if let Some(slices) = explicit_slices {
+        for &(s_b, e_b) in slices {
+            push_slice(s_b, e_b);
+        }
+    } else {
+        let mut line_start_b = 0_usize;
+        for raw_line in full_text.split('\n') {
+            let line_end_b = line_start_b + raw_line.len();
+            push_slice(line_start_b, line_end_b);
+            line_start_b = line_end_b + 1;
+        }
+    }
+    buffer.lines = lines;
+    offsets
 }

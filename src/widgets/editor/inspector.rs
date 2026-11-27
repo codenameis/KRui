@@ -332,6 +332,9 @@ fn format_hex_rgba(rgba: [u8; 4]) -> String {
 
 fn parse_hex_rgba(input: &str) -> Option<[u8; 4]> {
     let hex = input.trim().strip_prefix('#').unwrap_or(input.trim());
+    if !hex.is_ascii() {
+        return None;
+    }
     let byte = |s: &str| u8::from_str_radix(s, 16).ok();
     match hex.len() {
         3 => {

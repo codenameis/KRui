@@ -342,7 +342,7 @@ fn node_exceeds_depth(node: &CompiledNode, remaining_depth: usize) -> bool {
     }
 }
 
-fn nodes_exceed_depth(nodes: &[CompiledNode], remaining_depth: usize) -> bool {
+pub(crate) fn nodes_exceed_depth(nodes: &[CompiledNode], remaining_depth: usize) -> bool {
     nodes.iter().any(|n| node_exceeds_depth(n, remaining_depth))
 }
 
@@ -394,6 +394,30 @@ impl Clone for CompiledDocument {
             source_path: self.source_path.clone(),
             external_css_paths: self.external_css_paths.clone(),
             external_component_paths: self.external_component_paths.clone(),
+        }
+    }
+}
+
+impl Drop for CompiledDocument {
+    fn drop(&mut self) {
+        if !nodes_exceed_depth(&self.roots, 24) {
+            return;
+        }
+        let mut stack = std::mem::take(&mut self.roots);
+        while let Some(mut node) = stack.pop() {
+            stack.append(&mut node.children);
+            match &mut node.kind {
+                CompiledNodeKind::If(cif) => {
+                    for br in &mut cif.branches {
+                        stack.append(&mut br.children);
+                    }
+                }
+                CompiledNodeKind::For(cfor) => {
+                    stack.append(&mut cfor.body);
+                    stack.append(&mut cfor.empty_body);
+                }
+                CompiledNodeKind::Element => {}
+            }
         }
     }
 }

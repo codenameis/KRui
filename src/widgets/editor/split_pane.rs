@@ -24,6 +24,7 @@ pub struct SplitPaneController {
     pub dragging: Signal<bool>,
     min_ratio: f32,
     max_ratio: f32,
+    invert_drag: bool,
     drag_start: Rc<Cell<(f32, f32)>>,
 }
 
@@ -38,24 +39,43 @@ impl SplitPaneController {
             dragging: Signal::new(false),
             min_ratio: lo,
             max_ratio: hi,
+            invert_drag: false,
             drag_start: Rc::new(Cell::new((0.0, initial_ratio.clamp(lo, hi)))),
         }
     }
 
+    /// 우측·하단 도킹 패널처럼 컨테이너 끝에서부터 비율을 재는 분할선에 역방향 드래그를 설정합니다.
+    #[must_use]
+    pub fn with_inverted_drag(mut self) -> Self {
+        self.invert_drag = true;
+        self
+    }
+
     /// 스플리터 드래그를 시작합니다 (`coord`는 주축 좌표).
     pub fn begin_drag(&self, coord: f32) {
+        if !coord.is_finite() {
+            return;
+        }
         self.drag_start.set((coord, self.ratio.get_untracked()));
         self.dragging.set(true);
     }
 
     /// 전체 컨테이너 픽셀 길이 `total_px`를 기준으로 새 비율을 갱신합니다.
     pub fn drag_to(&self, coord: f32, total_px: f32) {
-        if !self.dragging.get_untracked() || total_px <= 1.0 {
+        if !self.dragging.get_untracked()
+            || !coord.is_finite()
+            || !total_px.is_finite()
+            || total_px <= 1.0
+        {
             return;
         }
         let (start_coord, start_ratio) = self.drag_start.get();
-        let next =
-            (start_ratio + (coord - start_coord) / total_px).clamp(self.min_ratio, self.max_ratio);
+        let delta = if self.invert_drag {
+            start_coord - coord
+        } else {
+            coord - start_coord
+        };
+        let next = (start_ratio + delta / total_px).clamp(self.min_ratio, self.max_ratio);
         self.ratio.set(next);
     }
 
@@ -116,8 +136,10 @@ impl DockLayoutController {
     pub fn new() -> Self {
         Self {
             left_split: SplitPaneController::new(SplitAxis::Horizontal, 0.20, 0.10, 0.42),
-            right_split: SplitPaneController::new(SplitAxis::Horizontal, 0.24, 0.12, 0.45),
-            bottom_split: SplitPaneController::new(SplitAxis::Vertical, 0.26, 0.10, 0.55),
+            right_split: SplitPaneController::new(SplitAxis::Horizontal, 0.24, 0.12, 0.45)
+                .with_inverted_drag(),
+            bottom_split: SplitPaneController::new(SplitAxis::Vertical, 0.26, 0.10, 0.55)
+                .with_inverted_drag(),
             show_hierarchy: Signal::new(true),
             show_inspector: Signal::new(true),
             show_assets: Signal::new(true),

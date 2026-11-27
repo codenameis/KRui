@@ -1,4 +1,4 @@
-//! Embedded standard M3 component packs (`crates/compiler/builtins/*.krui`) and on-demand loader.
+//! Embedded KRui starter component packs (`crates/compiler/builtins/*.krui`) and on-demand loader.
 
 use crate::component_slots::compile_schema_defaults;
 use crate::css_collect::CollectedStylesheets;
@@ -110,7 +110,7 @@ const PACK_TABLE: &[(BuiltinPack, &str, &[&str])] = &[
 /// Parsed template body + pre-compiled prop schema for a built-in component.
 pub(crate) type BuiltinTemplateEntry = (Vec<(String, TemplateExpr)>, Vec<RawHtmlNode>);
 
-/// Returns the built-in pack owning component `name`, if `name` is a standard M3 tag.
+/// Returns the built-in pack owning component `name`, if `name` is a built-in starter component tag.
 pub(crate) fn lookup_builtin_pack(name: &str) -> Option<(BuiltinPack, &'static str)> {
     PACK_TABLE
         .iter()

@@ -60,20 +60,17 @@ impl UiWaker for WinitProxyUiWaker {
 ///
 /// - Never returns [`ControlFlow::Poll`] (eliminating 100% CPU busy-wait loops during async tasks).
 /// - When `has_active_animations` is `true`, schedules 120 Hz frame-paced redraws via [`ControlFlow::WaitUntil`].
-/// - When `is_paint_dirty` is `true`, schedules an immediate one-shot [`ControlFlow::WaitUntil`].
 /// - When `has_preview_watcher` is active, wakes every `150ms`; when an `<input>` is focused, wakes every `500ms` for caret blink.
-/// - Otherwise (including while background async tasks are in flight!), returns [`ControlFlow::Wait`] for **0% idle CPU**.
+/// - Otherwise (including minimized/occluded windows with pending `is_paint_dirty` and in-flight async tasks), returns [`ControlFlow::Wait`] for **0% idle CPU**.
 pub fn compute_idle_control_flow(
     has_active_animations: bool,
-    is_paint_dirty: bool,
+    _is_paint_dirty: bool,
     is_input_focused: bool,
     has_preview_watcher: bool,
     now: Instant,
 ) -> ControlFlow {
     if has_active_animations {
         ControlFlow::WaitUntil(now + FRAME_PACE_120HZ)
-    } else if is_paint_dirty {
-        ControlFlow::WaitUntil(now)
     } else if has_preview_watcher {
         ControlFlow::WaitUntil(now + Duration::from_millis(150))
     } else if is_input_focused {

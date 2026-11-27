@@ -40,11 +40,11 @@ All Cargo profiles, feature flags, executable targets, platform host crates, `kr
 |---|---|---|
 | `krui-showcase` | `cargo run -p krui --bin krui-showcase [-- --headless]` | Desktop application shell (`required-features = ["desktop"]`) |
 | `krui-bench` | `cargo run --release --bin krui-bench [-- --allow-missing-wgpu]` | Controlled 30-warmup + 300-frame benchmark (`TinySkia` & `Wgpu` `p50`/`p99 <= 8,333us`) |
-| `component_gallery` | `cargo run [--release] --example component_gallery [-- --headless \| --screenshots [DIR] \| --snapshot <PATH>]` | M3 47 built-ins + Material 3 / Tailwind v4 pure CSS showcase & Gates 1–5 |
+| `component_gallery` | `cargo run [--release] --example component_gallery [-- --headless \| --screenshots [DIR] \| --snapshot <PATH>]` | 47 starter built-ins + Material 3 / Tailwind v4 pure CSS showcase & Gates 1–5 |
 | `krui` CLI | `cargo run -p krui-cli -- serve [OPTIONS]` | Hot-reload TCP server & IDE `--panel` bridge |
-| `krui-kms` | `cargo build -p krui-kms` | Platform-neutral Linux DRM DumbBuffer + `DIRTYFB` + `evdev` host |
-| `krui-engine-host` | `cargo build -p krui-engine-host` | In-pass UI overlay host sharing an external 3D engine's `wgpu::Device` & `tokio` handle |
-| `krui-web` (`crates/web-dom`) | `cargo test -p krui-web` | Browser DOM + native CSS + `<canvas>` backend (`DomBackend`, excludes `stylo`/`taffy`/`wgpu`) |
+| `krui-engine-host` | `cargo build -p krui-engine-host` | **Primary Production Tier**: In-pass UI overlay host sharing an external 3D engine's `wgpu::Device` & `tokio` handle |
+| `krui-kms` | `cargo build -p krui-kms` | **Experimental / Adapter Preview**: Trait-backed Linux DRM DumbBuffer + `DIRTYFB` planner + `evdev` router |
+| `krui-web` (`crates/web-dom`) | `cargo test -p krui-web` | **Experimental Prototype**: Standalone browser DOM + `<canvas>` backend (`DomBackend`, outside `ViewTree`/`stylo`/`taffy`) |
 
 ---
 

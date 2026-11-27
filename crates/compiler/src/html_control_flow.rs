@@ -249,6 +249,7 @@ pub(crate) fn parse_template_definition(
     Ok(RawTemplateDef {
         name: comp_name,
         tag_offset,
+        end_offset: *cursor,
         default_props,
         body,
     })

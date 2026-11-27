@@ -103,6 +103,11 @@ class KruiView @JvmOverloads constructor(
         Choreographer.getInstance().removeFrameCallback(this)
     }
 
+    override fun onDetachedFromWindow() {
+        dispose()
+        super.onDetachedFromWindow()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (sessionId == 0L) return super.onTouchEvent(event)
         val now = System.nanoTime()

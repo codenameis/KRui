@@ -58,6 +58,7 @@ pub(crate) enum ComputedState {
     Clean,
     Check,
     Dirty,
+    Computing,
 }
 
 thread_local! {
@@ -79,6 +80,8 @@ pub(crate) struct SignalSlot {
     pub(crate) is_frame_driven: bool,
     pub(crate) borrow_depth: usize,
     pub(crate) deferred_notify: bool,
+    pub(crate) updating_in_place: bool,
+    pub(crate) overridden_during_update: bool,
 }
 
 impl SignalSlot {
@@ -89,6 +92,7 @@ impl SignalSlot {
         self.last_subscribed_run = None;
         self.borrow_depth = 0;
         self.deferred_notify = false;
+        self.updating_in_place = false;
         self.value = empty_any_rc();
         self.initial_value = empty_any_rc();
         let (next_gen, saturated) = crate::session_hub::bump_preserving_tag(self.generation);
@@ -154,12 +158,18 @@ impl Drop for ScopeStackGuard {
 
 pub(crate) struct UntrackedGuard {
     pub(crate) saved: Option<Vec<TrackingFrame>>,
+    pub(crate) had_outer_tracking: bool,
 }
 impl Drop for UntrackedGuard {
     fn drop(&mut self) {
         if let Some(saved) = self.saved.take() {
+            let had_outer = self.had_outer_tracking;
             let _ = crate::runtime::RUNTIME.try_with(|rt| {
                 if let Ok(mut rt_mut) = rt.try_borrow_mut() {
+                    if had_outer {
+                        rt_mut.untracked_in_tracking_depth =
+                            rt_mut.untracked_in_tracking_depth.saturating_sub(1);
+                    }
                     rt_mut.tracking_stack = saved;
                 }
             });
@@ -170,11 +180,30 @@ impl Drop for UntrackedGuard {
 pub(crate) struct TrackingFrameGuard;
 impl Drop for TrackingFrameGuard {
     fn drop(&mut self) {
-        let _ = crate::runtime::RUNTIME.try_with(|rt| {
-            if let Ok(mut rt_mut) = rt.try_borrow_mut() {
-                rt_mut.tracking_stack.pop();
-            }
-        });
+        let should_flush = crate::runtime::RUNTIME
+            .try_with(|rt| {
+                if let Ok(mut rt_mut) = rt.try_borrow_mut() {
+                    if let Some(frame) = rt_mut.tracking_stack.pop() {
+                        if let Some(sub) = rt_mut.subscribers.get_mut(frame.sub_id.index as usize) {
+                            if sub.alive
+                                && sub.generation == frame.sub_id.generation
+                                && sub.state == ComputedState::Computing
+                            {
+                                sub.state = ComputedState::Clean;
+                            }
+                        }
+                    }
+                    rt_mut.can_flush_immediately()
+                        && !rt_mut.pending_subscribers.is_empty()
+                        && !std::thread::panicking()
+                } else {
+                    false
+                }
+            })
+            .unwrap_or(false);
+        if should_flush {
+            crate::runtime::flush_pending_subscribers();
+        }
     }
 }
 
@@ -188,8 +217,7 @@ impl Drop for BatchDepthGuard {
                 if let Ok(mut rt_mut) = rt.try_borrow_mut() {
                     rt_mut.batch_depth = rt_mut.batch_depth.saturating_sub(1);
                     self.flush_on_zero
-                        && rt_mut.batch_depth == 0
-                        && rt_mut.tracking_stack.is_empty()
+                        && rt_mut.can_flush_immediately()
                         && !std::thread::panicking()
                 } else {
                     false

@@ -165,9 +165,15 @@ impl<T: 'static> Signal<T> {
         )
     }
 
-    /// Borrows a live signal's value without cloning, returning `None` if its `Scope` was disposed.
+    /// Borrows a live signal's value without cloning, returning `None` if its `Scope` was disposed
+    /// or if it is currently exclusively borrowed by an in-place [`Self::update`].
     pub fn try_with<R>(self, f: impl FnOnce(&T) -> R) -> Option<R> {
-        if !self.is_alive() {
+        let can_read = RUNTIME.with(|rt| {
+            let rt_ref = rt.borrow();
+            rt_ref.is_signal_alive(self.id)
+                && !rt_ref.signals[self.id.index as usize].updating_in_place
+        });
+        if !can_read {
             return None;
         }
         Some(self.with(f))
@@ -185,6 +191,14 @@ impl<T: 'static> Signal<T> {
             }
             record_active_subscription(&mut rt, self.id);
             let slot = &mut rt.signals[self.id.index as usize];
+            if slot.updating_in_place {
+                let fb = if slot.overridden_during_update {
+                    slot.value.clone()
+                } else {
+                    slot.initial_value.clone()
+                };
+                return (fb, false);
+            }
             slot.borrow_depth += 1;
             (slot.value.clone(), true)
         });
@@ -203,6 +217,14 @@ impl<T: 'static> Signal<T> {
             let mut rt = rt.borrow_mut();
             if rt.is_signal_alive(self.id) {
                 let slot = &mut rt.signals[self.id.index as usize];
+                if slot.updating_in_place {
+                    let fb = if slot.overridden_during_update {
+                        slot.value.clone()
+                    } else {
+                        slot.initial_value.clone()
+                    };
+                    return (fb, false);
+                }
                 slot.borrow_depth += 1;
                 (slot.value.clone(), true)
             } else {
@@ -234,14 +256,19 @@ impl<T: 'static> Signal<T> {
             if !rt.is_signal_alive(self.id) {
                 return false;
             }
+            let updating_this = rt.updating_signals.contains(&self.id);
             let slot = &mut rt.signals[self.id.index as usize];
             store_value_in_slot(slot, new_value);
+            if updating_this {
+                slot.overridden_during_update = true;
+                return false;
+            }
             if !allow_during_borrow && slot.borrow_depth > 0 {
                 slot.deferred_notify = true;
                 return false;
             }
             rt.notify_signal_changed(self.id);
-            rt.batch_depth == 0 && rt.tracking_stack.is_empty()
+            rt.can_flush_immediately()
         });
 
         if should_flush {
@@ -270,7 +297,7 @@ impl<T: 'static> Signal<T> {
     {
         let current_rc = RUNTIME.with(|rt| {
             let rt = rt.borrow();
-            rt.is_signal_alive(self.id)
+            (rt.is_signal_alive(self.id) && !rt.signals[self.id.index as usize].updating_in_place)
                 .then(|| rt.signals[self.id.index as usize].value.clone())
         });
         let Some(cur_any) = current_rc else {
@@ -296,14 +323,19 @@ impl<T: 'static> Signal<T> {
             if !rt.is_signal_alive(self.id) {
                 return false;
             }
+            let updating_this = rt.updating_signals.contains(&self.id);
             let slot = &mut rt.signals[self.id.index as usize];
             slot.value = slot.initial_value.clone();
+            if updating_this {
+                slot.overridden_during_update = true;
+                return false;
+            }
             if slot.borrow_depth > 0 {
                 slot.deferred_notify = true;
                 return false;
             }
             rt.notify_signal_changed(self.id);
-            rt.batch_depth == 0 && rt.tracking_stack.is_empty()
+            rt.can_flush_immediately()
         });
 
         if should_flush {
@@ -313,110 +345,134 @@ impl<T: 'static> Signal<T> {
 
     /// Mutates the signal's value in-place with zero cloning when unshared, and schedules subscribers.
     ///
-    /// Falls back cleanly to CoW if an active `with()` borrow exists, and restores ownership via
-    /// an RAII guard even if `f` unwinds.
+    /// Batches subscriber notifications until `f` finishes, preserves re-entrant `set()` /
+    /// `reset_to_initial()` overrides, falls back to CoW if an active `with()` borrow exists,
+    /// and restores ownership via an RAII guard even if `f` unwinds.
     pub fn update(self, f: impl FnOnce(&mut T))
     where
         T: Clone,
     {
-        let Some((val_rc, taken_in_place)) = take_signal_rc_for_update(self.id) else {
-            return;
+        RUNTIME.with(|rt| rt.borrow_mut().batch_depth += 1);
+        let _batch_guard = arena_types::BatchDepthGuard {
+            flush_on_zero: true,
         };
-        let Ok(typed_rc) = Rc::downcast::<T>(val_rc) else {
-            clear_updating_flag(self.id);
-            return;
-        };
-
-        let mut restore = UpdateSlotGuard::new(self.id, taken_in_place);
-        run_mutator_with_restore(typed_rc, f, &mut restore);
-        drop(restore);
+        match acquire_signal_for_update::<T>(self.id) {
+            UpdateAcquire::None => return,
+            UpdateAcquire::InPlace(typed_rc) => {
+                let mut guard = InPlaceUpdateGuard {
+                    sig_id: self.id,
+                    held_rc: Some(typed_rc),
+                };
+                if let Some(unique_ref) = guard.held_rc.as_mut().and_then(Rc::get_mut) {
+                    f(unique_ref);
+                }
+                drop(guard);
+            }
+            UpdateAcquire::Cow(typed_rc) => {
+                let flag_guard = UpdatingFlagGuard(self.id);
+                let mut cow_copy = (*typed_rc).clone();
+                drop(typed_rc);
+                f(&mut cow_copy);
+                drop(flag_guard);
+                RUNTIME.with(|rt| {
+                    let mut rt_mut = rt.borrow_mut();
+                    if rt_mut.is_signal_alive(self.id) {
+                        let slot = &mut rt_mut.signals[self.id.index as usize];
+                        if !slot.overridden_during_update {
+                            slot.value = Rc::new(cow_copy);
+                        }
+                        slot.overridden_during_update = false;
+                    }
+                });
+            }
+        }
         finish_signal_update(self.id);
     }
 }
 
-struct UpdateSlotGuard {
-    sig_id: SignalId,
-    taken_in_place: bool,
-    restored_val: Option<Rc<dyn Any>>,
+enum UpdateAcquire<T> {
+    None,
+    InPlace(Rc<T>),
+    Cow(Rc<T>),
 }
 
-impl UpdateSlotGuard {
-    fn new(sig_id: SignalId, taken_in_place: bool) -> Self {
-        Self {
-            sig_id,
-            taken_in_place,
-            restored_val: None,
-        }
-    }
-}
+struct UpdatingFlagGuard(SignalId);
 
-impl Drop for UpdateSlotGuard {
+impl Drop for UpdatingFlagGuard {
     fn drop(&mut self) {
-        let val = self.restored_val.take();
-        let taken = self.taken_in_place;
-        let id = self.sig_id;
+        let id = self.0;
         let _ = RUNTIME.try_with(|rt| {
-            let mut rt_mut = rt.borrow_mut();
-            if let Some(pos) = rt_mut.updating_signals.iter().position(|s| *s == id) {
-                rt_mut.updating_signals.swap_remove(pos);
-            }
-            if rt_mut.is_signal_alive(id) {
-                if let Some(v) = val {
-                    rt_mut.signals[id.index as usize].value = v;
-                } else if taken {
-                    // Preserve validity if `f` unwound before replacing `restored_val`.
+            if let Ok(mut rt_mut) = rt.try_borrow_mut() {
+                if let Some(pos) = rt_mut.updating_signals.iter().position(|s| *s == id) {
+                    rt_mut.updating_signals.swap_remove(pos);
                 }
             }
         });
     }
 }
 
-fn take_signal_rc_for_update(id: SignalId) -> Option<(Rc<dyn Any>, bool)> {
+struct InPlaceUpdateGuard<T: 'static> {
+    sig_id: SignalId,
+    held_rc: Option<Rc<T>>,
+}
+
+impl<T: 'static> Drop for InPlaceUpdateGuard<T> {
+    fn drop(&mut self) {
+        let restored: Option<Rc<dyn Any>> = self.held_rc.take().map(|r| r as Rc<dyn Any>);
+        let id = self.sig_id;
+        let _ = RUNTIME.try_with(|rt| {
+            if let Ok(mut rt_mut) = rt.try_borrow_mut() {
+                if let Some(pos) = rt_mut.updating_signals.iter().position(|s| *s == id) {
+                    rt_mut.updating_signals.swap_remove(pos);
+                }
+                if rt_mut.is_signal_alive(id) {
+                    let slot = &mut rt_mut.signals[id.index as usize];
+                    slot.updating_in_place = false;
+                    let keep_override = slot.overridden_during_update && !std::thread::panicking();
+                    slot.overridden_during_update = false;
+                    if !keep_override {
+                        if let Some(v) = restored {
+                            slot.value = v;
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
+
+fn acquire_signal_for_update<T: 'static>(id: SignalId) -> UpdateAcquire<T> {
     RUNTIME.with(|rt| {
         let mut rt_mut = rt.borrow_mut();
         if !rt_mut.is_signal_alive(id) || rt_mut.updating_signals.contains(&id) {
-            return None;
+            return UpdateAcquire::None;
         }
         rt_mut.updating_signals.push(id);
         let slot = &mut rt_mut.signals[id.index as usize];
-        if slot.borrow_depth == 0 {
-            let taken = std::mem::replace(&mut slot.value, arena_types::empty_any_rc());
-            Some((taken, true))
+        slot.overridden_during_update = false;
+        if slot.borrow_depth == 0 && Rc::strong_count(&slot.value) == 1 {
+            let raw = std::mem::replace(&mut slot.value, arena_types::empty_any_rc());
+            match Rc::downcast::<T>(raw) {
+                Ok(typed_rc) => {
+                    slot.updating_in_place = true;
+                    UpdateAcquire::InPlace(typed_rc)
+                }
+                Err(orig) => {
+                    slot.value = orig;
+                    rt_mut.updating_signals.pop();
+                    UpdateAcquire::None
+                }
+            }
         } else {
-            Some((slot.value.clone(), false))
+            match Rc::downcast::<T>(slot.value.clone()) {
+                Ok(typed_rc) => UpdateAcquire::Cow(typed_rc),
+                Err(_) => {
+                    rt_mut.updating_signals.pop();
+                    UpdateAcquire::None
+                }
+            }
         }
     })
-}
-
-fn clear_updating_flag(id: SignalId) {
-    RUNTIME.with(|rt| {
-        let mut rt_mut = rt.borrow_mut();
-        if let Some(pos) = rt_mut.updating_signals.iter().position(|s| *s == id) {
-            rt_mut.updating_signals.swap_remove(pos);
-        }
-    });
-}
-
-fn run_mutator_with_restore<T: Clone + 'static>(
-    mut typed_rc: Rc<T>,
-    f: impl FnOnce(&mut T),
-    restore: &mut UpdateSlotGuard,
-) {
-    if let Some(unique_ref) = Rc::get_mut(&mut typed_rc) {
-        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(unique_ref)));
-        restore.restored_val = Some(typed_rc);
-        if let Err(payload) = res {
-            std::panic::resume_unwind(payload);
-        }
-    } else {
-        let mut cow_copy = (*typed_rc).clone();
-        drop(typed_rc);
-        let res = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| f(&mut cow_copy)));
-        restore.restored_val = Some(Rc::new(cow_copy));
-        if let Err(payload) = res {
-            std::panic::resume_unwind(payload);
-        }
-    }
 }
 
 fn finish_signal_update(id: SignalId) {
@@ -430,7 +486,7 @@ fn finish_signal_update(id: SignalId) {
             return false;
         }
         rt.notify_signal_changed(id);
-        rt.batch_depth == 0 && rt.tracking_stack.is_empty()
+        rt.can_flush_immediately()
     });
     if should_flush {
         flush_pending_subscribers();

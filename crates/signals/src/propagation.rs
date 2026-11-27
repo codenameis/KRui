@@ -8,6 +8,7 @@ use crate::runtime::{drain_deferred_drops, ReactiveRuntime, Scope, RUNTIME};
 use std::rc::Rc;
 
 pub(crate) const EFFECT_TOPO_DEPTH: u32 = 1_000_000;
+const MAX_FLUSH_ITERATIONS: usize = 10_000;
 
 impl ReactiveRuntime {
     /// Marks direct `Computed` subscribers `Dirty`, transitive downstream `Computed`s `Check`,
@@ -74,7 +75,10 @@ pub(crate) fn ensure_signal_up_to_date(sig_id: SignalId) {
         }
         let prod = rt_ref.signals[sig_id.index as usize].producer?;
         if rt_ref.is_subscriber_alive(prod)
-            && rt_ref.subscribers[prod.index as usize].state != ComputedState::Clean
+            && matches!(
+                rt_ref.subscribers[prod.index as usize].state,
+                ComputedState::Dirty | ComputedState::Check
+            )
         {
             Some(prod)
         } else {
@@ -110,7 +114,10 @@ pub(crate) fn ensure_computed_up_to_date(comp_id: SubscriberId) {
         (ComputedState::Check, prods)
     });
 
-    if initial_state == ComputedState::Clean {
+    if matches!(
+        initial_state,
+        ComputedState::Clean | ComputedState::Computing
+    ) {
         return;
     }
 
@@ -127,13 +134,13 @@ pub(crate) fn ensure_computed_up_to_date(comp_id: SubscriberId) {
         }
         let slot = &mut rt_mut.subscribers[comp_id.index as usize];
         match slot.state {
-            ComputedState::Clean => None,
+            ComputedState::Clean | ComputedState::Computing => None,
             ComputedState::Check => {
                 slot.state = ComputedState::Clean;
                 None
             }
             ComputedState::Dirty => {
-                slot.state = ComputedState::Clean;
+                slot.state = ComputedState::Computing;
                 slot.callback.clone()
             }
         }
@@ -149,7 +156,21 @@ pub(crate) fn flush_pending_subscribers() {
     let _guard = BatchDepthGuard {
         flush_on_zero: false,
     };
+    let mut iterations = 0_usize;
     loop {
+        if iterations >= MAX_FLUSH_ITERATIONS {
+            RUNTIME.with(|rt| {
+                let mut rt_mut = rt.borrow_mut();
+                let drained = std::mem::take(&mut rt_mut.pending_subscribers);
+                for (_, sub_id) in drained {
+                    if rt_mut.is_subscriber_alive(sub_id) {
+                        rt_mut.subscribers[sub_id.index as usize].state = ComputedState::Clean;
+                    }
+                }
+            });
+            break;
+        }
+        iterations += 1;
         let next = RUNTIME.with(|rt| {
             let mut rt_mut = rt.borrow_mut();
             let sub_id = rt_mut.pending_subscribers.pop_first()?.1;
@@ -182,7 +203,7 @@ pub(crate) fn run_computed_tracking<R>(sub_id: SubscriberId, cb: impl FnOnce() -
             .get_mut(sub_id.index as usize)
             .filter(|s| s.alive && s.generation == sub_id.generation)
         {
-            slot.state = ComputedState::Clean;
+            slot.state = ComputedState::Computing;
             slot.depth = 1;
         }
         let run_id = rt_mut.next_run_id;

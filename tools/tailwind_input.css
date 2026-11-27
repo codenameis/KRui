@@ -1,2 +1,2 @@
 @import "tailwindcss" source(none);
-@source "../examples/09_tailwind_v4/views/app.krui";
+@source "../tests/fixtures/real_css/tailwind_v4/app.krui";

@@ -104,7 +104,7 @@ pub(super) fn creates_stacking_context(
     let l = &n.style.layout;
     is_root
         || is_top_layer
-        || l.position == PositionMode::Fixed
+        || matches!(l.position, PositionMode::Fixed | PositionMode::Sticky)
         || (l.position != PositionMode::Static && l.has_z_index)
         || (parent_is_flex_or_grid && l.has_z_index)
         || eff_paint.opacity < 0.999
@@ -218,7 +218,7 @@ fn sc_has_negative_z_descendant(inner: &ViewTreeInner, parent_id: NodeId, is_fg:
         if l.has_z_index && l.z_index < 0 && (l.position != PositionMode::Static || is_fg) {
             return true;
         }
-        let stops_here = l.position == PositionMode::Fixed
+        let stops_here = matches!(l.position, PositionMode::Fixed | PositionMode::Sticky)
             || (l.position != PositionMode::Static && l.has_z_index)
             || (is_fg && l.has_z_index)
             || n.style.paint.opacity < 0.999

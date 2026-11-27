@@ -171,6 +171,7 @@ impl EngineUiHost {
     /// Advances frame clock, CSS transitions, and async pollers by `dt_secs`, then updates the
     /// ping-pong back buffer in-place (preserving `Vec` capacity) and publishes the front snapshot.
     pub fn tick(&mut self, dt_secs: f32) -> (&PaintScene, bool) {
+        let _ = krui_signals::poll_async_tasks();
         self.clock.tick(dt_secs);
         let _ = self.tree.tick_transitions(dt_secs);
         let back = self.scene_pool.acquire_back(
@@ -301,5 +302,28 @@ mod tests {
 
         assert_eq!(host.scene_pool_capacities(), baseline_caps);
         assert_eq!(host.relayout_passes(), baseline_relayouts);
+    }
+
+    #[test]
+    fn engine_host_tick_delivers_spawn_async_updates() {
+        let rt = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(1)
+            .enable_all()
+            .build()
+            .expect("tokio runtime");
+        let tree = ViewTree::new();
+        let mut host = EngineUiHost::new_with_tokio_handle(
+            tree,
+            rt.handle().clone(),
+            EngineHostConfig::default(),
+        );
+        let sig = krui_signals::Signal::new(0_i32);
+        let _handle = krui_signals::spawn_tokio_task(async { 42 }, move |v| sig.set(v));
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+        while sig.get() != 42 && std::time::Instant::now() < deadline {
+            let _ = host.tick(1.0 / 60.0);
+            std::thread::sleep(std::time::Duration::from_millis(2));
+        }
+        assert_eq!(sig.get(), 42);
     }
 }

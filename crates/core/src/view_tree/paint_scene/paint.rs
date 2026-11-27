@@ -336,6 +336,16 @@ pub(super) fn prepare_node_paint_frame(
     let mut world_rect = n.world_rect;
     world_rect.x -= scroll_offset.0;
     world_rect.y -= scroll_offset.1;
+    let (world_rect, sticky_delta) = crate::view_tree::sticky_pos::resolve_sticky_world_rect(
+        inner,
+        node_id,
+        scroll_offset,
+        world_rect,
+    );
+    let child_scroll_offset = (
+        scroll_offset.0 - sticky_delta.0,
+        scroll_offset.1 - sticky_delta.1,
+    );
     let (layout, role, child_len) = (n.style.layout, n.role, n.children.len());
     let (is_focused, raw_paint) = {
         let is_f =
@@ -360,7 +370,7 @@ pub(super) fn prepare_node_paint_frame(
         (layout, role, child_len),
         world_rect,
         clip,
-        scroll_offset,
+        child_scroll_offset,
         (has_text && !vis_hidden, showing_placeholder, is_focused),
         vis_hidden,
         (

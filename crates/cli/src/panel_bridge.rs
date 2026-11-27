@@ -21,6 +21,7 @@ use std::time::{Duration, Instant};
 const VIRTUAL_COMPILE_DEBOUNCE: Duration = Duration::from_millis(30);
 const PANEL_LOOP_SLEEP: Duration = Duration::from_millis(12);
 const BUILD_POLL_SLEEP: Duration = Duration::from_millis(30);
+const RUST_POLL_INTERVAL: Duration = Duration::from_millis(250);
 
 /// Non-blocking TCP bridge server accepting IDE side-panel hosts (`extension.js`) and
 /// multiplexing `"KRFR"` binary framebuffers, `stateSync` / diagnostic JSON, input events,
@@ -420,25 +421,29 @@ pub(crate) fn run_panel_serve(opts: ServeOptions, watch_path: PathBuf) -> Result
         &mut child_guard,
         true,
     )?;
+    let mut last_rust_poll = Instant::now();
 
     while !bridge.should_exit() {
         let active = bridge.step(&mut session);
         if let Some(err) = crate::process_stage::poll_exited_preview_child(&mut child_guard.0) {
-            let ce = CompileError::new(1, 1, err);
-            bridge.broadcast_compile_result(&watch_path, &Err(ce));
+            bridge.broadcast_compile_result(&watch_path, &Err(CompileError::new(1, 1, err)));
         }
         if let Some(change) = session.poll_file_changes() {
             bridge.broadcast_compile_result(&watch_path, &change);
         }
-        if session.poll_rust_changes() {
-            rebuild_panel_child_async(
-                &opts,
-                &watch_path,
-                &mut session,
-                &mut bridge,
-                &mut child_guard,
-                false,
-            )?;
+        if last_rust_poll.elapsed() >= RUST_POLL_INTERVAL {
+            last_rust_poll = Instant::now();
+            if session.poll_rust_changes() {
+                rebuild_panel_child_async(
+                    &opts,
+                    &watch_path,
+                    &mut session,
+                    &mut bridge,
+                    &mut child_guard,
+                    false,
+                )?;
+                last_rust_poll = Instant::now();
+            }
         }
         if !active {
             std::thread::sleep(PANEL_LOOP_SLEEP);

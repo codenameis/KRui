@@ -13,7 +13,16 @@
 4. **Zero runtime markup/preview parser in release**: No HTML parser, no preview interpreter, and no `lightningcss` dependency ship in release binaries.
 5. **No webview in app runtime**: Every pixel is drawn by KRui's own `wgpu` (GPU) or `tiny-skia` (CPU fallback) renderer using pure CSS `[data-theme]` / `@media (prefers-color-scheme)` / `light-dark()` stylesheets.
 6. **Integrated reactive + pattern library**: Use `Signal<T>` / `Computed<T>` / `Effect` + `tokio` async tasks directly, or opt-in `krui-patterns` (`#[view_model]`, `Command`, `#[controller]`, `Store<State, Msg>`).
-7. **Measured pure-CSS conformance**: Target 100% unmodified external CSS compatibility. Current measured conformance on real `@tailwindcss/cli@4.3.5` output (`tests/fixtures/real_css/tailwind_v4` vs headless Chromium oracle, `tests/real_css_conformance.rs`): **229/229 (100.0%, measured 2026-11-25)** with zero remaining known gaps (`tests/fixtures/real_css/KNOWN_GAPS.toml`); complex `clip-path`, `conic-gradient()`, and 3D perspective remain tracked in `docs/ENGINE_LIMITS.toml`.
+7. **Measured pure-CSS conformance**: Target 100% unmodified external CSS compatibility. Current measured conformance on the real `@tailwindcss/cli@4.3.5` fixture suite (`tests/fixtures/real_css/tailwind_v4/app.krui` — 12 app nodes + 9 edge-case probes vs headless Chromium oracle, `tests/real_css_conformance.rs`): **229/229 (100.0%, measured 2026-11-25)** with zero remaining known gaps (`tests/fixtures/real_css/KNOWN_GAPS.toml`); complex `clip-path`, `conic-gradient()`, and 3D perspective remain tracked in `docs/ENGINE_LIMITS.toml`.
+
+---
+
+## Platform Support Tiers
+
+| Tier | Crates / Targets | Maturity & Current Scope |
+|---|---|---|
+| **Primary Production Tier** | `krui-winit` (`Win / macOS / Linux`), `krui-renderer` (`wgpu` + `TinySkia` CPU fallback), `krui-engine-host` | Full desktop windowing, OS-owned CJK/Korean IME, AccessKit a11y, multi-window, 120Hz fast-path compositing, and `krui serve` TCP hot-reload. |
+| **Experimental / Adapter Preview** | `krui-kms`, `krui-android-ffi`, `krui-web` | `krui-kms`: trait-backed DRM `DIRTYFB` planner, flush worker, and `evdev`/Hangul router (host app supplies concrete OS device descriptors). `krui-android-ffi`: safe JNI + CPU `SurfaceView` framebuffer bridge. `krui-web`: standalone browser DOM prototype outside the `ViewTree`/`Stylo` pipeline. |
 
 ---
 

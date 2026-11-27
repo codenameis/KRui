@@ -24,6 +24,13 @@ pub(crate) fn compute_node_shaped_key(style: &TextStyle, scale_pct: u32, width_k
     style.direction.hash(&mut h);
     style.text_box_trim.hash(&mut h);
     style.text_box_edge.hash(&mut h);
+    style.italic.hash(&mut h);
+    style.letter_spacing_px.to_bits().hash(&mut h);
+    style.white_space.hash(&mut h);
+    style.word_break.hash(&mut h);
+    style.overflow_wrap.hash(&mut h);
+    style.text_overflow_ellipsis.hash(&mut h);
+    style.line_clamp.hash(&mut h);
     match style.line_height {
         krui_style::LineHeight::Normal => 0_u8.hash(&mut h),
         krui_style::LineHeight::Factor(f) => {

@@ -119,8 +119,19 @@ impl Scope {
 /// Executes `f` without subscribing any enclosing `Effect` or `Computed` to signals read directly in `f`
 /// (while allowing newly created child `Effect`s/`Computed`s inside `f` to track their own dependencies).
 pub fn untracked<R>(f: impl FnOnce() -> R) -> R {
-    let saved = RUNTIME.with(|rt| std::mem::take(&mut rt.borrow_mut().tracking_stack));
-    let _guard = UntrackedGuard { saved: Some(saved) };
+    let (saved, had_outer_tracking) = RUNTIME.with(|rt| {
+        let mut rt = rt.borrow_mut();
+        let saved = std::mem::take(&mut rt.tracking_stack);
+        let had_outer = !saved.is_empty();
+        if had_outer {
+            rt.untracked_in_tracking_depth += 1;
+        }
+        (saved, had_outer)
+    });
+    let _guard = UntrackedGuard {
+        saved: Some(saved),
+        had_outer_tracking,
+    };
     f()
 }
 

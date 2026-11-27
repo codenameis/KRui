@@ -19,6 +19,11 @@
     inherits: false;
 }
 
+@property --krui-line-clamp {
+    syntax: "*";
+    inherits: false;
+}
+
 *, *::before, *::after {
     box-sizing: border-box;
 }
@@ -45,8 +50,16 @@ b, strong {
     font-weight: 700;
 }
 
+em, i, cite, dfn, var {
+    font-style: italic;
+}
+
 code, pre, kbd, samp {
     font-family: monospace;
+}
+
+pre {
+    white-space: pre;
 }
 
 h4 {
@@ -70,6 +83,14 @@ input, select, textarea, progress {
 
 input, textarea {
     caret-color: var(--krui-caret);
+}
+
+input {
+    white-space: pre;
+}
+
+textarea {
+    white-space: pre-wrap;
 }
 
 input[type="checkbox"], input[type="radio"] {

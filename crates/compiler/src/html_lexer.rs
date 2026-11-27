@@ -354,11 +354,23 @@ fn consume_link_tag(
     Ok(full_end)
 }
 
-/// Collapses contiguous ASCII whitespace runs (`' '`, `'\t'`, `'\r'`, `'\n'`) into a single `' '`.
+/// Collapses contiguous ASCII whitespace runs (`' '`, `'\t'`, `'\r'`, `'\n'`) into a single `' '`,
+/// preserving `{...}` template expression holes verbatim so string literals inside `{...}` are never altered.
 pub fn collapse_ascii_ws(raw: &str) -> String {
+    let bytes = raw.as_bytes();
     let mut out = String::with_capacity(raw.len());
     let mut in_ws = false;
-    for ch in raw.chars() {
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'{' && bytes.get(i + 1) != Some(&b'{') {
+            if let Ok(close) = scan_template_expr_hole(raw, i) {
+                out.push_str(&raw[i..=close]);
+                in_ws = false;
+                i = close + 1;
+                continue;
+            }
+        }
+        let ch = raw[i..].chars().next().unwrap_or(' ');
         if ch.is_ascii_whitespace() {
             if !in_ws {
                 out.push(' ');
@@ -368,6 +380,7 @@ pub fn collapse_ascii_ws(raw: &str) -> String {
             out.push(ch);
             in_ws = false;
         }
+        i += ch.len_utf8();
     }
     out
 }

@@ -38,7 +38,7 @@ $sourceMd = @"
 # Real CSS Fixture Provenance — Tailwind CSS v4
 
 - **Source package**: ``@tailwindcss/cli@$twCliVersion`` + ``tailwindcss@$twVersion`` (npm official registry, MIT License)
-- **Scanned template**: ``examples/09_tailwind_v4/views/app.krui`` (via ``tools/tailwind_input.css``)
+- **Scanned template**: ``tests/fixtures/real_css/tailwind_v4/app.krui`` (via ``tools/tailwind_input.css``)
 - **Oracle generator**: ``playwright@$pwVersion`` headless Chromium (``tools/extract_css_oracle.mjs``)
 - **Regeneration script**: ``pwsh -NoProfile -File tools/regen_real_css.ps1``
 - **Modification policy**: Zero manual edits; exact byte-for-byte CLI output.

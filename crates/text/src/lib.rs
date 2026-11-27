@@ -17,6 +17,7 @@ mod ime_geometry;
 mod layout_types;
 mod rasterize;
 mod rich_paragraph;
+mod text_wrap_ellipsis;
 
 use cache::{
     normalize_font_weight, quantize_font_size, quantize_max_width, quantize_scale,
@@ -137,7 +138,8 @@ impl TextEngine {
     pub fn measure_empty_line_height(&mut self, style: &TextStyle) -> f32 {
         let safe_fs = style.font_size.max(MIN_SHAPING_FONT_SIZE_PX);
         self.with_font_context(|ctx| {
-            let (_, strut_meta) = ctx.resolve_strut(style.font_family, style.font_weight, false);
+            let (_, strut_meta) =
+                ctx.resolve_strut(style.font_family, style.font_weight, style.italic);
             compute_w3c_line_box(
                 &strut_meta,
                 safe_fs,
@@ -159,7 +161,10 @@ impl TextEngine {
         style: &TextStyle,
         max_width: Option<f32>,
     ) -> (f32, f32) {
-        let sanitized_text = sanitize_untrusted_text(raw_text);
+        let sanitized_text = text_wrap_ellipsis::normalize_white_space(
+            &sanitize_untrusted_text(raw_text),
+            style.white_space,
+        );
         if sanitized_text.is_empty() {
             return (0.0, 0.0);
         }
@@ -219,7 +224,10 @@ impl TextEngine {
         scale_factor: f32,
     ) -> ShapedTextLayout {
         let scale = scale_factor.clamp(1.0, 4.0);
-        let sanitized_text = sanitize_untrusted_text(raw_text);
+        let sanitized_text = text_wrap_ellipsis::normalize_white_space(
+            &sanitize_untrusted_text(raw_text),
+            style.white_space,
+        );
         let eff_align = if max_width.is_some() {
             style.text_align
         } else {
@@ -240,20 +248,12 @@ impl TextEngine {
         let spans = [SanitizedRichSpan {
             text: sanitized_text.clone(),
             font_weight: style.font_weight,
-            italic: false,
+            italic: style.italic,
             font_family: style.font_family,
             color: None,
             variations: style.variations,
         }];
-        let cfg = LineLayoutConfig {
-            font_size: style.font_size.max(MIN_SHAPING_FONT_SIZE_PX),
-            line_height: style.line_height,
-            text_box_trim: style.text_box_trim,
-            text_box_edge: style.text_box_edge,
-            max_width,
-            align: eff_align,
-            direction: style.direction,
-        };
+        let cfg = LineLayoutConfig::from_style(style, max_width, eff_align);
         let result = self
             .with_font_context(|ctx| build_shaped_layout(ctx, &spans, sanitized_text, cfg, scale));
         self.layout_cache.insert(cache_key, result.clone());
@@ -374,12 +374,25 @@ impl TextEngine {
         let epoch = self.current_epoch();
         let (clean_spans, span_keys, full_text) = sanitize_rich_spans(spans);
         let lh = LineHeight::Factor(line_height);
+        let def_style = TextStyle {
+            font_size: base_font_size,
+            line_height: lh,
+            text_align: align,
+            direction,
+            ..TextStyle::default()
+        };
         let cache_key = TextCacheKey {
             spans: span_keys,
             font_size_q: quantize_font_size(base_font_size),
             line_height_q: quantize_style_line_height(lh, base_font_size),
+            letter_spacing_q: 0,
             text_box_trim: TextBoxTrim::None,
             text_box_edge: TextBoxEdge::AUTO,
+            white_space: def_style.white_space,
+            word_break: def_style.word_break,
+            overflow_wrap: def_style.overflow_wrap,
+            text_overflow_ellipsis: false,
+            line_clamp: None,
             max_width_q: quantize_max_width(max_width),
             text_align: align,
             direction,
@@ -389,15 +402,7 @@ impl TextEngine {
         if let Some(cached) = self.layout_cache.get_and_touch(&cache_key) {
             return cached;
         }
-        let cfg = LineLayoutConfig {
-            font_size: base_font_size.max(MIN_SHAPING_FONT_SIZE_PX),
-            line_height: lh,
-            text_box_trim: TextBoxTrim::None,
-            text_box_edge: TextBoxEdge::AUTO,
-            max_width,
-            align,
-            direction,
-        };
+        let cfg = LineLayoutConfig::from_style(&def_style, max_width, align);
         let result = self
             .with_font_context(|ctx| build_shaped_layout(ctx, &clean_spans, full_text, cfg, scale));
         self.layout_cache.insert(cache_key, result.clone());
@@ -445,27 +450,19 @@ fn compute_uncached_measure(
     let single = [SanitizedRichSpan {
         text: sanitized_text.to_owned(),
         font_weight: style.font_weight,
-        italic: false,
+        italic: style.italic,
         font_family: style.font_family,
         color: None,
         variations: style.variations,
     }];
-    let cfg = LineLayoutConfig {
-        font_size: safe_font_size,
-        line_height: style.line_height,
-        text_box_trim: style.text_box_trim,
-        text_box_edge: style.text_box_edge,
-        max_width,
-        align: eff_align,
-        direction: style.direction,
-    };
+    let cfg = LineLayoutConfig::from_style(style, max_width, eff_align);
     let (mut mw, mut mh) = measure_with_cosmic(ctx, &single, sanitized_text, cfg);
     if mw == 0.0 && !sanitized_text.trim().is_empty() {
         let fallback_lh = style
             .line_height
             .resolve_px(safe_font_size, safe_font_size * 1.2);
         (mw, mh) =
-            measure_fallback_dimensions(sanitized_text, safe_font_size, fallback_lh, max_width);
+            measure_fallback_dimensions(sanitized_text, safe_font_size, fallback_lh, cfg.max_width);
     }
     (mw.ceil(), mh.ceil())
 }

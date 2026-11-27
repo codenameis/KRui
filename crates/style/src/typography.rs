@@ -386,6 +386,71 @@ fn parse_quoted_axis_tag(entry: &str) -> Option<([u8; 4], &str)> {
     Some(([bytes[0], bytes[1], bytes[2], bytes[3]], rest))
 }
 
+/// CSS Text 3 `white-space` collapsing and wrapping mode.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "preview", derive(serde::Serialize, serde::Deserialize))]
+pub enum WhiteSpaceMode {
+    /// Collapses ASCII whitespace runs and wraps lines (`white-space: normal`).
+    Normal,
+    /// Collapses ASCII whitespace runs and suppresses soft line wrapping (`white-space: nowrap`).
+    NoWrap,
+    /// Preserves spaces and newlines and suppresses soft line wrapping (`white-space: pre`).
+    Pre,
+    /// Preserves spaces and newlines and wraps lines (`white-space: pre-wrap`, raw Rust default).
+    #[default]
+    PreWrap,
+    /// Collapses spaces/tabs, preserves newlines, and wraps lines (`white-space: pre-line`).
+    PreLine,
+    /// Preserves spaces/newlines and wraps at spaces (`white-space: break-spaces`).
+    BreakSpaces,
+}
+
+impl WhiteSpaceMode {
+    /// Returns `true` when soft line wrapping is permitted at container `max-width`.
+    #[inline]
+    pub const fn allows_wrap(self) -> bool {
+        !matches!(self, Self::NoWrap | Self::Pre)
+    }
+
+    /// Returns `true` when runs of collapsible spaces/tabs should be collapsed.
+    #[inline]
+    pub const fn collapses_spaces(self) -> bool {
+        matches!(self, Self::Normal | Self::NoWrap | Self::PreLine)
+    }
+
+    /// Returns `true` when explicit `\n` line breaks are preserved.
+    #[inline]
+    pub const fn preserves_newlines(self) -> bool {
+        !matches!(self, Self::Normal | Self::NoWrap)
+    }
+}
+
+/// CSS Text 3 `word-break` mode (`normal | break-all | keep-all`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "preview", derive(serde::Serialize, serde::Deserialize))]
+pub enum WordBreakMode {
+    /// Standard UAX #14 word breaking (`word-break: normal`).
+    #[default]
+    Normal,
+    /// Allows soft breaks between any two characters (`word-break: break-all`).
+    BreakAll,
+    /// Suppresses implicit mid-word CJK/Hangul breaks (`word-break: keep-all`).
+    KeepAll,
+}
+
+/// CSS Text 3 `overflow-wrap` / `word-wrap` mode (`normal | break-word | anywhere`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+#[cfg_attr(feature = "preview", derive(serde::Serialize, serde::Deserialize))]
+pub enum OverflowWrapMode {
+    /// Only break at allowed word break points (`overflow-wrap: normal`).
+    #[default]
+    Normal,
+    /// Break otherwise-unbreakable words if a line has no other break points (`break-word`).
+    BreakWord,
+    /// Break otherwise-unbreakable words anywhere if needed (`anywhere`).
+    Anywhere,
+}
+
 /// Parses CSS Fonts 4 `font-weight` (`normal`, `medium`, `semibold`, `bold`, or numeric `1..=1000`).
 pub fn parse_css_font_weight(raw: &str) -> Option<u16> {
     let lower = raw.trim().to_ascii_lowercase();

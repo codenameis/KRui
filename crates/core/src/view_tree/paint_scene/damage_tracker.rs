@@ -1,5 +1,6 @@
 //! Optional per-frame damage rectangle tracking (`DirtyFlagOnly` vs `BoundingRects`).
 
+use super::damage_hash::hash_primitive;
 use crate::scene::{DrawPrimitive, PaintScene};
 use krui_layout::LayoutRect;
 use krui_style::{Affine2, Color, DamageRect, DamageTrackingMode};
@@ -128,42 +129,71 @@ fn primitive_world_rect(prim: &DrawPrimitive) -> Option<(LayoutRect, Affine2, f3
             transform,
             glyphs,
             ..
-        } => {
-            let (mut min_x, mut min_y, mut max_x, mut max_y) = (
-                f32::INFINITY,
-                f32::INFINITY,
-                f32::NEG_INFINITY,
-                f32::NEG_INFINITY,
-            );
-            for g in glyphs.iter() {
-                let gx = *origin_x + g.x;
-                let gy = *origin_y + g.y;
-                min_x = min_x.min(gx);
-                min_y = min_y.min(gy);
-                max_x = max_x.max(gx + g.width as f32);
-                max_y = max_y.max(gy + g.height as f32);
-            }
-            if !min_x.is_finite() {
-                return None;
-            }
-            Some((
-                LayoutRect {
-                    x: min_x,
-                    y: min_y,
-                    width: (max_x - min_x).max(0.0),
-                    height: (max_y - min_y).max(0.0),
-                },
-                *transform,
-                PRIMITIVE_AA_PAD_PX,
-            ))
-        }
+        } => glyph_run_world_rect(*origin_x, *origin_y, *transform, glyphs),
         DrawPrimitive::CanvasBatch {
             viewport,
             transform,
             ..
         } => Some((*viewport, *transform, PRIMITIVE_AA_PAD_PX)),
-        DrawPrimitive::PushLayer { .. } | DrawPrimitive::PopLayer => None,
+        DrawPrimitive::PushLayer {
+            bounds,
+            filter,
+            perspective,
+            ..
+        } => {
+            if perspective.is_some() {
+                Some((
+                    LayoutRect {
+                        x: 0.0,
+                        y: 0.0,
+                        width: 16_384.0,
+                        height: 16_384.0,
+                    },
+                    Affine2::IDENTITY,
+                    0.0,
+                ))
+            } else {
+                Some((
+                    *bounds,
+                    Affine2::IDENTITY,
+                    PRIMITIVE_AA_PAD_PX + filter.blur_px.max(0.0) * 2.5,
+                ))
+            }
+        }
+        DrawPrimitive::PopLayer => None,
     }
+}
+
+fn glyph_run_world_rect(
+    origin_x: f32,
+    origin_y: f32,
+    transform: Affine2,
+    glyphs: &[krui_text::RasterizedGlyph],
+) -> Option<(LayoutRect, Affine2, f32)> {
+    let (mut min_x, mut min_y, mut max_x, mut max_y) = (
+        f32::INFINITY,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+        f32::NEG_INFINITY,
+    );
+    for g in glyphs {
+        let gx = origin_x + g.x;
+        let gy = origin_y + g.y;
+        min_x = min_x.min(gx);
+        min_y = min_y.min(gy);
+        max_x = max_x.max(gx + g.width as f32);
+        max_y = max_y.max(gy + g.height as f32);
+    }
+    min_x.is_finite().then_some((
+        LayoutRect {
+            x: min_x,
+            y: min_y,
+            width: (max_x - min_x).max(0.0),
+            height: (max_y - min_y).max(0.0),
+        },
+        transform,
+        PRIMITIVE_AA_PAD_PX,
+    ))
 }
 
 fn transform_and_clamp(
@@ -256,135 +286,6 @@ fn merge_damage_rects(rects: &mut Vec<DamageRect>, cap: usize) {
     }
 }
 
-fn hash_rect(h: &mut impl std::hash::Hasher, r: LayoutRect) {
-    use std::hash::Hash;
-    [
-        r.x.to_bits(),
-        r.y.to_bits(),
-        r.width.to_bits(),
-        r.height.to_bits(),
-    ]
-    .hash(h);
-}
-
-fn hash_affine(h: &mut impl std::hash::Hasher, t: Affine2) {
-    use std::hash::Hash;
-    [t.a, t.b, t.c, t.d, t.tx, t.ty].map(f32::to_bits).hash(h);
-}
-
-fn hash_image_source(h: &mut impl std::hash::Hasher, source: &crate::media::ImageSource) {
-    use std::hash::Hash;
-    match source {
-        crate::media::ImageSource::Decoded(img) => {
-            1_u8.hash(h);
-            img.id.0.hash(h);
-        }
-        crate::media::ImageSource::External { id, width, height } => {
-            2_u8.hash(h);
-            id.0.hash(h);
-            width.hash(h);
-            height.hash(h);
-        }
-    }
-}
-
-fn hash_styled_box(h: &mut impl std::hash::Hasher, prim: &DrawPrimitive) {
-    use std::hash::Hash;
-    let DrawPrimitive::StyledBox {
-        rect,
-        clip,
-        opacity,
-        background_color,
-        border_color,
-        border_width,
-        border_radius,
-        corner_radii,
-        transform,
-        box_shadow,
-        ..
-    } = prim
-    else {
-        return;
-    };
-    1_u8.hash(h);
-    hash_rect(h, *rect);
-    if let Some(c) = clip {
-        1_u8.hash(h);
-        hash_rect(h, *c);
-    }
-    opacity.to_bits().hash(h);
-    [
-        background_color.r,
-        background_color.g,
-        background_color.b,
-        background_color.a,
-    ]
-    .hash(h);
-    [
-        border_color.r,
-        border_color.g,
-        border_color.b,
-        border_color.a,
-    ]
-    .hash(h);
-    border_width.to_bits().hash(h);
-    border_radius.to_bits().hash(h);
-    corner_radii.map(f32::to_bits).hash(h);
-    hash_affine(h, *transform);
-    box_shadow.map(|s| s.color.a).hash(h);
-}
-
-fn hash_primitive(prim: &DrawPrimitive) -> u64 {
-    use std::hash::{Hash, Hasher};
-    let mut h = std::collections::hash_map::DefaultHasher::new();
-    match prim {
-        DrawPrimitive::StyledBox { .. } => hash_styled_box(&mut h, prim),
-        DrawPrimitive::TextGlyphs {
-            origin_x,
-            origin_y,
-            color,
-            opacity,
-            glyphs,
-            ..
-        } => {
-            2_u8.hash(&mut h);
-            origin_x.to_bits().hash(&mut h);
-            origin_y.to_bits().hash(&mut h);
-            opacity.to_bits().hash(&mut h);
-            [color.r, color.g, color.b, color.a].hash(&mut h);
-            glyphs.len().hash(&mut h);
-            glyphs
-                .iter()
-                .take(16)
-                .for_each(|g| g.cache_key.hash(&mut h));
-        }
-        DrawPrimitive::Image {
-            rect,
-            source,
-            uv_rect,
-            opacity,
-            transform,
-            ..
-        } => {
-            3_u8.hash(&mut h);
-            hash_rect(&mut h, *rect);
-            hash_image_source(&mut h, source);
-            uv_rect.map(f32::to_bits).hash(&mut h);
-            hash_affine(&mut h, *transform);
-            opacity.to_bits().hash(&mut h);
-        }
-        DrawPrimitive::CanvasBatch {
-            commands, opacity, ..
-        } => {
-            4_u8.hash(&mut h);
-            commands.len().hash(&mut h);
-            opacity.to_bits().hash(&mut h);
-        }
-        DrawPrimitive::PushLayer { .. } | DrawPrimitive::PopLayer => {}
-    }
-    h.finish()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -454,5 +355,58 @@ mod tests {
         );
         let partial = dt.compute_damage(&s);
         assert_eq!(partial, vec![DamageRect::new(8, 8, 44, 24)]);
+    }
+
+    #[test]
+    fn damage_tracker_detects_push_layer_group_opacity_and_filter_changes() {
+        let mut dt = DamageTracker::default();
+        dt.set_mode(DamageTrackingMode::BoundingRects {
+            split_area_ratio_x10: 15,
+            max_rects_per_commit: 8,
+        });
+        let make_layered_scene = |opacity: f32, brightness: f32| {
+            let mut s = PaintScene::new(480, 320, Color::BLACK);
+            s.primitives.push(DrawPrimitive::PushLayer {
+                bounds: LayoutRect {
+                    x: 20.0,
+                    y: 30.0,
+                    width: 60.0,
+                    height: 40.0,
+                },
+                clip: None,
+                clip_radius: 0.0,
+                clip_radii: [0.0; 4],
+                local_clip: None,
+                clip_path: None,
+                perspective: None,
+                opacity,
+                filter: krui_style::CssFilterEffect {
+                    brightness,
+                    ..krui_style::CssFilterEffect::IDENTITY
+                },
+            });
+            s.primitives
+                .push(mk_box(20.0, 30.0, 60.0, 40.0, Color::WHITE));
+            s.primitives.push(DrawPrimitive::PopLayer);
+            s
+        };
+        let s1 = make_layered_scene(0.8, 1.0);
+        assert_eq!(
+            dt.compute_damage(&s1),
+            vec![DamageRect::new(0, 0, 480, 320)]
+        );
+        assert!(dt.compute_damage(&s1).is_empty());
+
+        let s2 = make_layered_scene(0.4, 1.0);
+        assert_eq!(
+            dt.compute_damage(&s2),
+            vec![DamageRect::new(18, 28, 64, 44)]
+        );
+
+        let s3 = make_layered_scene(0.4, 1.3);
+        assert_eq!(
+            dt.compute_damage(&s3),
+            vec![DamageRect::new(18, 28, 64, 44)]
+        );
     }
 }

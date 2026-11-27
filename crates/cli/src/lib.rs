@@ -262,6 +262,8 @@ fn should_skip_watch_dir(dir: &Path) -> bool {
         || name.starts_with("target-")
 }
 
+const MAX_RS_WATCH_DEPTH: usize = 32;
+
 fn collect_rust_timestamps(root: &Path) -> HashMap<PathBuf, Option<SystemTime>> {
     let mut map = HashMap::new();
     let manifest = PathBuf::from("Cargo.toml");
@@ -273,19 +275,28 @@ fn collect_rust_timestamps(root: &Path) -> HashMap<PathBuf, Option<SystemTime>> 
                 .and_then(|m| m.modified().ok()),
         );
     }
-    visit_rs_files(root, &mut map);
+    visit_rs_files(root, 0, &mut map);
     map
 }
 
-fn visit_rs_files(dir: &Path, out: &mut HashMap<PathBuf, Option<SystemTime>>) {
+fn visit_rs_files(dir: &Path, depth: usize, out: &mut HashMap<PathBuf, Option<SystemTime>>) {
+    if depth > MAX_RS_WATCH_DEPTH {
+        return;
+    }
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
     for entry in entries.flatten() {
+        let Ok(ft) = entry.file_type() else {
+            continue;
+        };
+        if ft.is_symlink() {
+            continue;
+        }
         let p = entry.path();
-        if p.is_dir() {
+        if ft.is_dir() {
             if !should_skip_watch_dir(&p) {
-                visit_rs_files(&p, out);
+                visit_rs_files(&p, depth + 1, out);
             }
         } else if p.extension().and_then(|e| e.to_str()) == Some("rs")
             || p.file_name().and_then(|n| n.to_str()) == Some("Cargo.toml")

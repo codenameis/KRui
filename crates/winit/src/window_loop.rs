@@ -382,15 +382,21 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
         #[cfg(not(feature = "preview"))]
         let has_watcher = false;
 
+        let is_minimized = self.window.as_ref().is_some_and(|w| {
+            w.is_minimized() == Some(true)
+                || w.inner_size().width == 0
+                || w.inner_size().height == 0
+        });
         let is_drag_autoscrolling =
             self.is_left_mouse_down && self.session.tree.is_text_drag_selecting();
-        let has_anim = self
-            .session
-            .reactive_session
-            .enter(|| self.session.clock.has_active_animations())
-            || self.session.tree.has_active_transitions()
-            || is_drag_autoscrolling;
-        let paint_dirty = self.session.tree.is_paint_dirty();
+        let has_anim = !is_minimized
+            && (self
+                .session
+                .reactive_session
+                .enter(|| self.session.clock.has_active_animations())
+                || self.session.tree.has_active_transitions()
+                || is_drag_autoscrolling);
+        let paint_dirty = !is_minimized && self.session.tree.is_paint_dirty();
         if paint_dirty || (has_anim && now.duration_since(self.last_frame) >= FRAME_PACE_120HZ) {
             if let Some(win) = &self.window {
                 win.request_redraw();

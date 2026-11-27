@@ -125,11 +125,30 @@ impl TreeViewController {
         row_h: f32,
     ) -> (Vec<VisibleTreeRow>, f32) {
         let flat = self.flatten_visible();
-        let rh = row_h.max(1.0);
+        let rh = if row_h.is_finite() {
+            row_h.max(1.0)
+        } else {
+            24.0
+        };
         let total_h = flat.len() as f32 * rh;
-        let first = (scroll_y.max(0.0) / rh).floor() as usize;
-        let max_rows = (viewport_h.max(0.0) / rh).ceil() as usize + 2;
-        let end = (first + max_rows).min(flat.len());
+        let safe_scroll = if scroll_y.is_finite() {
+            scroll_y.max(0.0)
+        } else {
+            0.0
+        };
+        let safe_vp = if viewport_h.is_finite() {
+            viewport_h.clamp(0.0, 100_000.0)
+        } else {
+            1_024.0
+        };
+        let first_f = (safe_scroll / rh).floor();
+        let first = if first_f >= flat.len() as f32 {
+            flat.len()
+        } else {
+            first_f as usize
+        };
+        let max_rows = ((safe_vp / rh).ceil() as usize).saturating_add(2);
+        let end = first.saturating_add(max_rows).min(flat.len());
         let rows = if first >= end {
             Vec::new()
         } else {
@@ -198,7 +217,8 @@ impl TreeViewController {
             by_parent.entry(p).or_default().push(node);
         }
         let mut out = Vec::new();
-        collect_visible_dfs(&by_parent, None, 0, selected, &mut out);
+        let mut visited = HashSet::with_capacity(st.nodes.len());
+        collect_visible_dfs(&by_parent, None, 0, selected, &mut visited, &mut out);
         out
     }
 
@@ -214,17 +234,26 @@ impl TreeViewController {
     }
 }
 
+const MAX_TREE_VIEW_DEPTH: usize = 256;
+
 fn collect_visible_dfs(
     by_parent: &HashMap<Option<u64>, Vec<&TreeNodeData>>,
     parent: Option<u64>,
     depth: usize,
     selected: Option<u64>,
+    visited: &mut HashSet<u64>,
     out: &mut Vec<VisibleTreeRow>,
 ) {
+    if depth > MAX_TREE_VIEW_DEPTH {
+        return;
+    }
     let Some(children) = by_parent.get(&parent) else {
         return;
     };
     for node in children {
+        if !visited.insert(node.id) {
+            continue;
+        }
         let has_children = by_parent.get(&Some(node.id)).is_some_and(|c| !c.is_empty());
         out.push(VisibleTreeRow {
             id: node.id,
@@ -236,7 +265,7 @@ fn collect_visible_dfs(
             top_px: 0.0,
         });
         if node.expanded && has_children {
-            collect_visible_dfs(by_parent, Some(node.id), depth + 1, selected, out);
+            collect_visible_dfs(by_parent, Some(node.id), depth + 1, selected, visited, out);
         }
     }
 }

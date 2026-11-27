@@ -126,14 +126,14 @@ const NAV_SEEDS: &[TokenSeed] = &[
     s(
         2,
         "Shape",
-        "--md-site-tabbar-height",
+        "--gallery-tabbar-height",
         "80px / corner-tabbar",
         "상단 알약 탭바 높이 및 곡률",
     ),
     s(
         4,
         "Spacing/Elevation",
-        "--md-site-rail-width",
+        "--gallery-rail-width",
         "88px",
         "좌측 사이트 Navigation Rail 폭",
     ),

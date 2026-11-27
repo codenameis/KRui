@@ -8,22 +8,24 @@ use style::properties::ComputedValues;
 use style::Atom;
 use style_traits::values::ToCss;
 
-const EXT_MAPPINGS: [(&str, &str); 4] = [
+const EXT_MAPPINGS: [(&str, &str); 6] = [
     ("accent-color", "--krui-accent-color"),
     ("text-box-trim", "--krui-text-box-trim"),
     ("text-box-edge", "--krui-text-box-edge"),
     ("text-box", "--krui-text-box"),
+    ("-webkit-line-clamp", "--krui-line-clamp"),
+    ("line-clamp", "--krui-line-clamp"),
 ];
 
-fn is_ident_byte(b: u8) -> bool {
-    b.is_ascii_alphanumeric() || b == b'-' || b == b'_'
+fn is_ident_or_selector_prefix(b: u8) -> bool {
+    b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'#')
 }
 
 fn find_kw_colon_end(bytes: &[u8], pos: usize, kw: &[u8]) -> Option<usize> {
     if pos + kw.len() >= bytes.len() {
         return None;
     }
-    if pos > 0 && is_ident_byte(bytes[pos - 1]) {
+    if pos > 0 && is_ident_or_selector_prefix(bytes[pos - 1]) {
         return None;
     }
     if !bytes[pos..pos + kw.len()].eq_ignore_ascii_case(kw) {
@@ -131,7 +133,17 @@ pub(crate) fn extract_text_box(cv: &ComputedValues) -> (TextBoxTrim, TextBoxEdge
     (trim, edge)
 }
 
-/// Returns `true` if `text-box*` extension custom properties changed between `a` and `b`.
+/// Extracts `line-clamp` / `-webkit-line-clamp` positive integer line count (`None` = `none`).
+pub(crate) fn extract_line_clamp(cv: &ComputedValues) -> Option<u16> {
+    let raw = read_custom_prop(cv, "krui-line-clamp")?;
+    let trimmed = raw.trim();
+    if trimmed.eq_ignore_ascii_case("none") {
+        return None;
+    }
+    trimmed.parse::<u16>().ok().filter(|&n| n >= 1)
+}
+
+/// Returns `true` if `text-box*` or `line-clamp` extension custom properties changed between `a` and `b`.
 pub(crate) fn text_box_props_differ(a: &ComputedValues, b: &ComputedValues) -> bool {
-    extract_text_box(a) != extract_text_box(b)
+    extract_text_box(a) != extract_text_box(b) || extract_line_clamp(a) != extract_line_clamp(b)
 }

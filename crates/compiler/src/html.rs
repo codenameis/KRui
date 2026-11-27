@@ -17,6 +17,7 @@ pub type ParsedTagOpen = (String, Vec<RawAttr>, bool, usize);
 pub struct RawTemplateDef {
     pub name: String,
     pub tag_offset: usize,
+    pub end_offset: usize,
     pub default_props: Vec<RawAttr>,
     pub body: Vec<RawHtmlNode>,
 }

@@ -6,10 +6,13 @@ use crate::font_var_raster::{
     varied_glyph_advance_px,
 };
 pub use crate::font_var_raster::{decode_swash_image, DecodedGlyphBitmap};
-use crate::{record_notdef_glyph_warning, RasterizedGlyph, TextLineMetrics};
+use crate::text_wrap_ellipsis::maybe_apply_line_ellipsis;
+use crate::{
+    record_notdef_glyph_warning, RasterizedGlyph, TextLineMetrics, MIN_SHAPING_FONT_SIZE_PX,
+};
 use krui_style::{
-    Color, FontFamilyStack, FontVariationList, LineHeight, TextAlign, TextBoxEdge, TextBoxTrim,
-    TextDirection,
+    Color, FontFamilyStack, FontVariationList, LineHeight, OverflowWrapMode, TextAlign,
+    TextBoxEdge, TextBoxTrim, TextDirection, TextStyle, WhiteSpaceMode, WordBreakMode,
 };
 
 #[derive(Clone, Copy)]
@@ -19,8 +22,45 @@ pub(crate) struct LineLayoutConfig {
     pub(crate) text_box_trim: TextBoxTrim,
     pub(crate) text_box_edge: TextBoxEdge,
     pub(crate) max_width: Option<f32>,
+    pub(crate) clamp_width: Option<f32>,
     pub(crate) align: TextAlign,
     pub(crate) direction: TextDirection,
+    pub(crate) letter_spacing_px: f32,
+    pub(crate) white_space: WhiteSpaceMode,
+    pub(crate) word_break: WordBreakMode,
+    pub(crate) overflow_wrap: OverflowWrapMode,
+    pub(crate) text_overflow_ellipsis: bool,
+    pub(crate) line_clamp: Option<u16>,
+}
+
+impl LineLayoutConfig {
+    pub(crate) fn from_style(style: &TextStyle, max_width: Option<f32>, align: TextAlign) -> Self {
+        let wrap_w = if style.white_space.allows_wrap() {
+            max_width
+        } else {
+            None
+        };
+        Self {
+            font_size: style.font_size.max(MIN_SHAPING_FONT_SIZE_PX),
+            line_height: style.line_height,
+            text_box_trim: style.text_box_trim,
+            text_box_edge: style.text_box_edge,
+            max_width: wrap_w,
+            clamp_width: max_width,
+            align,
+            direction: style.direction,
+            letter_spacing_px: if style.letter_spacing_px.is_finite() {
+                style.letter_spacing_px
+            } else {
+                0.0
+            },
+            white_space: style.white_space,
+            word_break: style.word_break,
+            overflow_wrap: style.overflow_wrap,
+            text_overflow_ellipsis: style.text_overflow_ellipsis,
+            line_clamp: style.line_clamp,
+        }
+    }
 }
 
 pub(crate) struct ShapedRunsOutput {
@@ -38,20 +78,14 @@ pub(crate) fn measure_with_cosmic(
     sanitized_text: &str,
     cfg: LineLayoutConfig,
 ) -> (f32, f32) {
-    let (buffer, strut_meta) = shape_rich_cosmic_buffer(
-        ctx,
-        spans,
-        sanitized_text,
-        cfg.font_size,
-        cfg.max_width,
-        cfg.align,
-        cfg.direction,
-    );
+    let ((buffer, _), strut_meta) = shape_rich_cosmic_buffer(ctx, spans, sanitized_text, cfg);
+    let max_lines = cfg.line_clamp.map_or(usize::MAX, |n| (n as usize).max(1));
     let runs_count = buffer.layout_runs().count();
-    let trailing_nl = sanitized_text.ends_with('\n');
-    let total_lines = (runs_count + usize::from(trailing_nl)).max(1);
+    let kept_runs = runs_count.min(max_lines);
+    let trailing_nl = sanitized_text.ends_with('\n') && runs_count < max_lines;
+    let total_lines = (kept_runs + usize::from(trailing_nl)).max(1);
     let (mut mw, mut mh) = (0.0_f32, 0.0_f32);
-    for (idx, run) in buffer.layout_runs().enumerate() {
+    for (idx, run) in buffer.layout_runs().take(max_lines).enumerate() {
         let line_meta = merge_run_face_meta(ctx, &strut_meta, &run);
         let lbox = compute_w3c_line_box(
             &line_meta,
@@ -62,7 +96,7 @@ pub(crate) fn measure_with_cosmic(
             idx == 0,
             idx + 1 == total_lines,
         );
-        let line_w = compute_run_varied_width(ctx, spans, &run);
+        let line_w = compute_run_varied_width(ctx, spans, &run, cfg.letter_spacing_px);
         mw = mw.max(line_w);
         mh += lbox.line_height;
     }
@@ -100,6 +134,7 @@ fn compute_run_varied_width(
     ctx: &mut FontContext,
     spans: &[SanitizedRichSpan],
     run: &cosmic_text::LayoutRun<'_>,
+    letter_spacing_px: f32,
 ) -> f32 {
     let mut delta = 0.0_f32;
     for g in run.glyphs.iter() {
@@ -115,6 +150,7 @@ fn compute_run_varied_width(
                 }
             }
         }
+        delta += letter_spacing_px;
     }
     (run.line_w + delta).max(0.0)
 }
@@ -143,16 +179,6 @@ pub(crate) fn build_byte_to_char_table(sanitized_text: &str) -> (Vec<usize>, usi
     (byte_to_char, char_count)
 }
 
-fn build_line_byte_offsets(text: &str) -> Vec<usize> {
-    let mut offsets = vec![0_usize];
-    for (b, ch) in text.char_indices() {
-        if ch == '\n' {
-            offsets.push(b + 1);
-        }
-    }
-    offsets
-}
-
 pub(crate) fn rasterize_cosmic_runs(
     ctx: &mut FontContext,
     spans: &[SanitizedRichSpan],
@@ -171,24 +197,18 @@ pub(crate) fn rasterize_cosmic_runs(
         measured_height: 0.0,
     };
     let mut visited = vec![false; char_count + 1];
-    let line_offsets = build_line_byte_offsets(sanitized_text);
-    let (buffer, strut_meta) = shape_rich_cosmic_buffer(
-        ctx,
-        spans,
-        sanitized_text,
-        cfg.font_size,
-        cfg.max_width,
-        cfg.align,
-        cfg.direction,
-    );
+    let ((buffer, line_offsets), strut_meta) =
+        shape_rich_cosmic_buffer(ctx, spans, sanitized_text, cfg);
+    let max_lines = cfg.line_clamp.map_or(usize::MAX, |n| (n as usize).max(1));
     let runs_count = buffer.layout_runs().count();
-    let trailing_nl = sanitized_text.ends_with('\n');
-    let total_lines = (runs_count + usize::from(trailing_nl)).max(1);
+    let kept_runs = runs_count.min(max_lines);
+    let trailing_nl = sanitized_text.ends_with('\n') && runs_count < max_lines;
+    let total_lines = (kept_runs + usize::from(trailing_nl)).max(1);
     let base_fam = spans
         .first()
         .map_or(FontFamilyStack::FluentUI, |s| s.font_family);
     let mut cur_y = 0.0_f32;
-    for (line_idx, run) in buffer.layout_runs().enumerate() {
+    for (line_idx, run) in buffer.layout_runs().take(max_lines).enumerate() {
         let base_b = line_offsets.get(run.line_i).copied().unwrap_or(0);
         let line_meta = merge_run_face_meta(ctx, &strut_meta, &run);
         let lbox = compute_w3c_line_box(
@@ -200,6 +220,7 @@ pub(crate) fn rasterize_cosmic_runs(
             line_idx == 0,
             line_idx + 1 == total_lines,
         );
+        let glyph_start = out.glyphs.len();
         rasterize_single_cosmic_run(
             ctx,
             spans,
@@ -211,12 +232,20 @@ pub(crate) fn rasterize_cosmic_runs(
             &mut visited,
             &mut out,
         );
+        maybe_apply_line_ellipsis(
+            ctx,
+            spans,
+            cfg,
+            (line_idx, max_lines, runs_count, glyph_start),
+            (cur_y + lbox.baseline_offset, scale, base_fam),
+            &mut out,
+        );
         cur_y += lbox.line_height;
     }
     finalize_cosmic_runs(
         sanitized_text,
         char_count,
-        (&strut_meta, cfg, cur_y, runs_count == 0),
+        (&strut_meta, cfg, cur_y, runs_count == 0, trailing_nl),
         &mut visited,
         &mut out,
     );
@@ -224,14 +253,20 @@ pub(crate) fn rasterize_cosmic_runs(
 }
 
 fn finalize_cosmic_runs(
-    text: &str,
+    _text: &str,
     char_count: usize,
-    (strut_meta, cfg, cur_y, was_empty): (&CachedFaceMeta, LineLayoutConfig, f32, bool),
+    (strut_meta, cfg, cur_y, was_empty, trailing_nl): (
+        &CachedFaceMeta,
+        LineLayoutConfig,
+        f32,
+        bool,
+        bool,
+    ),
     visited: &mut [bool],
     out: &mut ShapedRunsOutput,
 ) {
-    let need_trailing = was_empty
-        || (text.ends_with('\n') && out.lines.last().is_none_or(|l| l.start_char < char_count));
+    let need_trailing =
+        was_empty || (trailing_nl && out.lines.last().is_none_or(|l| l.start_char < char_count));
     if need_trailing {
         let idx = out.lines.len();
         let lbox = compute_w3c_line_box(
@@ -366,6 +401,7 @@ fn collect_varied_glyph_boxes(
                 }
             }
         }
+        gw = (gw + cfg.letter_spacing_px).max(0.0);
         raw.push((g.x + shift, gw));
         shift += gw - g.w;
     }
@@ -424,7 +460,7 @@ fn record_glyph_char_offsets(
     }
 }
 
-fn rasterize_single_cosmic_glyph(
+pub(crate) fn rasterize_single_cosmic_glyph(
     ctx: &mut FontContext,
     sanitized_text: &str,
     layout_glyph: &cosmic_text::LayoutGlyph,

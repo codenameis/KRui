@@ -96,9 +96,9 @@ pub fn preview_binary_path_for_opts(target_dir: &Path, opts: &ServeOptions) -> P
     built_preview_binary_path(target_dir, None)
 }
 
-/// Copies the built preview executable into `<target_dir>/krui-serve-staging/<name>-<gen>[.exe]`
-/// so `cargo build` never collides with a Windows file lock on the running preview process,
-/// best-effort removing older staged binaries for `<name>`.
+/// Copies the built preview executable into `<target_dir>/krui-serve-staging/<name>-<pid>-<gen>[.exe]`
+/// so `cargo build` and concurrent `krui serve` processes never collide on Windows file locks,
+/// best-effort removing older staged binaries owned by the current process.
 pub fn stage_built_preview_binary(
     target_dir: &Path,
     example: Option<&str>,
@@ -117,15 +117,16 @@ fn stage_binary_from_src(
 ) -> std::io::Result<PathBuf> {
     let staging_dir = target_dir.join("krui-serve-staging");
     std::fs::create_dir_all(&staging_dir)?;
-    let staged_name = format!("{name}-{generation}{}", std::env::consts::EXE_SUFFIX);
+    let pid = std::process::id();
+    let staged_name = format!("{name}-{pid}-{generation}{}", std::env::consts::EXE_SUFFIX);
     let dst_bin = staging_dir.join(staged_name);
-    cleanup_old_staged_binaries(&staging_dir, name, &dst_bin);
+    cleanup_old_staged_binaries(&staging_dir, name, pid, &dst_bin);
     std::fs::copy(src_bin, &dst_bin)?;
     Ok(dst_bin)
 }
 
-fn cleanup_old_staged_binaries(staging_dir: &Path, name: &str, keep_path: &Path) {
-    let prefix = format!("{name}-");
+fn cleanup_old_staged_binaries(staging_dir: &Path, name: &str, pid: u32, keep_path: &Path) {
+    let prefix = format!("{name}-{pid}-");
     let Ok(entries) = std::fs::read_dir(staging_dir) else {
         return;
     };

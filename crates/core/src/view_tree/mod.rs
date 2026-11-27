@@ -24,7 +24,7 @@ pub(crate) use input::{focus_transition, hit_test_geom};
 pub use paint_scene::paint;
 pub(crate) use paint_scene::{
     paint_box_layers, paint_canvas, paint_text, paint_text_decorations, select_popup_paint,
-    stacking, tooltip_paint,
+    stacking, sticky_pos, tooltip_paint,
 };
 pub(crate) use style_bridge::{
     clip_path_resolve, clip_shape, content_box, keyframes_driver, layout_modes, pointer_vars,

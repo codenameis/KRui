@@ -3,7 +3,9 @@
 
 use crate::scene::PaintScene;
 use crate::view_tree::clip_shape::{intersect_clip_states, ClipState};
-use crate::view_tree::content_box::{content_box_rect, text_clip_box_rect};
+use crate::view_tree::content_box::{
+    content_box_rect, effective_node_text_style, text_clip_box_rect,
+};
 use crate::view_tree::grapheme::{
     textarea_visible_inner_height, update_input_scroll_x, update_textarea_scroll_y,
 };
@@ -121,7 +123,7 @@ pub(crate) fn emit_node_text_primitives(
     );
     let local_clip = text_clip_box_rect(world_rect, &style.layout, effective_border_width);
     let text_clip = compute_text_clip(
-        role.is_text_editable(),
+        role.is_text_editable() || style.layout.clips_overflow(),
         local_clip,
         effective_transform,
         outer_clip_state,
@@ -389,7 +391,8 @@ fn ensure_node_shaped_text_layout(
     let rich_hash = rich_opt
         .as_deref()
         .map_or(0_u64, crate::view_tree::layout_modes::hash_rich_spans);
-    let shaped_key = compute_node_shaped_key(&style.text, current_scale_pct, width_key)
+    let eff_text = effective_node_text_style(role, style.text);
+    let shaped_key = compute_node_shaped_key(&eff_text, current_scale_pct, width_key)
         ^ rich_hash.rotate_left(17);
     let (display_string, meta, need_reshape) =
         extract_node_display_and_meta(inner, node_id, showing_placeholder, shaped_key)?;
@@ -397,14 +400,12 @@ fn ensure_node_shaped_text_layout(
     if need_reshape && (rich_opt.is_some() || !display_string.is_empty()) {
         let scale = inner.scale_factor;
         let shaped = match rich_opt.as_deref() {
-            Some(spans) => {
-                inner
-                    .text_engine
-                    .shape_styled_rich_text(spans, &style.text, max_w, scale)
-            }
+            Some(spans) => inner
+                .text_engine
+                .shape_styled_rich_text(spans, &eff_text, max_w, scale),
             None => inner
                 .text_engine
-                .shape_styled_text(&display_string, &style.text, max_w, scale),
+                .shape_styled_text(&display_string, &eff_text, max_w, scale),
         };
         if let Some(node) = inner.node_mut(node_id) {
             node.cached_text_layout = Some(shaped);

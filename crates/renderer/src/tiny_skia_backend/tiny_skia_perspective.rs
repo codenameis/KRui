@@ -56,11 +56,12 @@ pub(super) fn composite_perspective_layer_skia(
         return;
     };
     let (dw, dh) = (dst.width() as i32, dst.height() as i32);
+    let (dw_f, dh_f) = (dw as f32, dh as f32);
     let (sw, sh) = (src.width() as i32, src.height() as i32);
-    let x0 = (quad.screen_aabb[0].floor() as i32 - 1).clamp(0, dw);
-    let y0 = (quad.screen_aabb[1].floor() as i32 - 1).clamp(0, dh);
-    let x1 = (quad.screen_aabb[2].ceil() as i32 + 1).clamp(0, dw);
-    let y1 = (quad.screen_aabb[3].ceil() as i32 + 1).clamp(0, dh);
+    let x0 = (quad.screen_aabb[0].floor() - 1.0).clamp(0.0, dw_f) as i32;
+    let y0 = (quad.screen_aabb[1].floor() - 1.0).clamp(0.0, dh_f) as i32;
+    let x1 = (quad.screen_aabb[2].ceil() + 1.0).clamp(0.0, dw_f) as i32;
+    let y1 = (quad.screen_aabb[3].ceil() + 1.0).clamp(0.0, dh_f) as i32;
     let src_data = src.data();
     let mask_data = mask.map(tiny_skia::Mask::data);
     let dst_data = dst.data_mut();

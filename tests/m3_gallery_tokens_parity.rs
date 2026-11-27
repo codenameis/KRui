@@ -32,30 +32,30 @@ fn parse_theme_custom_props(css: &str) -> BTreeMap<String, String> {
 }
 
 const REQUIRED_MEASURED_M3_TOKENS: &[(&str, &str)] = &[
-    ("--md-icon-size", "24px"),
-    ("--md-icon-size-sm", "18px"),
-    ("--md-sys-typescale-hero-size", "88px"),
-    ("--md-sys-typescale-hero-line-height", "96px"),
-    ("--md-sys-typescale-title-large-size", "22px"),
-    ("--md-sys-typescale-title-large-line-height", "30px"),
-    ("--md-sys-typescale-title-medium-size", "16px"),
-    ("--md-sys-typescale-title-medium-line-height", "24px"),
-    ("--md-sys-typescale-title-small-size", "14px"),
-    ("--md-sys-typescale-label-medium-size", "12px"),
-    ("--md-sys-typescale-label-medium-line-height", "16px"),
-    ("--md-sys-typescale-label-small-size", "11px"),
-    ("--md-sys-shape-corner-extra-large", "24px"),
-    ("--md-sys-shape-corner-tabbar", "40px"),
-    ("--md-site-rail-width", "88px"),
-    ("--md-site-search-fab-size", "56px"),
-    ("--md-site-rail-pill-width", "56px"),
-    ("--md-site-rail-pill-height", "32px"),
-    ("--md-site-rail-toggle-size", "48px"),
-    ("--md-site-drawer-width", "240px"),
-    ("--md-site-drawer-item-height", "44px"),
-    ("--md-site-header-padding", "56px"),
-    ("--md-site-tabbar-height", "80px"),
-    ("--md-site-toc-item-height", "40px"),
+    ("--krui-icon-size", "24px"),
+    ("--krui-icon-size-sm", "18px"),
+    ("--gallery-type-hero-size", "88px"),
+    ("--gallery-type-hero-line-height", "96px"),
+    ("--gallery-type-title-large-size", "22px"),
+    ("--gallery-type-title-large-line-height", "30px"),
+    ("--gallery-type-title-medium-size", "16px"),
+    ("--gallery-type-title-medium-line-height", "24px"),
+    ("--gallery-type-title-small-size", "14px"),
+    ("--gallery-type-label-medium-size", "12px"),
+    ("--gallery-type-label-medium-line-height", "16px"),
+    ("--gallery-type-label-small-size", "11px"),
+    ("--gallery-corner-extra-large", "24px"),
+    ("--gallery-corner-tabbar", "40px"),
+    ("--gallery-rail-width", "88px"),
+    ("--gallery-search-fab-size", "56px"),
+    ("--gallery-rail-pill-width", "56px"),
+    ("--gallery-rail-pill-height", "32px"),
+    ("--gallery-rail-toggle-size", "48px"),
+    ("--gallery-drawer-width", "240px"),
+    ("--gallery-drawer-item-height", "44px"),
+    ("--gallery-header-padding", "56px"),
+    ("--gallery-tabbar-height", "80px"),
+    ("--gallery-toc-item-height", "40px"),
 ];
 
 #[test]
@@ -63,6 +63,11 @@ fn material_and_tailwind_define_measured_m3_tokens_with_layout_parity() {
     let views = repo_root().join("examples/component_gallery/views");
     let mat_css = fs::read_to_string(views.join("themes/material.css")).expect("read material.css");
     let tw_css = fs::read_to_string(views.join("themes/tailwind.css")).expect("read tailwind.css");
+
+    assert!(
+        !tw_css.contains("--md-"),
+        "tailwind.css must remain independent of Material `--md-*` custom property names"
+    );
 
     let mat_props = parse_theme_custom_props(&mat_css);
     let tw_props = parse_theme_custom_props(&tw_css);
@@ -78,7 +83,7 @@ fn material_and_tailwind_define_measured_m3_tokens_with_layout_parity() {
         let actual_tw = tw_props
             .get(token)
             .unwrap_or_else(|| panic!("tailwind.css missing token `{token}`"));
-        if !token.starts_with("--md-sys-shape-corner-") {
+        if !token.starts_with("--gallery-corner-") {
             assert_eq!(
                 actual_mat, actual_tw,
                 "layout-affecting token `{token}` must match across Material and Tailwind for 0-relayout switch"
@@ -126,15 +131,15 @@ fn gallery_stylesheets_eliminate_ungrounded_legacy_dimensions() {
     }
     let all_concat: String = sheets.iter().map(|(_, c)| c.as_str()).collect();
     assert!(
-        all_concat.contains("var(--md-site-rail-width)"),
-        "rail CSS must reference var(--md-site-rail-width)"
+        all_concat.contains("var(--gallery-rail-width)"),
+        "rail CSS must reference var(--gallery-rail-width)"
     );
     assert!(
-        all_concat.contains("var(--md-site-tabbar-height)"),
-        "tab bar CSS must reference var(--md-site-tabbar-height)"
+        all_concat.contains("var(--gallery-tabbar-height)"),
+        "tab bar CSS must reference var(--gallery-tabbar-height)"
     );
     assert!(
-        all_concat.contains("var(--md-sys-typescale-label-medium-size)"),
-        "rail label CSS must reference var(--md-sys-typescale-label-medium-size)"
+        all_concat.contains("var(--gallery-type-label-medium-size)"),
+        "rail label CSS must reference var(--gallery-type-label-medium-size)"
     );
 }

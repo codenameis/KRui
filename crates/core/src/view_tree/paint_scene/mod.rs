@@ -1,5 +1,6 @@
 //! `PaintScene` assembly, box/text/canvas emission, top-layer overlays, and W3C Stacking Context ordering.
 
+pub(crate) mod damage_hash;
 pub mod damage_tracker;
 pub mod paint;
 pub(crate) mod paint_3d;
@@ -11,4 +12,5 @@ pub(crate) mod paint_text;
 pub(crate) mod paint_text_decorations;
 pub(crate) mod select_popup_paint;
 pub(crate) mod stacking;
+pub(crate) mod sticky_pos;
 pub(crate) mod tooltip_paint;

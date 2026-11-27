@@ -3,9 +3,20 @@
 use crate::view_tree::{NodeId, ViewTreeInner};
 use krui_a11y::SemanticRole;
 use krui_layout::LayoutRect;
-use krui_style::{Dimension, DisplayMode, LayoutStyle, LineHeight, PositionMode};
+use krui_style::{
+    Dimension, DisplayMode, LayoutStyle, LineHeight, PositionMode, TextStyle, WhiteSpaceMode,
+};
 
 pub(crate) const CARET_RIGHT_RESERVE_PX: f32 = 2.0;
+
+pub(crate) fn effective_node_text_style(role: SemanticRole, mut t: TextStyle) -> TextStyle {
+    if role.is_single_line_input() {
+        t.white_space = WhiteSpaceMode::Pre;
+    } else if role == SemanticRole::MultilineTextInput {
+        t.white_space = WhiteSpaceMode::PreWrap;
+    }
+    t
+}
 
 pub(crate) fn content_box_rect(world_rect: LayoutRect, layout: &LayoutStyle) -> LayoutRect {
     let b = layout.effective_border_edges();
@@ -130,7 +141,7 @@ fn sync_node_text_context_inner(inner: &mut ViewTreeInner, node_id: NodeId, is_i
     }
     let ctx = krui_layout::TextContext {
         text: effective_text,
-        text_style: style.text,
+        text_style: effective_node_text_style(role, style.text),
         min_line_height,
         single_line,
         intrinsic_size: None,

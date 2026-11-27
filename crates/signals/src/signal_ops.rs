@@ -27,6 +27,8 @@ pub(crate) fn allocate_signal_slot(
         slot.is_frame_driven = is_frame_driven;
         slot.borrow_depth = 0;
         slot.deferred_notify = false;
+        slot.updating_in_place = false;
+        slot.overridden_during_update = false;
         SignalId {
             index: idx,
             generation,
@@ -45,6 +47,8 @@ pub(crate) fn allocate_signal_slot(
             is_frame_driven,
             borrow_depth: 0,
             deferred_notify: false,
+            updating_in_place: false,
+            overridden_during_update: false,
         });
         SignalId {
             index: idx,
@@ -95,9 +99,7 @@ impl Drop for SignalReadGuard {
                     return false;
                 }
                 rt_mut.notify_signal_changed(self.id);
-                rt_mut.batch_depth == 0
-                    && rt_mut.tracking_stack.is_empty()
-                    && !std::thread::panicking()
+                rt_mut.can_flush_immediately() && !std::thread::panicking()
             })
             .unwrap_or(false);
 

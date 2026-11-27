@@ -495,6 +495,9 @@ fn collect_unmount_recursive(inner: &ViewTreeInner, cur: NodeId, out: &mut Vec<N
     if out.contains(&cur) {
         return;
     };
+    if let Some(bd) = crate::view_tree::pointer_vars::backdrop_pseudo_of(inner, cur) {
+        collect_unmount_recursive(inner, bd, out);
+    }
     if let Some(anchor) = inner.anchor(cur) {
         for &mounted in &anchor.mounted_nodes {
             collect_unmount_recursive(inner, mounted, out);
@@ -509,6 +512,19 @@ fn collect_unmount_recursive(inner: &ViewTreeInner, cur: NodeId, out: &mut Vec<N
 }
 
 pub(crate) fn detach_node_from_parent(inner: &mut ViewTreeInner, node_id: NodeId) {
+    if let Some(host_id) = inner
+        .sparse
+        .pseudo_pointer
+        .get(&node_id)
+        .filter(|e| e.is_backdrop)
+        .and_then(|e| e.pseudo_host)
+    {
+        if let Some(host_entry) = inner.sparse.pseudo_pointer.get_mut(&host_id) {
+            if host_entry.backdrop_pseudo == Some(node_id) {
+                host_entry.backdrop_pseudo = None;
+            }
+        }
+    }
     let Some((target_taffy, parent_id, was_fixed)) = inner.node(node_id).map(|n| {
         (
             n.taffy_node,

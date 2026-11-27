@@ -8,6 +8,10 @@ pub use crate::scope::{batch, current_scope_id, is_scope_alive, untracked, Scope
 
 use std::collections::BTreeSet;
 use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
+
+pub(crate) type ScopeCleanupEntry = (ScopeId, Option<Arc<AtomicBool>>, Rc<dyn Fn()>);
 
 pub(crate) struct ReactiveRuntime {
     pub(crate) runtime_id: crate::session_hub::RuntimeId,
@@ -22,19 +26,20 @@ pub(crate) struct ReactiveRuntime {
     pub(crate) free_scopes: Vec<u32>,
     pub(crate) scope_stack: Vec<ScopeId>,
     pub(crate) tracking_stack: Vec<TrackingFrame>,
+    pub(crate) untracked_in_tracking_depth: usize,
     pub(crate) next_run_id: u64,
     pub(crate) batch_depth: usize,
     pub(crate) pending_subscribers: BTreeSet<(u32, SubscriberId)>,
     pub(crate) effect_executions: u64,
     pub(crate) deferred_drops: Vec<Rc<dyn Fn()>>,
     pub(crate) deferred_cleanups: Vec<Rc<dyn Fn()>>,
-    pub(crate) scope_cleanups: Vec<(ScopeId, Rc<dyn Fn()>)>,
+    pub(crate) scope_cleanups: Vec<ScopeCleanupEntry>,
     pub(crate) updating_signals: Vec<SignalId>,
 }
 
 impl Drop for ReactiveRuntime {
     fn drop(&mut self) {
-        for (_, cb) in std::mem::take(&mut self.scope_cleanups) {
+        for (_, _, cb) in std::mem::take(&mut self.scope_cleanups) {
             cb();
         }
         for cb in std::mem::take(&mut self.deferred_cleanups) {
@@ -64,6 +69,7 @@ impl ReactiveRuntime {
             free_scopes: Vec::new(),
             scope_stack: vec![ScopeId::ROOT],
             tracking_stack: Vec::with_capacity(16),
+            untracked_in_tracking_depth: 0,
             next_run_id: 1,
             batch_depth: 0,
             pending_subscribers: BTreeSet::new(),
@@ -83,7 +89,7 @@ impl ReactiveRuntime {
     }
 
     pub(crate) fn reset_in_place(&mut self) {
-        for (_, cb) in std::mem::take(&mut self.scope_cleanups) {
+        for (_, _, cb) in std::mem::take(&mut self.scope_cleanups) {
             cb();
         }
         for cb in std::mem::take(&mut self.deferred_cleanups) {
@@ -104,6 +110,12 @@ impl ReactiveRuntime {
             .copied()
             .find(|&id| self.is_scope_alive(id))
             .unwrap_or(ScopeId::ROOT)
+    }
+
+    pub(crate) const fn can_flush_immediately(&self) -> bool {
+        self.batch_depth == 0
+            && self.tracking_stack.is_empty()
+            && self.untracked_in_tracking_depth == 0
     }
 
     pub(crate) fn is_scope_alive(&self, id: ScopeId) -> bool {
@@ -282,25 +294,37 @@ impl ReactiveRuntime {
             self.record_bumped_gen(next_sig_gen);
         }
         let mut remaining_cleanups = Vec::with_capacity(self.scope_cleanups.len());
-        for (sid, cb) in std::mem::take(&mut self.scope_cleanups) {
+        for (sid, active_opt, cb) in std::mem::take(&mut self.scope_cleanups) {
             if sid == scope_id {
                 self.deferred_cleanups.push(cb);
-            } else {
-                remaining_cleanups.push((sid, cb));
+            } else if active_opt
+                .as_ref()
+                .is_none_or(|a| a.load(std::sync::atomic::Ordering::Acquire))
+            {
+                remaining_cleanups.push((sid, active_opt, cb));
             }
         }
         self.scope_cleanups = remaining_cleanups;
     }
 }
 
-pub(crate) fn register_scope_cleanup(scope_id: ScopeId, cb: impl Fn() + 'static) {
-    if scope_id == ScopeId::ROOT {
-        return;
-    }
+pub(crate) fn register_scope_cleanup(
+    scope_id: ScopeId,
+    active_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
+    cb: impl Fn() + 'static,
+) {
     RUNTIME.with(|rt| {
         let mut rt_mut = rt.borrow_mut();
+        if rt_mut.scope_cleanups.len() >= 32 {
+            rt_mut.scope_cleanups.retain(|(_, act, _)| {
+                act.as_ref()
+                    .is_none_or(|a| a.load(std::sync::atomic::Ordering::Acquire))
+            });
+        }
         if rt_mut.is_scope_alive(scope_id) {
-            rt_mut.scope_cleanups.push((scope_id, Rc::new(cb)));
+            rt_mut
+                .scope_cleanups
+                .push((scope_id, active_flag, Rc::new(cb)));
         } else {
             cb();
         }

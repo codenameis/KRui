@@ -12,9 +12,9 @@ Slint를 벤치마크 삼되, 웹 개발자와 Rust 입문자가 **바로 읽고
 | 1 | **IME 최우선**: 한국어, 일본어, 영어 입력이 OS 네이티브 수준으로 동작합니다(조합, 변환, 후보창 위치). |
 | 2 | **낮은 진입 장벽**: `.krui`는 HTML/CSS를 아는 사람이 5분 안에 읽을 수 있어야 하고, Rust 코드는 문법을 막 뗀 사람도 수정할 수 있어야 합니다. |
 | 3 | **라이브 미리보기**: 앱 개발 중 `.krui`/`.css`를 저장하면 앱 상태를 유지한 채 즉시 반영됩니다. Dioxus/Flutter처럼 `krui serve`로 데스크탑, 디바이스 프레임, Android 에뮬레이터/iOS 시뮬레이터에서 실행 중인 앱에 핫리로드합니다. |
-| 4 | **어디서나 동작**: 데스크탑(`Win/Mac/Linux` + 멀티윈도우·터치) → 모바일(`Android` `krui-android-ffi` / `iOS` 예정). 게임 엔진·영상 통합은 `ExternalTexture` 슬롯으로 연결합니다. |
+| 4 | **어디서나 동작 (티어 구분 명시)**: **Primary Production Tier**는 데스크탑(`krui-winit` `Win/Mac/Linux` + `wgpu`/`TinySkia` + 멀티윈도우·터치)과 `krui-engine-host`(게임 엔진 `ExternalTexture`/인패스 통합)이며, `krui-kms`(트레이트 기반 DRM/evdev 어댑터)·`krui-android-ffi`(CPU `SurfaceView` JNI 브리지)·`krui-web`(독립 DOM 프로토타입)은 **Experimental / Adapter Preview** 단계로 정직하게 표기합니다(`iOS` 예정). |
 | 5 | **고성능**: 정적 UI와 비활성 창은 유휴 시 0% CPU, 컴포지터 애니메이션(transform/opacity/색상 등)은 레이아웃 없이 동작하며 레이아웃 속성 애니메이션만 변경 노드를 국소 dirty 처리합니다. |
-| 6 | **순수 CSS 호환(목표 100%) & 헤드리스 위젯**: `krui-stylo-bridge`(`stylo 0.22.0` + `stylo_taffy` + `taffy 0.15.1`) 단일 CSS 소유 계층으로 외부 순수 `.css` 프레임워크 무수정 적용을 목표로 합니다(현재 `@tailwindcss/cli@4.3.5` 실제 출력 속성 일치율 **229/229 [100.0%]**, 측정일 `2026-11-25`, `tests/real_css_conformance.rs`). 헤드리스 동작 코어(`unstyled` 옵션 포함) 위에 순수 CSS 테마/디자인 시스템을 결합합니다. |
+| 6 | **순수 CSS 호환(목표 100%) & 헤드리스 위젯**: `krui-stylo-bridge`(`stylo 0.22.0` + `stylo_taffy` + `taffy 0.15.1`) 단일 CSS 소유 계층으로 외부 순수 `.css` 프레임워크 무수정 적용을 목표로 합니다(현재 `@tailwindcss/cli@4.3.5` 픽스처 스위트[`tests/fixtures/real_css/tailwind_v4/app.krui` 12개 앱 노드 + 9개 엣지 프로브] 실제 출력 속성 일치율 **229/229 [100.0%]**, 측정일 `2026-11-25`, `tests/real_css_conformance.rs`). 헤드리스 동작 코어(`unstyled` 옵션 포함) 위에 순수 CSS 테마/디자인 시스템을 결합합니다. |
 | 7 | **통합 반응형 + 비동기**: 표준 반응형 상태(`Signal`/`Computed`/`Effect` + 일반 메서드 호출 + 내장 `tokio` 비동기)를 기본으로 하고, `Store<State, Msg>` 등 아키텍처 패턴은 `krui-patterns`로 제공합니다. |
 
 ---

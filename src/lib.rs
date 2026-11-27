@@ -126,7 +126,9 @@ impl KruiBindableSignal for Signal<String> {
 impl KruiBindableSignal for Signal<f32> {
     fn set_from_krui_input(&self, raw: String) {
         if let Ok(v) = raw.trim().parse::<f32>() {
-            self.set(v);
+            if v.is_finite() {
+                self.set(v);
+            }
         }
     }
 }
@@ -134,7 +136,9 @@ impl KruiBindableSignal for Signal<f32> {
 impl KruiBindableSignal for Signal<f64> {
     fn set_from_krui_input(&self, raw: String) {
         if let Ok(v) = raw.trim().parse::<f64>() {
-            self.set(v);
+            if v.is_finite() {
+                self.set(v);
+            }
         }
     }
 }

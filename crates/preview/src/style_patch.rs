@@ -129,6 +129,8 @@ fn same_element_events_and_controls(old: &CompiledNode, new: &CompiledNode) -> b
         && old.on_pointer_down == new.on_pointer_down
         && old.on_pointer_up == new.on_pointer_up
         && old.on_pointer_move == new.on_pointer_move
+        && old.on_context_menu == new.on_context_menu
+        && old.on_wheel == new.on_wheel
         && old.on_scroll == new.on_scroll
         && old.on_input == new.on_input
         && old.on_change == new.on_change

@@ -104,5 +104,11 @@ pub fn decode_compiled_document(bytes: &[u8]) -> Result<CompiledDocument, IrCode
             found: found_version,
         });
     }
-    run_on_codec_stack(|| postcard::from_bytes(&bytes[8..]))
+    let doc: CompiledDocument = run_on_codec_stack(|| postcard::from_bytes(&bytes[8..]))?;
+    if crate::ir::nodes_exceed_depth(&doc.roots, 256) {
+        return Err(IrCodecError::Codec(
+            "Decoded IR document exceeded maximum DOM depth of 256".to_string(),
+        ));
+    }
+    Ok(doc)
 }

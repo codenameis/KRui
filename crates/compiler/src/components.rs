@@ -26,6 +26,9 @@ struct LoadedComponent {
     base_dir: Option<PathBuf>,
 }
 
+const MAX_COMPONENT_EXPANSION_DEPTH: usize = 64;
+const MAX_EXPANDED_COMPONENT_NODES: usize = 32_768;
+
 /// Stateful build-time component resolver and expander.
 pub(crate) struct ComponentExpander<'a> {
     templates: HashMap<String, LoadedComponent>,
@@ -33,6 +36,7 @@ pub(crate) struct ComponentExpander<'a> {
     loaded_packs: HashSet<BuiltinPack>,
     root_dir: Option<PathBuf>,
     virtual_buffers: Option<&'a VirtualBufferMap>,
+    expanded_node_count: usize,
     pub(crate) collector: &'a mut CollectedStylesheets,
     pub(crate) external_component_paths: &'a mut Vec<PathBuf>,
 }
@@ -49,7 +53,8 @@ impl<'a> ComponentExpander<'a> {
     ) -> Result<Self, CompileError> {
         let root_dir = krui_path.and_then(|p| p.parent()).map(Path::to_path_buf);
         let mut templates = HashMap::with_capacity(inline_templates.len());
-        for tpl in inline_templates {
+        for mut tpl in inline_templates {
+            stamp_component_scope_on_nodes(&mut tpl.body, &tpl.name);
             let schema_defaults = compile_schema_defaults(source, &tpl.name, &tpl.default_props)?;
             templates.insert(
                 tpl.name,
@@ -66,6 +71,7 @@ impl<'a> ComponentExpander<'a> {
             loaded_packs: HashSet::new(),
             root_dir,
             virtual_buffers,
+            expanded_node_count: 0,
             collector,
             external_component_paths,
         })
@@ -222,6 +228,15 @@ impl<'a> ComponentExpander<'a> {
                 format!("Recursive component cycle detected: `{chain}`"),
             ));
         }
+        if active_stack.len() >= MAX_COMPONENT_EXPANSION_DEPTH {
+            return Err(CompileError::at_offset(
+                caller_source,
+                tag_offset,
+                format!(
+                    "Component nesting exceeded maximum depth of {MAX_COMPONENT_EXPANSION_DEPTH}"
+                ),
+            ));
+        }
         let raw_slots = partition_slot_children(caller_source, caller_children)?;
         let loaded = self.resolve_or_load_component(caller_source, &name, tag_offset, cur_dir)?;
         validate_caller_slots(caller_source, &name, &raw_slots.named, &loaded.body)?;
@@ -231,6 +246,16 @@ impl<'a> ComponentExpander<'a> {
             self.expand_slot_bindings(caller_source, raw_slots, cur_dir, active_stack)?;
         let instantiated =
             instantiate_component_body(&loaded.body, &props, &slot_bindings, tag_offset);
+        self.expanded_node_count = self.expanded_node_count.saturating_add(instantiated.len());
+        if self.expanded_node_count > MAX_EXPANDED_COMPONENT_NODES {
+            return Err(CompileError::at_offset(
+                caller_source,
+                tag_offset,
+                format!(
+                    "Component expansion exceeded maximum of {MAX_EXPANDED_COMPONENT_NODES} nodes"
+                ),
+            ));
+        }
 
         active_stack.push(name);
         let next_dir = loaded.base_dir.as_deref().or(cur_dir);

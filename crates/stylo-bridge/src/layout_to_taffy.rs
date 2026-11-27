@@ -62,11 +62,13 @@ pub(crate) fn layout_style_to_taffy(s: &LayoutStyle) -> Style<Atom> {
         margin: to_taffy_inset(s.effective_margin_dims()),
         padding: to_taffy_rect_lp_dims(s.effective_padding_dims()),
         border: to_taffy_rect_lp(s.effective_border_edges()),
-        inset: to_taffy_inset(if s.position == PositionMode::Static {
-            InsetEdges::default()
-        } else {
-            s.inset
-        }),
+        inset: to_taffy_inset(
+            if matches!(s.position, PositionMode::Static | PositionMode::Sticky) {
+                InsetEdges::default()
+            } else {
+                s.inset
+            },
+        ),
         gap: Size {
             width: length(s.effective_column_gap()),
             height: length(s.effective_row_gap()),

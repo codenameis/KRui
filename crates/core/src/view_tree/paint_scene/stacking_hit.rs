@@ -91,7 +91,6 @@ struct ScHitPrepared {
     world_rect: LayoutRect,
     eff_paint: PaintStyle,
     eff_clip: ClipState,
-    eff_scroll: (f32, f32),
     self_scroll: (f32, f32),
     next_clip: ClipState,
     eff_opacity: f32,
@@ -192,7 +191,6 @@ fn prepare_sc_hit_node(
         world_rect,
         eff_paint,
         eff_clip,
-        eff_scroll,
         self_scroll,
         next_clip,
         eff_opacity,
@@ -212,10 +210,14 @@ fn hit_test_stacking_context(
 ) -> Option<PointerHit> {
     let prep = prepare_sc_hit_node(inner, node_id, env, is_top_layer, pt)?;
     let n = inner.node(node_id)?;
+    let child_base_scroll = (
+        n.world_rect.x - prep.world_rect.x,
+        n.world_rect.y - prep.world_rect.y,
+    );
     let child_env = StackEnv {
         scroll: (
-            prep.eff_scroll.0 + prep.self_scroll.0,
-            prep.eff_scroll.1 + prep.self_scroll.1,
+            child_base_scroll.0 + prep.self_scroll.0,
+            child_base_scroll.1 + prep.self_scroll.1,
         ),
         clip: if prep.hit_3d.projected && !prep.hit_3d.preserve_3d {
             ClipState::NONE

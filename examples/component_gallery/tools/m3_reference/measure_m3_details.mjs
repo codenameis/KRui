@@ -20,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const REPO_ROOT = path.resolve(__dirname, "..", "..");
+const REPO_ROOT = path.resolve(__dirname, "..", "..", "..", "..");
 const SPEC_DIR = path.join(REPO_ROOT, "examples", "component_gallery", "reference", "m3_spec");
 const SCREENS_DIR = path.join(REPO_ROOT, "examples", "component_gallery", "reference", "screens");
 

@@ -266,6 +266,11 @@ pub(crate) fn find_top_level_semicolon(s: &str, from: usize) -> Option<usize> {
             i = advance_css_string(b, i, q, &mut quote);
             continue;
         }
+        if s[i..].starts_with("/*") {
+            let end = s[i + 2..].find("*/")?;
+            i += 4 + end;
+            continue;
+        }
         match b[i] {
             b'"' | b'\'' => quote = Some(b[i]),
             b'(' => pdepth += 1,
@@ -309,6 +314,11 @@ pub(crate) fn find_matching_delim(s: &str, open_idx: usize, open: u8, close: u8)
     while i < b.len() {
         if let Some(q) = quote {
             i = advance_css_string(b, i, q, &mut quote);
+            continue;
+        }
+        if s[i..].starts_with("/*") {
+            let end = s[i + 2..].find("*/")?;
+            i += 4 + end;
             continue;
         }
         if b[i] == b'"' || b[i] == b'\'' {

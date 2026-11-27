@@ -73,6 +73,9 @@
     --krui-snackbar-fg: #ffffff;
     --krui-tooltip-bg: #1f2937;
     --krui-tooltip-fg: #ffffff;
+    --krui-icon-size: 24px;
+    --krui-icon-size-sm: 18px;
+    --krui-icon-size-lg: 36px;
 }
 
 html, body, div, section, header, footer, main, nav, aside, article,
