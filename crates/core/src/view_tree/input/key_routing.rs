@@ -5,45 +5,9 @@ use krui_a11y::SemanticRole;
 use krui_layout::LayoutRect;
 use krui_style::CompiledStyle;
 use krui_text::ShapedTextLayout;
-use std::cell::Cell;
-
-thread_local! {
-    static PREVENT_DEFAULT_KEY: Cell<bool> = const { Cell::new(false) };
-}
-
-/// Marks the currently executing `onkeydown` event as handled so KRui skips its default key action
-/// (such as moving the `<input>` caret, inserting text, or activating a `<button>`).
-pub fn prevent_default_key() {
-    PREVENT_DEFAULT_KEY.with(|flag| flag.set(true));
-}
-
-pub(crate) fn clear_prevent_default_key() {
-    PREVENT_DEFAULT_KEY.with(|flag| flag.set(false));
-}
-
-pub(crate) fn take_prevent_default_key() -> bool {
-    PREVENT_DEFAULT_KEY.with(|flag| flag.replace(false))
-}
-
-/// Return-type adapter for `onkeydown` / `InputTarget` closures:
-/// - Returning `()` allows the default key action (`prevent_default = false`).
-/// - Returning `bool` prevents the default key action when `true`.
-pub trait KeydownOutcome {
-    /// Converts `self` into `true` if the default key action should be prevented.
-    fn into_prevent_default(self) -> bool;
-}
-
-impl KeydownOutcome for () {
-    fn into_prevent_default(self) -> bool {
-        false
-    }
-}
-
-impl KeydownOutcome for bool {
-    fn into_prevent_default(self) -> bool {
-        self
-    }
-}
+pub use krui_ui_types::events::{
+    clear_prevent_default_key, prevent_default_key, take_prevent_default_key, KeydownOutcome, Mods,
+};
 
 /// Minimum height (logical px) for an input caret rectangle when container space allows.
 pub const MIN_CARET_HEIGHT: f32 = 12.0;
@@ -162,27 +126,6 @@ pub enum KeyInfo {
         text: Option<String>,
     },
     Other(String),
-}
-
-/// Active keyboard modifier flags passed to [`route_key`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Mods {
-    pub ctrl: bool,
-    pub alt: bool,
-    pub shift: bool,
-    pub super_key: bool,
-}
-
-impl Mods {
-    /// Returns `true` if `AltGr` (`Ctrl + Alt`) is held on Windows/Linux international keyboards.
-    pub const fn is_altgr(self) -> bool {
-        self.ctrl && self.alt
-    }
-
-    /// Returns `true` if a shortcut command modifier (`Ctrl` or `Super`, excluding `AltGr`) is held.
-    pub const fn is_shortcut_ctrl(self) -> bool {
-        (self.ctrl && !self.alt) || self.super_key
-    }
 }
 
 /// Focus and IME snapshot passed to [`route_key`].

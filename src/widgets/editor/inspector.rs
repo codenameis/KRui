@@ -1,7 +1,7 @@
 //! 인스펙터 수치 스크러버(`DragFloat`/`Vec3`), `ColorPickerController`, `ContextMenuController`.
 
-use krui_core::{Mods, Size};
 use krui_signals::{batch, Signal};
+use krui_ui_types::{Mods, Size};
 use std::cell::Cell;
 use std::rc::Rc;
 

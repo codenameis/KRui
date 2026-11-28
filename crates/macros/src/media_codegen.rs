@@ -248,14 +248,11 @@ fn emit_static_img_src_slot(
     validate_static_image_file(&resolved, trimmed, span)?;
     let abs_str = resolved.to_string_lossy().into_owned();
     Ok(quote! {{
-        static __KRUI_STATIC_IMG: ::std::sync::OnceLock<::std::option::Option<::krui::DecodedImage>> =
-            ::std::sync::OnceLock::new();
-        if let ::std::option::Option::Some(__img) = __KRUI_STATIC_IMG
-            .get_or_init(|| ::krui::DecodedImage::from_encoded_bytes(include_bytes!(#abs_str)).ok())
-            .as_ref()
-        {
-            __tree.set_node_decoded_image(__node_id, __img.clone());
-        }
+        ::krui::__private::core::static_ir::mount_static_image_bytes(
+            __tree,
+            __node_id,
+            include_bytes!(#abs_str),
+        );
     }})
 }
 

@@ -10,23 +10,8 @@ use crate::view_tree::{NodeId, ViewTree, ViewTreeInner};
 use krui_a11y::SemanticRole;
 use krui_layout::LayoutRect;
 use krui_signals::batch;
+pub use krui_ui_types::InputKind;
 use std::ops::Range;
-
-/// Virtual keyboard input type hint passed to [`TextInputHost::show_keyboard`].
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum InputKind {
-    /// Standard plain-text input (`<input type="text">`).
-    #[default]
-    Text,
-    /// Masked password input (`<input type="password">`, disables predictive composition suggestions).
-    Password,
-    /// Numeric input.
-    Number,
-    /// Email address input.
-    Email,
-    /// Search box input.
-    Search,
-}
 
 /// Mobile / desktop IME action button (`Enter` / `Done` / `Search` / `Next` / `Send`) triggered by
 /// [`ImeEvent::EditorAction`].

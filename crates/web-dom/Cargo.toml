@@ -8,3 +8,51 @@ description = "Browser DOM + native CSS + <canvas> slot backend for KRui (zero w
 [dependencies]
 krui-signals = { workspace = true }
 krui-style = { workspace = true }
+krui-ui-types = { workspace = true }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen = "=0.2.130"
+js-sys = "0.3"
+web-sys = { version = "0.3", features = [
+    "AddEventListenerOptions",
+    "Blob",
+    "BlobPropertyBag",
+    "CanvasGradient",
+    "CanvasRenderingContext2d",
+    "CanvasWindingRule",
+    "Comment",
+    "CompositionEvent",
+    "CssStyleDeclaration",
+    "console",
+    "Document",
+    "DomRect",
+    "DomTokenList",
+    "Element",
+    "Event",
+    "EventTarget",
+    "FocusEvent",
+    "HtmlButtonElement",
+    "HtmlCanvasElement",
+    "HtmlElement",
+    "HtmlHeadElement",
+    "HtmlImageElement",
+    "HtmlInputElement",
+    "HtmlOptionElement",
+    "HtmlSelectElement",
+    "HtmlStyleElement",
+    "HtmlTextAreaElement",
+    "ImageData",
+    "InputEvent",
+    "KeyboardEvent",
+    "MediaQueryList",
+    "MouseEvent",
+    "Node",
+    "PointerEvent",
+    "ResizeObserver",
+    "ResizeObserverEntry",
+    "SvgElement",
+    "Text",
+    "Url",
+    "WheelEvent",
+    "Window",
+] }

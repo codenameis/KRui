@@ -6,23 +6,25 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 export interface InitOutput {
     readonly memory: WebAssembly.Memory;
     readonly main: (a: number, b: number) => number;
-    readonly Servo_NumericType_MatchesAngle: (a: number) => number;
-    readonly Servo_NumericType_MatchesLength: (a: number) => number;
-    readonly Servo_NumericType_MatchesLengthPercentage: (a: number) => number;
-    readonly Servo_NumericType_MatchesNumber: (a: number) => number;
-    readonly Servo_NumericType_MatchesPercentage: (a: number) => number;
-    readonly __wasm_bindgen_func_elem_2310: (a: number, b: number, c: number) => void;
-    readonly __wasm_bindgen_func_elem_2305: (a: number, b: number, c: any) => void;
-    readonly __wasm_bindgen_func_elem_2305_2: (a: number, b: number, c: any) => void;
-    readonly __wasm_bindgen_func_elem_2305_3: (a: number, b: number, c: any) => void;
-    readonly __wasm_bindgen_func_elem_2305_4: (a: number, b: number, c: any) => void;
-    readonly __wbindgen_export: (a: number) => void;
-    readonly __wbindgen_export2: () => number;
+    readonly __wasm_bindgen_func_elem_2183: (a: number, b: number, c: number) => void;
+    readonly __wasm_bindgen_func_elem_885: (a: number, b: number, c: number, d: any) => void;
+    readonly __wasm_bindgen_func_elem_4344: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_4344_4: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_4344_5: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_4344_7: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_4344_8: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_4344_9: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_6797: (a: number, b: number, c: any) => void;
+    readonly __wasm_bindgen_func_elem_6797_6: (a: number, b: number, c: any) => void;
+    readonly __wbindgen_export: (a: number, b: number) => number;
+    readonly __wbindgen_export2: (a: number, b: number, c: number, d: number) => number;
+    readonly __wbindgen_export3: (a: number, b: number, c: number) => void;
+    readonly __wbindgen_export4: (a: number) => void;
+    readonly __wbindgen_export5: () => number;
     readonly __wbindgen_externrefs: WebAssembly.Table;
-    readonly __wbindgen_export3: (a: number, b: number) => number;
-    readonly __wbindgen_export4: (a: number, b: number, c: number, d: number) => number;
-    readonly __wbindgen_export5: (a: number, b: number, c: number) => void;
     readonly __wbindgen_export6: (a: number, b: number) => void;
+    readonly __wbindgen_add_to_stack_pointer: (a: number) => number;
+    readonly __wbindgen_export7: (a: number) => void;
     readonly __wbindgen_start: () => void;
 }
 

@@ -12,6 +12,7 @@ preview = []
 [dependencies]
 krui-signals = { workspace = true }
 krui-style = { workspace = true }
+krui-ui-types = { workspace = true, features = ["image-decode"] }
 krui-stylo-bridge = { workspace = true }
 krui-layout = { workspace = true }
 krui-text = { workspace = true }

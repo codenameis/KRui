@@ -4,14 +4,13 @@ pub(crate) use crate::view_tree::grapheme::{
     byte_to_char_idx, char_to_byte_idx, delete_active_selection_in_node, next_grapheme_char_idx,
     prev_grapheme_char_idx, snap_char_to_grapheme_boundary, sync_node_text_context,
 };
-use crate::view_tree::key_routing::{prevent_default_key, KeydownOutcome};
 use crate::view_tree::sparse_tables::NodeFlags;
 use crate::view_tree::ViewTree;
 use krui_a11y::SemanticRole;
 use krui_layout::LayoutRect;
-use krui_signals::Computed;
 use krui_style::{CompiledStyle, TextStyle, UserSelect};
 use krui_text::ShapedTextLayout;
+pub use krui_ui_types::{ClickBinding, ClickTarget, InputTarget};
 use std::hash::{Hash, Hasher};
 use std::rc::Rc;
 
@@ -161,53 +160,14 @@ impl HoveredCursorKind {
 
 pub(crate) type MountFn = Box<dyn FnOnce(&mut ViewTree, Option<NodeId>) -> Vec<NodeId>>;
 
-/// Pattern-neutral click handler trait implemented by MVVM `Command`, plain closures, and `Rc<dyn Fn()>`.
-pub trait ClickTarget {
-    /// Converts `self` into an executable click callback (`Rc<dyn Fn()>`).
-    fn into_click_fn(self) -> Rc<dyn Fn()>;
-
-    /// Optional reactive `Computed<bool>` guard that controls the target node's `:disabled` state.
-    fn can_execute_signal(&self) -> Option<Computed<bool>> {
-        None
-    }
-}
-
-impl ClickTarget for Rc<dyn Fn()> {
-    fn into_click_fn(self) -> Rc<dyn Fn()> {
-        self
-    }
-}
-
 #[cfg(feature = "preview")]
 impl ClickTarget for crate::registry::DynCommand {
     fn into_click_fn(self) -> Rc<dyn Fn()> {
         self.as_rc_fn()
     }
 
-    fn can_execute_signal(&self) -> Option<Computed<bool>> {
+    fn can_execute_signal(&self) -> Option<krui_signals::Computed<bool>> {
         self.can_execute()
-    }
-}
-
-impl<F> ClickTarget for F
-where
-    F: Fn() + 'static,
-{
-    fn into_click_fn(self) -> Rc<dyn Fn()> {
-        Rc::new(self)
-    }
-}
-
-/// Pattern-neutral text input handler trait (`oninput`, `onchange`, `onkeydown`) implemented by
-/// `InputCommand`, plain closures `Fn(String)`, and `Rc<dyn Fn(String)>`.
-pub trait InputTarget {
-    /// Converts `self` into an executable string callback (`Rc<dyn Fn(String)>`).
-    fn into_input_fn(self) -> Rc<dyn Fn(String)>;
-}
-
-impl InputTarget for Rc<dyn Fn(String)> {
-    fn into_input_fn(self) -> Rc<dyn Fn(String)> {
-        self
     }
 }
 
@@ -215,20 +175,6 @@ impl InputTarget for Rc<dyn Fn(String)> {
 impl InputTarget for crate::registry::DynInputHandler {
     fn into_input_fn(self) -> Rc<dyn Fn(String)> {
         self.0
-    }
-}
-
-impl<F, R> InputTarget for F
-where
-    F: Fn(String) -> R + 'static,
-    R: KeydownOutcome + 'static,
-{
-    fn into_input_fn(self) -> Rc<dyn Fn(String)> {
-        Rc::new(move |val: String| {
-            if self(val).into_prevent_default() {
-                prevent_default_key();
-            }
-        })
     }
 }
 
@@ -250,25 +196,6 @@ impl ViewFragment {
     /// Mounts this fragment into `tree` under `parent`.
     pub fn mount(self, tree: &mut ViewTree, parent: Option<NodeId>) -> Vec<NodeId> {
         (self.mount_fn)(tree, parent)
-    }
-}
-
-/// Unified click binding target accepting any [`ClickTarget`] (such as an MVVM `Command` with
-/// optional `can_execute` `:disabled` state synchronization or a plain callback).
-#[derive(Clone)]
-pub struct ClickBinding {
-    pub(crate) action: Rc<dyn Fn()>,
-    pub(crate) can_execute: Option<Computed<bool>>,
-}
-
-impl<T: ClickTarget> From<T> for ClickBinding {
-    fn from(target: T) -> Self {
-        let can_execute = target.can_execute_signal();
-        let action = target.into_click_fn();
-        Self {
-            action,
-            can_execute,
-        }
     }
 }
 

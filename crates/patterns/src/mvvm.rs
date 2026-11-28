@@ -1,12 +1,14 @@
 //! MVVM primitives: `Command` (sync & `new_async` with `is_running`), `InputCommand`,
 //! `IntoCanExecute`, `FromAppState`, and `AppStateExt`.
 
-use krui_core::{ClickTarget, InputTarget, PointerEvent, PointerTarget, WheelEvent, WheelTarget};
 #[cfg(not(target_arch = "wasm32"))]
 use krui_signals::Scope;
 use krui_signals::{
     batch, poll_async_tasks, register_async_poller_with_retention, Computed, ReactiveSession,
     Signal,
+};
+use krui_ui_types::{
+    ClickTarget, InputTarget, PointerEvent, PointerTarget, WheelEvent, WheelTarget,
 };
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -347,7 +349,7 @@ impl InputCommand {
                 let f = &raw;
                 let prevented = owner_session.enter(|| batch(|| f(val)));
                 if prevented {
-                    krui_core::prevent_default_key();
+                    krui_ui_types::prevent_default_key();
                 }
             }),
         }

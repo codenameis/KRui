@@ -26,37 +26,52 @@ path = "examples/component_gallery/main.rs"
 required-features = ["desktop"]
 
 [features]
-default = ["desktop", "tray"]
-desktop = ["krui-renderer/gpu", "dep:krui-winit", "dep:krui-engine-host", "dep:krui-bevy", "dep:pollster", "dep:wgpu", "dep:winit"]
+default = ["native-engine", "desktop", "tray"]
+native-engine = [
+    "dep:krui-core",
+    "dep:krui-layout",
+    "dep:krui-text",
+    "dep:krui-a11y",
+    "dep:krui-renderer",
+    "dep:accesskit",
+    "dep:image",
+    "krui-ui-types/image-decode",
+]
+web-dom = ["dep:krui-web"]
+web-gpu-3d = ["web-dom", "dep:wgpu", "wgpu/webgl", "dep:wasm-bindgen-futures"]
+desktop = ["native-engine", "krui-renderer/gpu", "dep:krui-winit", "dep:krui-engine-host", "dep:krui-bevy", "dep:pollster", "dep:wgpu", "dep:winit"]
 tray = ["desktop", "krui-winit/tray"]
-kiosk = []
+kiosk = ["native-engine"]
 preview = ["desktop", "dep:krui-preview", "krui-winit/preview", "krui-core/preview", "krui-patterns/preview", "krui-macros/preview", "krui-style/preview"]
 
 [dependencies]
-krui-core = { workspace = true }
+krui-ui-types = { workspace = true }
+krui-core = { workspace = true, optional = true }
+krui-web = { workspace = true, optional = true }
 krui-winit = { workspace = true, optional = true }
 krui-patterns = { workspace = true }
 krui-signals = { workspace = true }
 krui-style = { workspace = true }
 krui-macros = { workspace = true }
-krui-layout = { workspace = true }
-krui-text = { workspace = true }
-krui-a11y = { workspace = true }
-krui-renderer = { workspace = true }
+krui-layout = { workspace = true, optional = true }
+krui-text = { workspace = true, optional = true }
+krui-a11y = { workspace = true, optional = true }
+krui-renderer = { workspace = true, optional = true }
 krui-engine-host = { workspace = true, optional = true }
 krui-bevy = { workspace = true, features = ["bevy-ecs"], optional = true }
 krui-preview = { workspace = true, optional = true }
-accesskit = { workspace = true }
+accesskit = { workspace = true, optional = true }
 pollster = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
 winit = { workspace = true, optional = true }
-image = { workspace = true }
+image = { workspace = true, optional = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "=0.2.130"
+wasm-bindgen-futures = { version = "0.4", optional = true }
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "CanvasRenderingContext2d",
@@ -71,6 +86,7 @@ web-sys = { version = "0.3", features = [
     "Performance",
     "WheelEvent",
     "Window",
+    "console",
 ] }
 
 [dev-dependencies]
@@ -89,6 +105,7 @@ members = [
     ".",
     "crates/signals",
     "crates/style",
+    "crates/ui-types",
     "crates/stylo-bridge",
     "crates/compiler",
     "crates/macros",
@@ -119,6 +136,7 @@ rust-version = "1.91"
 [workspace.dependencies]
 krui-signals = { path = "crates/signals" }
 krui-style = { path = "crates/style" }
+krui-ui-types = { path = "crates/ui-types" }
 krui-stylo-bridge = { path = "crates/stylo-bridge" }
 krui-compiler = { path = "crates/compiler" }
 krui-macros = { path = "crates/macros" }

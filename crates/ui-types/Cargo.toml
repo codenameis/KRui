@@ -1,0 +1,15 @@
+[package]
+name = "krui-ui-types"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Lightweight shared UI descriptors, input event traits, 2D canvas commands, and SVG/media types for KRui"
+
+[features]
+default = []
+image-decode = ["dep:image"]
+
+[dependencies]
+krui-signals = { workspace = true }
+krui-style = { workspace = true }
+image = { workspace = true, optional = true }

@@ -11,21 +11,8 @@ use crate::view_tree::{InputKind, NodeId, ViewTreeInner};
 use krui_a11y::SemanticRole;
 use krui_signals::batch;
 use krui_style::DisplayMode;
+pub use krui_ui_types::ButtonKind;
 use std::rc::Rc;
-
-/// Semantic `<button type="...">` behavior inside or outside a `<form>`.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum ButtonKind {
-    /// Default `<button>` (`submit` when inside a `<form>`, ordinary button otherwise).
-    #[default]
-    Auto,
-    /// `<button type="button">` (never submits or resets a form).
-    Button,
-    /// `<button type="submit">` (validates and submits the enclosing `<form>`).
-    Submit,
-    /// `<button type="reset">` (resets all controls in the enclosing `<form>` to their initial values).
-    Reset,
-}
 
 #[derive(Default)]
 pub(crate) struct FormActionCallbacks {

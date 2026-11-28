@@ -2,134 +2,31 @@
 //! table-driven loop with zero runtime markup parser (`AGENTS.md` Rule 2).
 
 use crate::view_tree::{ButtonKind, InputKind, NodeId, ViewTree};
+pub use krui_ui_types::static_ir::{
+    StaticAttrDesc, StaticButtonKind, StaticDocumentDesc, StaticInputKind, StaticNodeDesc,
+    StaticNodeKind, StaticSelectOptDesc,
+};
+use std::collections::HashMap;
+use std::sync::{Mutex, OnceLock};
 
-/// Node flavor inside a [`StaticDocumentDesc`] / static subtree table.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum StaticNodeKind {
-    Element,
-    ControlFlowAnchor,
-}
+type StaticImgMap = HashMap<(usize, usize), Option<crate::DecodedImage>>;
 
-/// Static `<button type="...">` classification.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum StaticButtonKind {
-    Auto,
-    Button,
-    Submit,
-    Reset,
-}
+static STATIC_IMG_CACHE: OnceLock<Mutex<StaticImgMap>> = OnceLock::new();
 
-/// Static `<input type="...">` classification.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum StaticInputKind {
-    None,
-    Checkbox,
-    Radio,
-    Range(f32, f32, f32),
-    Text,
-    Password,
-    Number,
-    Email,
-    Search,
-}
-
-/// Static HTML attribute `(name, value)` pair.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct StaticAttrDesc {
-    pub name: &'static str,
-    pub value: &'static str,
-}
-
-/// Static `<option>` entry inside `<select>`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct StaticSelectOptDesc {
-    pub value: &'static str,
-    pub label: &'static str,
-    pub selected: bool,
-}
-
-/// Pre-order static descriptor for a compiled element or control-flow anchor.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct StaticNodeDesc {
-    pub kind: StaticNodeKind,
-    pub parent_slot: Option<usize>,
-    pub tag: &'static str,
-    pub custom_tag: Option<&'static str>,
-    pub id: Option<&'static str>,
-    pub aria_label: Option<&'static str>,
-    pub static_aria_label_slot: Option<&'static str>,
-    pub is_button: bool,
-    pub is_input: bool,
-    pub is_canvas: bool,
-    pub is_secret_input: bool,
-    pub is_synthetic_text_run: bool,
-    pub disabled: Option<bool>,
-    pub required: Option<bool>,
-    pub checked: Option<bool>,
-    pub classes: &'static [&'static str],
-    pub attrs: &'static [StaticAttrDesc],
-    pub inline_style: Option<&'static str>,
-    pub label_for: Option<&'static str>,
-    pub control_name: Option<&'static str>,
-    pub button_kind: StaticButtonKind,
-    pub input_kind: StaticInputKind,
-    pub select_options: &'static [StaticSelectOptDesc],
-    pub static_text: Option<&'static str>,
-    pub placeholder: Option<&'static str>,
-    pub title: Option<&'static str>,
-    pub link_href: Option<&'static str>,
-    pub source_line: u32,
-    pub source_column: u32,
-}
-
-impl StaticNodeDesc {
-    /// Blank default element descriptor for concise `..StaticNodeDesc::BLANK` codegen literals.
-    pub const BLANK: Self = Self {
-        kind: StaticNodeKind::Element,
-        parent_slot: None,
-        tag: "div",
-        custom_tag: None,
-        id: None,
-        aria_label: None,
-        static_aria_label_slot: None,
-        is_button: false,
-        is_input: false,
-        is_canvas: false,
-        is_secret_input: false,
-        is_synthetic_text_run: false,
-        disabled: None,
-        required: None,
-        checked: None,
-        classes: &[],
-        attrs: &[],
-        inline_style: None,
-        label_for: None,
-        control_name: None,
-        button_kind: StaticButtonKind::Auto,
-        input_kind: StaticInputKind::None,
-        select_options: &[],
-        static_text: None,
-        placeholder: None,
-        title: None,
-        link_href: None,
-        source_line: 0,
-        source_column: 0,
+/// Decodes and caches a compile-time embedded static `<img>` asset on first mount.
+pub fn mount_static_image_bytes(tree: &mut ViewTree, node_id: NodeId, bytes: &'static [u8]) {
+    let key = (bytes.as_ptr() as usize, bytes.len());
+    let decoded = {
+        let cache = STATIC_IMG_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+        let mut guard = cache.lock().unwrap_or_else(|e| e.into_inner());
+        guard
+            .entry(key)
+            .or_insert_with(|| crate::DecodedImage::from_encoded_bytes(bytes).ok())
+            .clone()
     };
-
-    /// Blank control-flow anchor descriptor for concise `StaticNodeDesc::ANCHOR` codegen.
-    pub const ANCHOR: Self = Self {
-        kind: StaticNodeKind::ControlFlowAnchor,
-        tag: "",
-        ..Self::BLANK
-    };
-}
-
-/// Top-level document static descriptor slice plus document stylesheet metadata.
-#[derive(Clone, Copy, Debug)]
-pub struct StaticDocumentDesc {
-    pub unstyled: bool,
-    pub stylesheets: &'static [&'static str],
-    pub nodes: &'static [StaticNodeDesc],
+    if let Some(img) = decoded {
+        tree.set_node_decoded_image(node_id, img);
+    }
 }
 
 /// Applies document-level `unstyled` + stylesheets (when top mount) and mounts `doc.nodes`.

@@ -12,6 +12,7 @@ mod host;
 mod measure;
 
 use host::{synthetic_root_layout_style, LayoutHost, LayoutNodeSlot};
+pub use krui_style::LayoutRect;
 use krui_style::LayoutStyle;
 use krui_stylo_bridge::{
     run_taffy_layout, run_taffy_layout_standalone, StyloNodeId, StyloStyleEngine,
@@ -21,26 +22,6 @@ use slotmap::{DefaultKey, SlotMap};
 use std::sync::Arc;
 use taffy::prelude::{AvailableSpace, Size};
 use taffy::{Cache, ClearState, Layout, NodeId};
-
-/// Resolved axis-aligned bounding box in logical pixels after Taffy layout.
-#[derive(Clone, Copy, Debug, PartialEq, Default)]
-pub struct LayoutRect {
-    /// Left edge in logical pixels.
-    pub x: f32,
-    /// Top edge in logical pixels.
-    pub y: f32,
-    /// Box width in logical pixels.
-    pub width: f32,
-    /// Box height in logical pixels.
-    pub height: f32,
-}
-
-impl LayoutRect {
-    /// Returns `true` when `(px, py)` lies inside or on the rectangle.
-    pub const fn contains(self, px: f32, py: f32) -> bool {
-        px >= self.x && px <= self.x + self.width && py >= self.y && py <= self.y + self.height
-    }
-}
 
 /// Text and media measurement context attached to leaf nodes in [`LayoutEngine`].
 #[derive(Clone, Debug, Default, PartialEq)]

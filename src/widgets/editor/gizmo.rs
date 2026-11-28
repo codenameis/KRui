@@ -1,8 +1,8 @@
 //! `<ExternalTexture>` 위 투명 `<canvas>` 오버레이용 3D 기즈모(Translate/Rotate/Scale) 컨트롤러.
 
-use krui_core::{CanvasContext2D, Size};
 use krui_signals::Signal;
 use krui_style::Color;
+use krui_ui_types::{CanvasContext2D, Size};
 use std::cell::Cell;
 use std::rc::Rc;
 

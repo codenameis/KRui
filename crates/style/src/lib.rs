@@ -22,6 +22,7 @@ pub mod grid;
 pub mod homography3d;
 pub mod html_tag;
 pub mod keyframes;
+pub mod layout_rect;
 pub mod layout_types;
 pub mod paint_types;
 pub mod profile;
@@ -72,6 +73,7 @@ pub use keyframes::{
     sample_keyframes, sample_keyframes_with_timing, AnimationDirection, AnimationFillMode,
     AnimationListRef, AnimationSpec, KeyframeStop, KeyframesDef, StaticAnimationSpec,
 };
+pub use layout_rect::LayoutRect;
 pub use layout_types::{
     AlignItems, BoxSizing, CornerRadii, Dimension, DisplayMode, Edges, FlexDirection, InsetEdges,
     JustifyContent, LayoutStyle, OverflowMode, PositionMode,

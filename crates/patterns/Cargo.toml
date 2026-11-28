@@ -7,11 +7,12 @@ description = "KRui — Compile-time type-safe MVVM, MVC, MVI, and Flux/Elm arch
 
 [features]
 default = []
-preview = ["krui-core/preview", "krui-macros/preview"]
+preview = ["dep:krui-core", "krui-core/preview", "krui-macros/preview"]
 
 [dependencies]
 krui-signals = { workspace = true }
-krui-core = { workspace = true }
+krui-ui-types = { workspace = true }
+krui-core = { workspace = true, optional = true }
 krui-macros = { workspace = true }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

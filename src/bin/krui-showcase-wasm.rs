@@ -1,8 +1,9 @@
-//! Platform-neutral WebAssembly showcase entry point for KRui (`krui-showcase-wasm`).
+//! Cross-platform WebAssembly showcase entry point (`krui-showcase-wasm`).
 //!
-//! Mounts the shared pure-CSS Component Gallery (`examples/component_gallery`) directly on top of
-//! `krui-core` + `krui-renderer`'s `TinySkiaRenderer`, without pulling in `krui-winit`, system tray,
-//! clipboard, or `tokio` runtime dependencies.
+//! - Under `--features web-dom` (recommended browser runtime): mounts `component_gallery.krui`
+//!   directly onto live Browser DOM + Native CSS + lazy `<canvas>` 2D/3D islands.
+//! - Under default `native-engine` (workspace tests/fallback): preserves headless `TinySkiaRenderer`
+//!   + `ViewTree` integration.
 
 #![forbid(unsafe_code)]
 
@@ -10,241 +11,148 @@
 #[path = "../../examples/component_gallery/controller/mod.rs"]
 mod controller;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", feature = "native-engine"))]
 #[path = "wasm_showcase/browser_host.rs"]
 mod wasm_browser_host;
 
-use controller::GalleryController;
-use krui::*;
+#[cfg(all(target_arch = "wasm32", feature = "web-dom"))]
+#[path = "wasm_showcase/web_dom_host.rs"]
+mod web_dom_host;
 
-const DEFAULT_WIDTH: u32 = 1280;
-const DEFAULT_HEIGHT: u32 = 840;
-const FRAME_DT_SECONDS: f32 = 1.0 / 60.0;
+#[cfg(all(target_arch = "wasm32", feature = "web-gpu-3d"))]
+#[path = "wasm_showcase/web_viewport3d.rs"]
+mod web_viewport3d;
 
-/// Self-contained CPU-rendered showcase session suitable for `wasm32-unknown-unknown` and browser hosts.
-pub struct WasmShowcaseHost {
-    reactive_session: ReactiveSession,
-    clock: FrameClock,
-    tree: ViewTree,
-    renderer: TinySkiaRenderer,
-    controller: GalleryController,
-    width: u32,
-    height: u32,
-    applied_scheme_mode: i32,
-    applied_anim_paused: bool,
-    rendered_first_frame: bool,
-}
+#[cfg(feature = "native-engine")]
+#[path = "wasm_showcase/native_host.rs"]
+mod native_impl;
 
-impl WasmShowcaseHost {
-    /// Initializes the gallery reactive session, `ViewTree`, and `TinySkiaRenderer` at `1280x840`.
-    pub fn new() -> Self {
-        let reactive_session = ReactiveSession::new();
-        let (clock, tree, controller, applied_scheme_mode, applied_anim_paused) = reactive_session
-            .enter(|| {
+#[cfg(feature = "web-dom")]
+mod web_dom_impl {
+    use super::controller::GalleryController;
+    use krui::*;
+
+    /// Native Browser DOM showcase host mounting `component_gallery.krui` into `#krui-root`.
+    pub struct WasmShowcaseHost {
+        reactive_session: ReactiveSession,
+        clock: FrameClock,
+        tree: ViewTree,
+        controller: GalleryController,
+    }
+
+    impl Default for WasmShowcaseHost {
+        fn default() -> Self {
+            Self::new()
+        }
+    }
+
+    impl WasmShowcaseHost {
+        /// Mounts `component_gallery.krui` and connects reactive color-scheme, motion, and 3D hooks.
+        pub fn new() -> Self {
+            let reactive_session = ReactiveSession::new();
+            let (clock, tree, controller) = reactive_session.enter(|| {
                 let clock = FrameClock::new();
                 let mut tree = ViewTree::new();
                 let controller = GalleryController::new();
+                #[cfg(all(target_arch = "wasm32", feature = "web-gpu-3d"))]
+                super::web_viewport3d::register(&mut tree, &controller);
                 let ctrl_for_view = controller.clone();
                 tree.mount_with(move || {
                     let controller = ctrl_for_view;
                     include_krui!("examples/component_gallery/views/component_gallery.krui")
                 });
-                tree.set_color_scheme_preference(controller.current_color_scheme_pref());
-                let scheme_mode = controller.color_scheme_mode.get_untracked();
-                let anim_paused = controller.animations_paused.get_untracked();
-                (clock, tree, controller, scheme_mode, anim_paused)
+                let tree_scheme = tree.clone();
+                let ctrl_scheme = controller.clone();
+                let _ = Effect::new(move || {
+                    let _ = ctrl_scheme.color_scheme_mode.get();
+                    tree_scheme
+                        .clone()
+                        .set_color_scheme_preference(ctrl_scheme.current_color_scheme_pref());
+                });
+                let tree_pause = tree.clone();
+                let ctrl_pause = controller.clone();
+                let _ = Effect::new(move || {
+                    tree_pause
+                        .clone()
+                        .set_animations_paused(ctrl_pause.animations_paused.get());
+                });
+                (clock, tree, controller)
             });
-        let renderer =
-            TinySkiaRenderer::new(DEFAULT_WIDTH, DEFAULT_HEIGHT, GpuResourceLimits::default());
-        Self {
-            reactive_session,
-            clock,
-            tree,
-            renderer,
-            controller,
-            width: DEFAULT_WIDTH,
-            height: DEFAULT_HEIGHT,
-            applied_scheme_mode,
-            applied_anim_paused,
-            rendered_first_frame: false,
+            Self {
+                reactive_session,
+                clock,
+                tree,
+                controller,
+            }
+        }
+
+        /// Returns a reference to [`ViewTree`] (`WebDomTree`).
+        pub fn tree(&self) -> &ViewTree {
+            &self.tree
+        }
+
+        /// Returns shared [`GalleryController`].
+        pub fn controller(&self) -> &GalleryController {
+            &self.controller
+        }
+
+        /// Executes `f` within this host's isolated [`ReactiveSession`].
+        pub fn enter<R>(&self, f: impl FnOnce() -> R) -> R {
+            self.reactive_session.enter(f)
+        }
+
+        /// Returns `true` when reactive springs or 3D turntable auto-spin require animation frames.
+        pub fn needs_spin_tick(&self) -> bool {
+            self.reactive_session.enter(|| {
+                self.clock.has_active_animations()
+                    || (self.controller.active_section.get_untracked() == 4
+                        && self.controller.w4.studio.develop_subroute.get_untracked() == 2
+                        && self.controller.w4.studio.auto_spin.get_untracked())
+            })
+        }
+
+        /// Advances reactive frame clocks and optional 3D auto-spin by `dt_secs`.
+        pub fn tick(&mut self, dt_secs: f32) -> bool {
+            self.reactive_session.enter(|| {
+                self.clock.tick(dt_secs);
+                if self.controller.active_section.get_untracked() == 4
+                    && self.controller.w4.studio.develop_subroute.get_untracked() == 2
+                {
+                    self.controller.w4.studio.tick_auto_spin(dt_secs);
+                }
+            });
+            self.needs_spin_tick()
         }
     }
-
-    /// Updates the logical viewport size in pixels.
-    pub fn resize(&mut self, width: u32, height: u32) {
-        self.width = width.max(1);
-        self.height = height.max(1);
-    }
-
-    /// Updates the HiDPI display scale factor applied to layout and rasterization.
-    pub fn set_scale_factor(&mut self, scale_factor: f32) {
-        self.tree.set_scale_factor(scale_factor);
-    }
-
-    /// Returns a reference to the shared gallery MVC controller.
-    pub fn controller(&self) -> &GalleryController {
-        &self.controller
-    }
-
-    /// Returns `true` when reactive state, transitions, animations, or initial paint require a frame.
-    pub fn needs_frame(&mut self) -> bool {
-        let controller = &self.controller;
-        let scheme_dirty = self.applied_scheme_mode != controller.color_scheme_mode.get_untracked();
-        let anim_dirty = self.applied_anim_paused != controller.animations_paused.get_untracked();
-        let active_clock = self
-            .reactive_session
-            .enter(|| self.clock.has_active_animations());
-        !self.rendered_first_frame
-            || scheme_dirty
-            || anim_dirty
-            || active_clock
-            || self.tree.has_active_transitions()
-            || self.tree.is_paint_dirty()
-    }
-
-    /// Dispatches a pointer move event in logical CSS pixels.
-    pub fn dispatch_pointer_move(&mut self, x: f32, y: f32, mods: Mods) -> bool {
-        let tree = &mut self.tree;
-        self.reactive_session
-            .enter(|| tree.dispatch_pointer_move_with_mods(x, y, mods))
-    }
-
-    /// Dispatches a mouse button transition in logical CSS pixels.
-    pub fn dispatch_pointer_button(
-        &mut self,
-        x: f32,
-        y: f32,
-        button: PointerButton,
-        pressed: bool,
-        mods: Mods,
-        timestamp_ms: u64,
-    ) -> bool {
-        let tree = &mut self.tree;
-        self.reactive_session
-            .enter(|| tree.dispatch_pointer_button(x, y, button, pressed, mods, timestamp_ms))
-    }
-
-    /// Dispatches pointer leave when the cursor exits the canvas.
-    pub fn dispatch_pointer_leave(&mut self) -> bool {
-        let tree = &mut self.tree;
-        self.reactive_session
-            .enter(|| tree.dispatch_pointer_leave())
-    }
-
-    /// Dispatches a scroll wheel event at `(x, y)` in logical CSS pixels.
-    pub fn dispatch_wheel(
-        &mut self,
-        x: f32,
-        y: f32,
-        delta_x: f32,
-        delta_y: f32,
-        mods: Mods,
-    ) -> bool {
-        let tree = &mut self.tree;
-        self.reactive_session
-            .enter(|| tree.dispatch_wheel(x, y, delta_x, delta_y, mods))
-    }
-
-    /// Dispatches a DOM `KeyboardEvent.key` string with modifiers into the showcase and `ViewTree`.
-    pub fn dispatch_key(&mut self, key: &str, mods: Mods) -> bool {
-        let tree = &mut self.tree;
-        let controller = &self.controller;
-        self.reactive_session.enter(|| {
-            if key == "Escape" {
-                if tree.active_select_popup().is_some() {
-                    return tree.dispatch_key_escape();
-                }
-                return controller.dismiss_top_overlay() || tree.dispatch_key_escape();
-            }
-            if key == "F5" || key == "F6" {
-                controller.select_theme(if key == "F5" { 0 } else { 1 });
-                return true;
-            }
-            match key {
-                "Tab" => tree.dispatch_key_tab(mods.shift).is_some(),
-                "Enter" => tree.dispatch_key_enter(),
-                " " => tree.dispatch_key_space() || tree.dispatch_key_text(" "),
-                k if !mods.ctrl && !mods.alt && !mods.super_key && k.chars().count() == 1 => {
-                    tree.dispatch_key_text(k)
-                }
-                k => tree.dispatch_key_down(k),
-            }
-        })
-    }
-
-    /// Advances animations, transitions, layout, and `TinySkiaRenderer` rasterization by `dt_seconds`.
-    pub fn step_frame(&mut self, dt_seconds: f32) -> FrameRenderStats {
-        let controller = &self.controller;
-        let tree = &mut self.tree;
-        let clock = &mut self.clock;
-        let renderer = &mut self.renderer;
-        let (width, height) = (self.width, self.height);
-        let applied_scheme = &mut self.applied_scheme_mode;
-        let applied_paused = &mut self.applied_anim_paused;
-        let first = &mut self.rendered_first_frame;
-
-        self.reactive_session.enter(|| {
-            let target_scheme = controller.color_scheme_mode.get_untracked();
-            if target_scheme != *applied_scheme {
-                *applied_scheme = target_scheme;
-                tree.set_color_scheme_preference(controller.current_color_scheme_pref());
-            }
-            let paused = controller.animations_paused.get_untracked();
-            if paused != *applied_paused {
-                *applied_paused = paused;
-                tree.set_animations_paused(paused);
-            }
-            let _ = clock.tick(dt_seconds);
-            let _ = tree.sync_viewport_and_media(width as f32, height as f32);
-            let _ = tree.tick_transitions(dt_seconds);
-            let (scene, _layout_ran) = tree.build_paint_scene(width, height);
-            *first = true;
-            renderer.render_scene(&scene)
-        })
-    }
-
-    /// Returns the latest rasterized premultiplied RGBA8 framebuffer slice and pixel dimensions.
-    pub fn framebuffer_rgba_and_size(&mut self) -> Option<(&[u8], u32, u32)> {
-        let (pw, ph) = self.renderer.framebuffer_dimensions()?;
-        let rgba = self.renderer.framebuffer_rgba()?;
-        Some((rgba, pw, ph))
-    }
-
-    /// Returns the latest rasterized RGBA8 framebuffer slice when available.
-    pub fn framebuffer_rgba(&mut self) -> Option<&[u8]> {
-        self.renderer.framebuffer_rgba()
-    }
 }
 
-impl Default for WasmShowcaseHost {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+#[cfg(feature = "native-engine")]
+pub use native_impl::{WasmShowcaseHost, DEFAULT_HEIGHT, DEFAULT_WIDTH, FRAME_DT_SECONDS};
+#[cfg(feature = "web-dom")]
+pub use web_dom_impl::WasmShowcaseHost;
 
 fn main() {
-    #[cfg(target_arch = "wasm32")]
+    #[cfg(all(target_arch = "wasm32", feature = "web-dom"))]
+    web_dom_host::run_browser_showcase();
+    #[cfg(all(target_arch = "wasm32", feature = "native-engine"))]
     wasm_browser_host::launch_browser_showcase();
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let mut host = WasmShowcaseHost::new();
-        let _ = host.step_frame(FRAME_DT_SECONDS);
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::WasmShowcaseHost;
+    #[cfg(feature = "native-engine")]
+    use super::{DEFAULT_HEIGHT, DEFAULT_WIDTH, FRAME_DT_SECONDS};
+    #[cfg(feature = "web-dom")]
+    use krui::{PointerButton, PointerEvent};
 
+    #[cfg(feature = "native-engine")]
     #[test]
     fn wasm_showcase_mounts_renders_and_switches_pure_css_themes_with_zero_relayout() {
         let mut host = WasmShowcaseHost::new();
         assert!(host.needs_frame(), "initial frame must be dirty");
         let stats = host.step_frame(FRAME_DT_SECONDS);
-        assert!(
-            stats.draw_primitives_submitted > 0,
-            "initial showcase frame must submit primitives"
-        );
+        assert!(stats.draw_primitives_submitted > 0);
         let fb_len = host
             .framebuffer_rgba()
             .expect("framebuffer must exist after step_frame")
@@ -258,32 +166,198 @@ mod tests {
         let _ = host.step_frame(FRAME_DT_SECONDS);
         let _ = host.step_frame(0.5);
         let relayout_light = host.tree.relayout_passes();
-        host.reactive_session.enter(|| {
-            host.controller().select_theme(1);
-        });
+        host.reactive_session
+            .enter(|| host.controller().select_theme(1));
         let _ = host.step_frame(FRAME_DT_SECONDS);
         let _ = host.step_frame(0.5);
-        assert_eq!(
-            host.tree.relayout_passes() - relayout_light,
-            0,
-            "Material -> Tailwind pure-CSS theme switch must keep 0 Taffy relayouts"
-        );
+        assert_eq!(host.tree.relayout_passes() - relayout_light, 0);
 
-        host.reactive_session.enter(|| {
-            host.controller().set_color_scheme_mode(2);
-        });
+        host.reactive_session
+            .enter(|| host.controller().set_color_scheme_mode(2));
         let _ = host.step_frame(FRAME_DT_SECONDS);
         let _ = host.step_frame(0.5);
         let relayout_dark = host.tree.relayout_passes();
-        host.reactive_session.enter(|| {
-            host.controller().select_theme(0);
-        });
+        host.reactive_session
+            .enter(|| host.controller().select_theme(0));
         let _ = host.step_frame(FRAME_DT_SECONDS);
         let _ = host.step_frame(0.5);
-        assert_eq!(
-            host.tree.relayout_passes() - relayout_dark,
-            0,
-            "Tailwind -> Material pure-CSS theme switch in dark mode must keep 0 Taffy relayouts"
+        assert_eq!(host.tree.relayout_passes() - relayout_dark, 0);
+    }
+
+    #[cfg(feature = "web-dom")]
+    #[test]
+    fn wasm_showcase_web_dom_canvas_and_3d_spin() {
+        let mut host = WasmShowcaseHost::new();
+        let mock_roots = host.tree().with_backend_ref(|b| {
+            b.as_any()
+                .unwrap()
+                .downcast_ref::<krui::MockDomBackend>()
+                .unwrap()
+                .roots()
+                .len()
+        });
+        assert!(mock_roots > 0);
+        dispatch_mock_click(
+            &host,
+            find_mock_id(&host, "nav-sec-develop").expect("#nav-sec-develop"),
         );
+        host.enter(|| assert_eq!(host.controller().active_section.get_untracked(), 4));
+
+        dispatch_mock_click(&host, find_mock_id(&host, "dev-sub-1").expect("#dev-sub-1"));
+        let add_btn = find_mock_id(&host, "canvas-add-rect").expect("#canvas-add-rect");
+        let canvas_id = find_mock_id(&host, "studio-2d-canvas").expect("#studio-2d-canvas");
+        dispatch_mock_click(&host, add_btn);
+        let cmds_after_add = host.tree().with_backend_ref(|b| {
+            b.as_any()
+                .unwrap()
+                .downcast_ref::<krui::MockDomBackend>()
+                .unwrap()
+                .node(canvas_id)
+                .unwrap()
+                .canvas_commands
+                .len()
+        });
+        dispatch_canvas_drag(&host, canvas_id);
+        assert!(cmds_after_add > 0);
+
+        dispatch_mock_click(&host, find_mock_id(&host, "dev-sub-2").expect("#dev-sub-2"));
+        host.enter(|| {
+            assert_eq!(
+                host.controller().w4.studio.develop_subroute.get_untracked(),
+                2
+            );
+            assert!(host.needs_spin_tick());
+        });
+        let yaw_before = host.enter(|| host.controller().w4.studio.orbit_yaw.get_untracked());
+        assert!(host.tick(0.05));
+        let yaw_after = host.enter(|| host.controller().w4.studio.orbit_yaw.get_untracked());
+        assert!(
+            yaw_after > yaw_before,
+            "auto-spin tick must advance orbit_yaw"
+        );
+    }
+
+    #[cfg(feature = "web-dom")]
+    #[test]
+    fn wasm_showcase_web_dom_nested_if_unmount_and_text_inputs() {
+        let host = WasmShowcaseHost::new();
+        dispatch_mock_click(
+            &host,
+            find_mock_id(&host, "nav-sec-components").expect("#nav-sec-components"),
+        );
+        assert!(find_mock_id(&host, "ov-card-dialogs").is_some());
+        host.enter(|| host.controller().select_doc_page(22));
+        assert!(
+            find_mock_id(&host, "ov-card-dialogs").is_none(),
+            "Nested <if> overview card must unmount when switching to Text fields"
+        );
+        let tf_filled = find_mock_id(&host, "tf-name-filled").expect("#tf-name-filled");
+        let tf_outlined = find_mock_id(&host, "tf-name-outlined").expect("#tf-name-outlined");
+        let (outlined_input, input_cbs) = host.tree().with_backend_ref(|b| {
+            let mock = b
+                .as_any()
+                .unwrap()
+                .downcast_ref::<krui::MockDomBackend>()
+                .unwrap();
+            let fi =
+                find_descendant_by_tag(mock, tf_filled, "input").expect("#tf-name-filled input");
+            let oi = find_descendant_by_tag(mock, tf_outlined, "input")
+                .expect("#tf-name-outlined input");
+            (oi, mock.input_handlers(fi))
+        });
+        assert!(
+            !input_cbs.is_empty(),
+            "#tf-name-filled input must have oninput handler"
+        );
+        for cb in &input_cbs {
+            cb("한글".to_string());
+            cb("한글 입력 테스트".to_string());
+        }
+        host.enter(|| {
+            assert_eq!(
+                host.controller().user_name_text.get_untracked(),
+                "한글 입력 테스트"
+            );
+            assert_eq!(host.controller().name_counter.get_untracked(), "9 / 32자");
+        });
+        host.tree().with_backend_ref(|b| {
+            let mock = b
+                .as_any()
+                .unwrap()
+                .downcast_ref::<krui::MockDomBackend>()
+                .unwrap();
+            assert_eq!(mock.node(outlined_input).unwrap().value, "한글 입력 테스트");
+        });
+        dispatch_mock_click(
+            &host,
+            find_mock_id(&host, "nav-sec-develop").expect("#nav-sec-develop"),
+        );
+        assert!(find_mock_id(&host, "tf-name-filled").is_none());
+    }
+
+    #[cfg(feature = "web-dom")]
+    fn dispatch_canvas_drag(host: &WasmShowcaseHost, canvas_id: krui::NodeId) {
+        let fire = |kind: krui_web::DomEventKind, ev: PointerEvent| {
+            host.tree()
+                .with_backend_ref(|b| {
+                    b.as_any()
+                        .unwrap()
+                        .downcast_ref::<krui::MockDomBackend>()
+                        .unwrap()
+                        .pointer_handlers(canvas_id, kind)
+                })
+                .into_iter()
+                .for_each(|cb| cb(ev));
+        };
+        let drag_pt = |x, y| PointerEvent {
+            local_x: x,
+            local_y: y,
+            button: PointerButton::Primary,
+            buttons: 1,
+            ..PointerEvent::default()
+        };
+        fire(krui_web::DomEventKind::PointerDown, drag_pt(220.0, 180.0));
+        fire(krui_web::DomEventKind::PointerMove, drag_pt(260.0, 210.0));
+        fire(krui_web::DomEventKind::PointerUp, PointerEvent::default());
+    }
+
+    #[cfg(feature = "web-dom")]
+    fn find_mock_id(host: &WasmShowcaseHost, html_id: &str) -> Option<krui::NodeId> {
+        host.tree().with_backend_ref(|b| {
+            b.as_any()
+                .and_then(|a| a.downcast_ref::<krui::MockDomBackend>())
+                .and_then(|m| m.find_by_html_id(html_id))
+        })
+    }
+
+    #[cfg(feature = "web-dom")]
+    fn dispatch_mock_click(host: &WasmShowcaseHost, id: krui::NodeId) {
+        let handlers = host.tree().with_backend_ref(|b| {
+            b.as_any()
+                .and_then(|a| a.downcast_ref::<krui::MockDomBackend>())
+                .unwrap()
+                .click_handlers(id)
+        });
+        for cb in handlers {
+            cb();
+        }
+    }
+
+    #[cfg(feature = "web-dom")]
+    fn find_descendant_by_tag(
+        mock: &krui::MockDomBackend,
+        root: krui::NodeId,
+        tag: &str,
+    ) -> Option<krui::NodeId> {
+        let node = mock.node(root)?;
+        if node.tag == tag {
+            return Some(root);
+        }
+        for &c in &node.children {
+            if let Some(found) = find_descendant_by_tag(mock, c, tag) {
+                return Some(found);
+            }
+        }
+        None
     }
 }

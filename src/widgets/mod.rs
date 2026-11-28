@@ -5,6 +5,7 @@ pub mod date_picker;
 pub mod editor;
 pub mod snackbar;
 pub mod time_picker;
+#[cfg(feature = "native-engine")]
 pub mod virtual_keyboard;
 
 pub use carousel::CarouselController;
@@ -19,4 +20,5 @@ pub use editor::{
 };
 pub use snackbar::SnackbarController;
 pub use time_picker::TimePickerController;
+#[cfg(feature = "native-engine")]
 pub use virtual_keyboard::{KeyboardLayer, VirtualKeyKind, VirtualKeyboardController};
