@@ -266,55 +266,106 @@ pub(super) fn build_skia_round_rect(
     build_skia_round_rect_4(x, y, w, h, [radius; 4])
 }
 
+fn try_fill_sharp_rect_skia(
+    pixmap: &mut tiny_skia::Pixmap,
+    mask: Option<&tiny_skia::Mask>,
+    a: &StyledBoxSkiaArgs,
+    skia_tx: tiny_skia::Transform,
+) -> bool {
+    let tx = a.scaled_transform;
+    if a.corner_radii.iter().any(|&r| r > 0.05)
+        || a.background_gradient.is_some()
+        || a.radial_gradient.is_some()
+        || a.conic_gradient.is_some()
+        || tx.b.abs() > 1e-5
+        || tx.c.abs() > 1e-5
+        || tx.a <= 0.0
+        || tx.d <= 0.0
+    {
+        return false;
+    }
+    if a.background_color.a > 0 {
+        let Some(rect) =
+            tiny_skia::Rect::from_xywh(a.rect.x, a.rect.y, a.rect.width, a.rect.height)
+        else {
+            return false;
+        };
+        let opaque = a.background_color.a == 255 && a.opacity >= 0.999;
+        let x0 = tx.a * a.rect.x + tx.tx;
+        let y0 = tx.d * a.rect.y + tx.ty;
+        let pw = pixmap.width() as f32;
+        let ph = pixmap.height() as f32;
+        if mask.is_none()
+            && opaque
+            && x0 <= 0.0
+            && y0 <= 0.0
+            && x0 + tx.a * a.rect.width >= pw
+            && y0 + tx.d * a.rect.height >= ph
+        {
+            pixmap.fill(to_skia_color(a.background_color, 1.0));
+        } else {
+            let mut paint = tiny_skia::Paint {
+                anti_alias: true,
+                ..Default::default()
+            };
+            paint.set_color(to_skia_color(a.background_color, a.opacity));
+            pixmap.fill_rect(rect, &paint, skia_tx, mask);
+        }
+    }
+    true
+}
+
 pub(super) fn paint_styled_box_surfaces_skia(
     pixmap: &mut tiny_skia::Pixmap,
     mask: Option<&tiny_skia::Mask>,
     a: &StyledBoxSkiaArgs,
 ) {
-    let Some(outer_path) = build_skia_round_rect_4(
-        a.rect.x,
-        a.rect.y,
-        a.rect.width,
-        a.rect.height,
-        a.corner_radii,
-    ) else {
-        return;
-    };
     let skia_tx = to_skia_transform(a.scaled_transform);
-    if a.background_color.a > 0 {
-        fill_skia_path(
-            pixmap,
-            &outer_path,
-            a.background_color,
-            a.opacity,
-            skia_tx,
-            mask,
-        );
-    }
-    if let Some(grad) = a.background_gradient {
-        fill_gradient_skia(pixmap, &outer_path, a.rect, grad, a.opacity, skia_tx, mask);
-    }
-    if let Some(rg) = a.radial_gradient {
-        super::tiny_skia_radial::fill_radial_gradient_skia(
-            pixmap,
-            &outer_path,
-            a.rect,
-            rg,
-            a.opacity,
-            skia_tx,
-            mask,
-        );
-    }
-    if let Some(cg) = a.conic_gradient {
-        super::tiny_skia_conic::fill_conic_gradient_skia(
-            pixmap,
-            &outer_path,
-            a.rect,
-            cg,
-            a.opacity,
-            skia_tx,
-            mask,
-        );
+    if !try_fill_sharp_rect_skia(pixmap, mask, a, skia_tx) {
+        let Some(outer_path) = build_skia_round_rect_4(
+            a.rect.x,
+            a.rect.y,
+            a.rect.width,
+            a.rect.height,
+            a.corner_radii,
+        ) else {
+            return;
+        };
+        if a.background_color.a > 0 {
+            fill_skia_path(
+                pixmap,
+                &outer_path,
+                a.background_color,
+                a.opacity,
+                skia_tx,
+                mask,
+            );
+        }
+        if let Some(grad) = a.background_gradient {
+            fill_gradient_skia(pixmap, &outer_path, a.rect, grad, a.opacity, skia_tx, mask);
+        }
+        if let Some(rg) = a.radial_gradient {
+            super::tiny_skia_radial::fill_radial_gradient_skia(
+                pixmap,
+                &outer_path,
+                a.rect,
+                rg,
+                a.opacity,
+                skia_tx,
+                mask,
+            );
+        }
+        if let Some(cg) = a.conic_gradient {
+            super::tiny_skia_conic::fill_conic_gradient_skia(
+                pixmap,
+                &outer_path,
+                a.rect,
+                cg,
+                a.opacity,
+                skia_tx,
+                mask,
+            );
+        }
     }
     if a.border_width > 0.0 && a.border_color.a > 0 {
         fill_inset_border_skia(

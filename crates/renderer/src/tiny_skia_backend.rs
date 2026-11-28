@@ -11,6 +11,7 @@ mod tiny_skia_effects;
 mod tiny_skia_filter;
 mod tiny_skia_glyphs;
 mod tiny_skia_images;
+mod tiny_skia_layer_bounds;
 mod tiny_skia_perspective;
 mod tiny_skia_radial;
 mod tiny_skia_shadow_cache;
@@ -27,9 +28,10 @@ use krui_style::{Affine2, Color};
 use tiny_skia_blur::render_backdrop_blur_skia;
 use tiny_skia_clip_cache::{aabb_needs_clip_mask, ClipMaskCache};
 use tiny_skia_effects::{render_box_shadow_skia, SkiaBoxEffectCtx};
-use tiny_skia_filter::step_layer_op_skia;
+use tiny_skia_filter::{record_offscreen_prim_bounds, step_layer_op_skia};
 use tiny_skia_glyphs::{rasterize_glyphs_skia, GlyphBlitParams};
 use tiny_skia_images::SkiaImageCache;
+use tiny_skia_layer_bounds::acquire_pooled_layer_pixmap;
 use tiny_skia_shadow_cache::ShadowPatchCache;
 use tiny_skia_shapes::{paint_styled_box_surfaces_skia, to_skia_color, StyledBoxSkiaArgs};
 
@@ -39,7 +41,7 @@ pub struct TinySkiaRenderer {
     mask_cache: ClipMaskCache,
     shadow_cache: ShadowPatchCache,
     image_cache: SkiaImageCache,
-    layer_pool: Vec<tiny_skia::Pixmap>,
+    layer_pool: Vec<(tiny_skia::Pixmap, Option<[u32; 4]>)>,
     limits: GpuResourceLimits,
     has_rendered: bool,
 }
@@ -95,13 +97,7 @@ impl TinySkiaRenderer {
     }
 
     fn acquire_layer_pixmap(&mut self, w: u32, h: u32) -> Option<tiny_skia::Pixmap> {
-        if let Some(mut px) = self.layer_pool.pop() {
-            if px.width() == w && px.height() == h {
-                px.data_mut().fill(0);
-                return Some(px);
-            }
-        }
-        tiny_skia::Pixmap::new(w, h)
+        acquire_pooled_layer_pixmap(&mut self.layer_pool, w, h)
     }
 }
 
@@ -193,6 +189,7 @@ impl TinySkiaRenderer {
                 scale_tx,
                 inline_op,
             );
+            record_offscreen_prim_bounds(&mut stack, prim, scale, vp);
             verts_eq += v;
             idx_eq += i;
         }

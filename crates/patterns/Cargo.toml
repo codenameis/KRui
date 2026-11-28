@@ -13,4 +13,6 @@ preview = ["krui-core/preview", "krui-macros/preview"]
 krui-signals = { workspace = true }
 krui-core = { workspace = true }
 krui-macros = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { workspace = true }

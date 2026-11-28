@@ -1,108 +1,47 @@
 //! Desktop `winit` window event loop (`EventLoop::<KruiWinitEvent>`), `UiWaker` registration,
 //! `softbuffer` CPU fallback presenter, and live `accesskit_winit::Adapter` integration.
 
+use crate::app_icon::WindowOptions;
 use crate::ime_adapter::{ime_event_from_winit, WinitImeStateCache};
+pub use crate::launch::{run_app_window, run_app_window_with_hooks, run_app_window_with_options};
 #[cfg(feature = "preview")]
 use crate::preview;
 use crate::session::EngineSession;
 use crate::softbuffer_presenter::DesktopWindowPresenter;
+use crate::tray::{
+    compute_tray_aware_idle_control_flow, resolve_close_request_command, TrayIdleState,
+};
+use crate::tray_host::{apply_window_command_to_host, ActiveTrayHost};
 pub use crate::window_helpers::{
     apply_key_action, compute_idle_control_flow, compute_window_idle_control_flow,
     key_info_from_logical_key, key_info_from_winit, touch_phase_from_winit, KruiWinitEvent,
     WindowEventHooks, CARET_BLINK_IDLE_TIMEOUT, FRAME_PACE_120HZ,
 };
-use crate::window_helpers::{
-    map_winit_theme, mods_from_winit, run_headless_window_session, NoopWindowHooks,
-    WinitProxyUiWaker,
-};
+use crate::window_helpers::{map_winit_theme, mods_from_winit};
 use krui_core::{GpuResourceLimits, HoveredCursorKind, Mods};
 use std::sync::Arc;
 use std::time::Instant;
 use winit::application::ApplicationHandler;
 use winit::dpi::LogicalSize;
 use winit::event::{ElementState, KeyEvent, WindowEvent};
-use winit::event_loop::{ActiveEventLoop, EventLoop, EventLoopProxy};
+use winit::event_loop::{ActiveEventLoop, EventLoopProxy};
 use winit::window::{Window, WindowId};
-
-/// Launches an interactive native desktop window for `session` (or runs headless verification
-/// if `--headless` is passed on the command line).
-pub fn run_app_window(title: &str, session: EngineSession, hot_reload_krui_path: Option<&str>) {
-    run_app_window_with_hooks(title, session, hot_reload_krui_path, NoopWindowHooks);
-}
-
-/// Launches an interactive native desktop window with custom [`WindowEventHooks`].
-pub fn run_app_window_with_hooks<H: WindowEventHooks>(
-    title: &str,
-    mut session: EngineSession,
-    _hot_reload_krui_path: Option<&str>,
-    hooks: H,
-) {
-    if std::env::args().any(|a| a == "--headless") {
-        run_headless_window_session(title, &mut session);
-        return;
-    }
-    #[cfg(feature = "preview")]
-    if crate::embed_panel::is_embed_panel_mode() {
-        use crate::embed_panel::run_embedded_panel_session as run_panel;
-        run_panel(title, session, _hot_reload_krui_path, hooks);
-        return;
-    }
-
-    let Ok(event_loop) = EventLoop::<KruiWinitEvent>::with_user_event().build() else {
-        let _ = session.step_frame(1.0 / 120.0);
-        return;
-    };
-    let proxy = event_loop.create_proxy();
-    session.reactive_session.enter(|| {
-        krui_signals::set_ui_waker(Some(Arc::new(WinitProxyUiWaker::new(proxy.clone()))));
-    });
-
-    #[cfg(feature = "preview")]
-    let hot_reloader = preview::init_window_hot_reloader(_hot_reload_krui_path, &proxy);
-    let now = Instant::now();
-    let mut host = StandardWindowHost {
-        base_title: title.to_string(),
-        session,
-        hooks,
-        window: None,
-        presenter: None,
-        a11y_adapter: None,
-        proxy,
-        cursor_pos: (0.0, 0.0),
-        is_left_mouse_down: false,
-        hook_pointer_buttons: 0,
-        is_window_focused: true,
-        mods: Mods::default(),
-        current_cursor_kind: HoveredCursorKind::Default,
-        pointer_lock_active: false,
-        ime_cache: WinitImeStateCache::default(),
-        epoch: now,
-        last_frame: now,
-        last_touch_time: now,
-        last_caret_activity: now,
-        #[cfg(feature = "preview")]
-        last_hot_reload_check: now,
-        #[cfg(feature = "preview")]
-        hot_reloader,
-    };
-    let _ = event_loop.run_app(&mut host);
-    host.session
-        .reactive_session
-        .enter(|| krui_signals::set_ui_waker(None));
-}
 
 pub(crate) struct StandardWindowHost<H: WindowEventHooks> {
     pub(crate) base_title: String,
     pub(crate) session: EngineSession,
     pub(crate) hooks: H,
+    pub(crate) options: WindowOptions,
     pub(crate) window: Option<Arc<Window>>,
     pub(crate) presenter: Option<DesktopWindowPresenter>,
     pub(crate) a11y_adapter: Option<accesskit_winit::Adapter>,
+    pub(crate) tray_host: Option<ActiveTrayHost>,
     pub(crate) proxy: EventLoopProxy<KruiWinitEvent>,
     pub(crate) cursor_pos: (f32, f32),
     pub(crate) is_left_mouse_down: bool,
     pub(crate) hook_pointer_buttons: u8,
     pub(crate) is_window_focused: bool,
+    pub(crate) is_window_hidden: bool,
     pub(crate) mods: Mods,
     pub(crate) current_cursor_kind: HoveredCursorKind,
     pub(crate) pointer_lock_active: bool,
@@ -312,10 +251,13 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
             self.session.width = ow;
             self.session.height = oh;
         }
-        let attrs = Window::default_attributes()
+        let mut attrs = Window::default_attributes()
             .with_title(&self.base_title)
             .with_visible(false)
             .with_inner_size(LogicalSize::new(self.session.width, self.session.height));
+        if let Some(icon) = self.options.icon.as_ref().and_then(|i| i.to_winit_icon()) {
+            attrs = attrs.with_window_icon(Some(icon));
+        }
         let Ok(win) = event_loop.create_window(attrs) else {
             return;
         };
@@ -338,7 +280,12 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
         let arc_win = Arc::new(win);
         let a11y_adapter =
             accesskit_winit::Adapter::with_event_loop_proxy(&arc_win, self.proxy.clone());
-        arc_win.set_visible(true);
+        if self.tray_host.is_none() {
+            self.tray_host = self.options.tray.as_ref().and_then(ActiveTrayHost::try_new);
+        }
+        if !self.is_window_hidden {
+            arc_win.set_visible(true);
+        }
         self.presenter = DesktopWindowPresenter::try_create(
             arc_win.clone(),
             &self.session,
@@ -348,12 +295,16 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
         );
         self.a11y_adapter = Some(a11y_adapter);
         self.window = Some(arc_win);
-        self.sync_and_redraw();
+        if !self.is_window_hidden {
+            self.sync_and_redraw();
+        }
     }
 
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         let tick_effect = self.hooks.on_tick(&mut self.session);
         self.apply_hook_effect(tick_effect);
+        let hook_cmd = self.hooks.take_window_command(&mut self.session);
+        apply_window_command_to_host(self, event_loop, hook_cmd);
 
         let now = Instant::now();
         self.poll_preview_watcher_if_due(now);
@@ -387,35 +338,48 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
                 || w.inner_size().width == 0
                 || w.inner_size().height == 0
         });
+        let occluded = self.is_window_hidden || is_minimized;
         let is_drag_autoscrolling =
             self.is_left_mouse_down && self.session.tree.is_text_drag_selecting();
-        let has_anim = !is_minimized
+        let has_anim = !occluded
             && (self
                 .session
                 .reactive_session
                 .enter(|| self.session.clock.has_active_animations())
                 || self.session.tree.has_active_transitions()
                 || is_drag_autoscrolling);
-        let paint_dirty = !is_minimized && self.session.tree.is_paint_dirty();
+        let paint_dirty = !occluded && self.session.tree.is_paint_dirty();
         if paint_dirty || (has_anim && now.duration_since(self.last_frame) >= FRAME_PACE_120HZ) {
             if let Some(win) = &self.window {
                 win.request_redraw();
             }
         }
-        let flow = compute_window_idle_control_flow(
-            has_anim,
-            paint_dirty,
-            is_input_focused,
-            self.is_window_focused,
-            idle_since_input,
-            has_watcher,
+        let flow = compute_tray_aware_idle_control_flow(
+            TrayIdleState {
+                is_hidden: self.is_window_hidden,
+                is_minimized,
+                has_active_animations: has_anim,
+                is_paint_dirty: paint_dirty,
+                is_input_focused,
+                is_window_focused: self.is_window_focused,
+                idle_since_input,
+                has_preview_watcher: has_watcher,
+            },
             now,
         );
         event_loop.set_control_flow(flow);
     }
 
-    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: KruiWinitEvent) {
+    fn user_event(&mut self, event_loop: &ActiveEventLoop, event: KruiWinitEvent) {
         match event {
+            KruiWinitEvent::Tray(tray_ev) => {
+                let cmd = self
+                    .session
+                    .reactive_session
+                    .clone()
+                    .enter(|| self.hooks.on_tray_event(&mut self.session, &tray_ev));
+                apply_window_command_to_host(self, event_loop, cmd);
+            }
             KruiWinitEvent::WakeUi => {
                 self.session.reactive_session.enter(|| {
                     let _ = krui_signals::poll_async_tasks();
@@ -469,7 +433,13 @@ impl<H: WindowEventHooks> ApplicationHandler<KruiWinitEvent> for StandardWindowH
             adapter.process_event(win, &event);
         }
         match event {
-            WindowEvent::CloseRequested => event_loop.exit(),
+            WindowEvent::CloseRequested => {
+                let cmd = resolve_close_request_command(
+                    self.options.close_behavior,
+                    self.tray_host.is_some(),
+                );
+                apply_window_command_to_host(self, event_loop, cmd);
+            }
             WindowEvent::Resized(size) => {
                 self.apply_resize(size.width, size.height);
                 self.sync_and_redraw();

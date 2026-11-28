@@ -29,10 +29,13 @@ impl MultiWindowRunner {
     fn spawn_pending_windows(&mut self, event_loop: &ActiveEventLoop) {
         let specs = std::mem::take(&mut self.app.pending_specs);
         for spec in specs {
-            let attrs = Window::default_attributes()
+            let mut attrs = Window::default_attributes()
                 .with_title(&spec.title)
                 .with_visible(false)
                 .with_inner_size(LogicalSize::new(spec.width, spec.height));
+            if let Some(win_icon) = spec.icon.as_ref().and_then(|i| i.to_winit_icon()) {
+                attrs = attrs.with_window_icon(Some(win_icon));
+            }
             let Ok(win) = event_loop.create_window(attrs) else {
                 continue;
             };

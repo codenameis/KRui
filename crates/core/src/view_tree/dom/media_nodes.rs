@@ -6,10 +6,14 @@ use crate::view_tree::form_submit::trigger_button_form_action;
 use crate::view_tree::grapheme::sync_node_text_context;
 use crate::view_tree::{A11yId, NodeId, ViewTree, ViewTreeInner};
 use krui_a11y::SemanticRole;
-use krui_signals::{batch, spawn_tokio_task, tokio_handle, Effect, Scope};
+use krui_signals::{batch, Effect, Scope};
+#[cfg(not(target_arch = "wasm32"))]
+use krui_signals::{spawn_tokio_task, tokio_handle};
 use krui_style::{sanitize_untrusted_text, Color};
 use std::path::{Path, PathBuf};
-use std::rc::{Rc, Weak};
+use std::rc::Rc;
+#[cfg(not(target_arch = "wasm32"))]
+use std::rc::Weak;
 use std::sync::Arc;
 
 /// Maximum encoded image file size (`64 MiB`) read from disk.
@@ -167,7 +171,10 @@ impl ViewTree {
             };
             let trimmed = raw_src.trim().to_string();
             let resolved = resolve_asset_path(&trimmed, base_dir.as_deref());
+            #[cfg(not(target_arch = "wasm32"))]
             schedule_dynamic_image_load(&rc, &tree_weak, node_id, trimmed, resolved);
+            #[cfg(target_arch = "wasm32")]
+            schedule_dynamic_image_load(&rc, node_id, trimmed, resolved);
         });
         self.inner.borrow_mut().push_effect(node_id, effect);
     }
@@ -283,7 +290,7 @@ impl ViewTree {
 
 fn schedule_dynamic_image_load(
     rc: &Rc<std::cell::RefCell<ViewTreeInner>>,
-    tree_weak: &Weak<std::cell::RefCell<ViewTreeInner>>,
+    #[cfg(not(target_arch = "wasm32"))] tree_weak: &Weak<std::cell::RefCell<ViewTreeInner>>,
     node_id: NodeId,
     trimmed: String,
     resolved: PathBuf,
@@ -322,6 +329,24 @@ fn schedule_dynamic_image_load(
     let Some((load_scope, req_seq)) = maybe_spawn else {
         return;
     };
+    spawn_disk_image_load(
+        #[cfg(not(target_arch = "wasm32"))]
+        tree_weak,
+        load_scope,
+        node_id,
+        req_seq,
+        resolved,
+    );
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn_disk_image_load(
+    tree_weak: &Weak<std::cell::RefCell<ViewTreeInner>>,
+    load_scope: Scope,
+    node_id: NodeId,
+    req_seq: u64,
+    resolved: PathBuf,
+) {
     let weak_done = tree_weak.clone();
     load_scope.run(move || {
         let _handle = spawn_tokio_task(
@@ -337,6 +362,12 @@ fn schedule_dynamic_image_load(
     });
 }
 
+#[cfg(target_arch = "wasm32")]
+fn spawn_disk_image_load(load_scope: Scope, _node_id: NodeId, _req_seq: u64, _resolved: PathBuf) {
+    load_scope.dispose();
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn apply_async_image_result(
     weak_tree: &Weak<std::cell::RefCell<ViewTreeInner>>,
     node_id: NodeId,

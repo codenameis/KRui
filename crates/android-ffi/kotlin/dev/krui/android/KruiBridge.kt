@@ -36,6 +36,15 @@ object KruiBridge {
     private const val TEXT_OP_COMMIT: Int = 1
     private const val TEXT_OP_CONNECT_PREVIEW: Int = 2
 
+    private const val WIDGET_OP_CREATE: Int = 0
+    private const val WIDGET_OP_DESTROY: Int = 1
+    private const val WIDGET_OP_RESIZE: Int = 2
+    private const val WIDGET_OP_RENDER: Int = 3
+    private const val WIDGET_OP_DISPATCH_ACTION: Int = 4
+    private const val WIDGET_OP_GET_SIZE: Int = 5
+    private const val WIDGET_OP_GET_HOTSPOT_COUNT: Int = 6
+    private const val WIDGET_OP_GET_REVISION: Int = 7
+
     @JvmStatic
     private external fun nativeSessionOp(
         op: Int,
@@ -79,6 +88,23 @@ object KruiBridge {
     external fun nativeCopyFramebuffer(
         sessionId: Long,
         outArgb: IntArray,
+    ): Boolean
+
+    @JvmStatic
+    private external fun nativeWidgetOp(
+        op: Int,
+        widgetId: Long,
+        a: Int,
+        b: Int,
+        scale: Float,
+        flag: Boolean,
+    ): Long
+
+    @JvmStatic
+    private external fun nativeCopyWidgetData(
+        widgetId: Long,
+        isHotspots: Boolean,
+        outInts: IntArray,
     ): Boolean
 
     @JvmStatic
@@ -197,4 +223,54 @@ object KruiBridge {
     @JvmStatic
     fun nativeConnectPreview(sessionId: Long, addr: String): Boolean =
         nativeTextOp(TEXT_OP_CONNECT_PREVIEW, sessionId, addr, 0)
+
+    @JvmStatic
+    fun nativeCreateWidget(
+        widthPx: Int,
+        heightPx: Int,
+        scaleFactor: Float,
+        darkMode: Boolean,
+    ): Long = nativeWidgetOp(WIDGET_OP_CREATE, 0L, widthPx, heightPx, scaleFactor, darkMode)
+
+    @JvmStatic
+    fun nativeDestroyWidget(widgetId: Long) {
+        nativeWidgetOp(WIDGET_OP_DESTROY, widgetId, 0, 0, 0f, false)
+    }
+
+    @JvmStatic
+    fun nativeResizeWidget(
+        widgetId: Long,
+        widthPx: Int,
+        heightPx: Int,
+        scaleFactor: Float,
+        darkMode: Boolean,
+    ): Boolean = nativeWidgetOp(WIDGET_OP_RESIZE, widgetId, widthPx, heightPx, scaleFactor, darkMode) != 0L
+
+    @JvmStatic
+    fun nativeRenderWidget(widgetId: Long): Boolean =
+        nativeWidgetOp(WIDGET_OP_RENDER, widgetId, 0, 0, 0f, false) != 0L
+
+    @JvmStatic
+    fun nativeDispatchWidgetAction(widgetId: Long, actionId: Int): Boolean =
+        nativeWidgetOp(WIDGET_OP_DISPATCH_ACTION, widgetId, actionId, 0, 0f, false) != 0L
+
+    @JvmStatic
+    fun nativeGetWidgetSize(widgetId: Long): Long =
+        nativeWidgetOp(WIDGET_OP_GET_SIZE, widgetId, 0, 0, 0f, false)
+
+    @JvmStatic
+    fun nativeGetWidgetHotspotCount(widgetId: Long): Int =
+        nativeWidgetOp(WIDGET_OP_GET_HOTSPOT_COUNT, widgetId, 0, 0, 0f, false).toInt()
+
+    @JvmStatic
+    fun nativeGetWidgetRevision(widgetId: Long): Long =
+        nativeWidgetOp(WIDGET_OP_GET_REVISION, widgetId, 0, 0, 0f, false)
+
+    @JvmStatic
+    fun nativeCopyWidgetPixels(widgetId: Long, outArgb: IntArray): Boolean =
+        nativeCopyWidgetData(widgetId, false, outArgb)
+
+    @JvmStatic
+    fun nativeCopyWidgetHotspots(widgetId: Long, outPacked5: IntArray): Boolean =
+        nativeCopyWidgetData(widgetId, true, outPacked5)
 }

@@ -308,6 +308,7 @@ impl ReactiveRuntime {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn register_scope_cleanup(
     scope_id: ScopeId,
     active_flag: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,

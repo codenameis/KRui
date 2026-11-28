@@ -93,20 +93,24 @@ fn blit_translated_glyphs(
     glyphs: &[RasterizedGlyph],
 ) {
     for g in glyphs {
+        if g.width == 0 || g.height == 0 {
+            continue;
+        }
         let gx = ((params.origin_x + params.transform.tx + g.x) * params.scale).round() as i32;
         let gy = ((params.origin_y + params.transform.ty + g.y) * params.scale).round() as i32;
-        for row in 0..g.height as i32 {
+        let row_start = (clip_y0 - gy).max(0).min(g.height as i32);
+        let row_end = (clip_y1 - gy).max(0).min(g.height as i32);
+        let col_start = (clip_x0 - gx).max(0).min(g.width as i32);
+        let col_end = (clip_x1 - gx).max(0).min(g.width as i32);
+        if row_start >= row_end || col_start >= col_end {
+            continue;
+        }
+        for row in row_start..row_end {
             let py = gy + row;
-            if py < clip_y0 || py >= clip_y1 {
-                continue;
-            }
-            for col in 0..g.width as i32 {
-                let px = gx + col;
-                if px < clip_x0 || px >= clip_x1 {
-                    continue;
-                }
-                let idx = (row as u32 * g.width + col as u32) as usize;
-                blend_clipped_glyph_px(pixels, pw, px, py, g, idx, params);
+            let row_base = (row as u32 * g.width) as usize;
+            for col in col_start..col_end {
+                let idx = row_base + col as usize;
+                blend_clipped_glyph_px(pixels, pw, gx + col, py, g, idx, params);
             }
         }
     }
@@ -177,17 +181,25 @@ fn blend_clipped_glyph_px(
     }
 }
 
+#[inline]
 fn blend_premultiplied_rgba(dst: &mut [u8], src: Color, alpha: f32) {
-    let (sa, da) = (alpha.clamp(0.0, 1.0), dst[3] as f32);
-    let inv_sa = 1.0 - sa;
-    dst[0] = (src.r as f32 * sa + dst[0] as f32 * inv_sa)
-        .round()
-        .clamp(0.0, 255.0) as u8;
-    dst[1] = (src.g as f32 * sa + dst[1] as f32 * inv_sa)
-        .round()
-        .clamp(0.0, 255.0) as u8;
-    dst[2] = (src.b as f32 * sa + dst[2] as f32 * inv_sa)
-        .round()
-        .clamp(0.0, 255.0) as u8;
-    dst[3] = (sa * 255.0 + da * inv_sa).round().clamp(0.0, 255.0) as u8;
+    let sa_u8 = (alpha.clamp(0.0, 1.0) * 255.0 + 0.5) as u32;
+    if sa_u8 == 0 {
+        return;
+    }
+    if sa_u8 == 255 {
+        dst[0] = src.r;
+        dst[1] = src.g;
+        dst[2] = src.b;
+        dst[3] = 255;
+        return;
+    }
+    let inv = 255 - sa_u8;
+    dst[0] =
+        (((src.r as u32 * sa_u8 + 127) / 255) + ((dst[0] as u32 * inv + 127) / 255)).min(255) as u8;
+    dst[1] =
+        (((src.g as u32 * sa_u8 + 127) / 255) + ((dst[1] as u32 * inv + 127) / 255)).min(255) as u8;
+    dst[2] =
+        (((src.b as u32 * sa_u8 + 127) / 255) + ((dst[2] as u32 * inv + 127) / 255)).min(255) as u8;
+    dst[3] = (sa_u8 + ((dst[3] as u32 * inv + 127) / 255)).min(255) as u8;
 }

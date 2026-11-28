@@ -401,6 +401,17 @@ pub(crate) fn verify_gallery_interactions(
     verify_wave4_specs_and_subroutes(session, controller);
     verify_develop_canvas_studio(session, controller);
     verify_develop_3d_viewport(session, controller);
+    click_id(session, "rail-tray-btn");
+    assert!(controller.tray_hide_requested.get_untracked());
+    assert_eq!(
+        super::desktop_tray::take_gallery_window_command(controller, session),
+        WindowCommand::HideToTray
+    );
+    assert!(!controller.tray_hide_requested.get_untracked());
+    assert_eq!(
+        super::desktop_tray::take_gallery_window_command(controller, session),
+        WindowCommand::None
+    );
     controller.clear_search();
     switch_page(session, controller, 0);
     println!("[component_gallery] Gate 5 (Interactive controls, Switch thumb, Slider, Radio, Progress, Drawer, Clipboard, Scrim, Search, Wave 4 Specs/Subroutes, Develop 2D/3D Studio): all verified");

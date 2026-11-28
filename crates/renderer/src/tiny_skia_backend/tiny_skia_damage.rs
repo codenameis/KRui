@@ -1,6 +1,6 @@
 //! Sub-rectangle clipped partial CPU rasterization (`render_scene_damaged`) for `TinySkiaRenderer`.
 
-use super::tiny_skia_filter::step_layer_op_skia;
+use super::tiny_skia_filter::{record_offscreen_prim_bounds, step_layer_op_skia};
 use super::tiny_skia_shapes::to_skia_color;
 use super::{render_primitive_skia, SkiaRenderCaches, TinySkiaRenderer};
 use crate::RendererBackend;
@@ -123,6 +123,7 @@ impl TinySkiaRenderer {
                 scale_tx,
                 inline_op,
             );
+            record_offscreen_prim_bounds(&mut stack, clipped, scale, vp);
             verts += v;
             idx += i;
         }

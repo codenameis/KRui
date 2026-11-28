@@ -31,21 +31,23 @@ pub use widgets::{
 
 pub use krui_a11y::{A11yNodeDescriptor, AccessibilityEngine, SemanticRole};
 pub use krui_core::{
-    caret_rect, key_name_for_keydown, next_spatial_focus, prevent_default_key,
-    prevent_default_wheel, route_key, route_key_with_repeat, utf16_to_utf8_offset,
-    utf16_to_utf8_range, utf8_to_utf16_offset, utf8_to_utf16_range, validate_external_file_path,
-    A11yId, ActiveBackendKind, BranchMountFn, ButtonKind, CalibrationPair, CanvasCommand,
-    CanvasContext2D, CanvasDraw, CanvasFillRule, CanvasGradient, CanvasGradientStop, CanvasLineCap,
-    CanvasLineJoin, CanvasRedrawMode, CanvasTextAlign, ClickBinding, ClickTarget, DecodedImage,
-    DrawPrimitive, DynamicSlotBuffer, DynamicSlotOverride, EditingState, EditorActionKind,
-    ExtensibleEvent, ExternalTextureId, FocusOrigin, FocusState, FocusableCandidate,
-    FrameRenderStats, GpuResourceLimits, Hangul2BulsikAutomaton, HangulStep, HoveredCursorKind,
-    ImageId, ImageSource, ImeEvent, ImeState, InputKind, InputTarget, KeyAction, KeyInfo,
-    KeydownOutcome, Mods, NodeId, PaintScene, PaintScenePool, PathSegment, PointerButton,
+    caret_rect, collect_widget_hotspots, key_name_for_keydown, next_spatial_focus,
+    prevent_default_key, prevent_default_wheel, route_key, route_key_with_repeat,
+    utf16_to_utf8_offset, utf16_to_utf8_range, utf8_to_utf16_offset, utf8_to_utf16_range,
+    validate_external_file_path, A11yId, ActiveBackendKind, BranchMountFn, ButtonKind,
+    CalibrationPair, CanvasCommand, CanvasContext2D, CanvasDraw, CanvasFillRule, CanvasGradient,
+    CanvasGradientStop, CanvasLineCap, CanvasLineJoin, CanvasRedrawMode, CanvasTextAlign,
+    ClickBinding, ClickTarget, DecodedImage, DrawPrimitive, DynamicSlotBuffer, DynamicSlotOverride,
+    EditingState, EditorActionKind, ExtensibleEvent, ExternalTextureId, FocusOrigin, FocusState,
+    FocusableCandidate, FrameRenderStats, GpuResourceLimits, Hangul2BulsikAutomaton, HangulStep,
+    HoveredCursorKind, ImageId, ImageSource, ImeEvent, ImeState, InputKind, InputTarget, KeyAction,
+    KeyInfo, KeydownOutcome, Mods, NodeId, PaintScene, PaintScenePool, PathSegment, PointerButton,
     PointerEvent, PointerHandler, PointerTarget, RenderBackendPreference, Size,
     SpatialNavDirection, SvgColor, SvgVectorOp, SvgVectorTemplate, TextEditSnapshot, TextInputHost,
     TouchCalibrationMatrix, TouchPhaseKind, ViewFragment, ViewTree, ViewportInsets, WheelEvent,
-    WheelHandler, WheelTarget, A11Y_ID_OFFSET, TOUCH_SLOP_PX,
+    WheelHandler, WheelTarget, WidgetActionBinding, WidgetHotspot, WidgetRenderConfig,
+    WidgetSizeClass, WidgetSnapshot, A11Y_ID_OFFSET, MAX_WIDGET_EDGE_PX, MAX_WIDGET_SCALE,
+    MIN_WIDGET_SCALE, TOUCH_SLOP_PX,
 };
 #[cfg(feature = "preview")]
 pub use krui_core::{
@@ -71,14 +73,18 @@ pub use krui_renderer::{
 #[cfg(not(feature = "desktop"))]
 pub use krui_renderer::{AdaptiveRenderer, RendererBackend, TinySkiaRenderer};
 pub use krui_signals::{
-    batch, current_runtime_id, current_wake_handle, debug_stats, init_async_runtime_mode,
-    poll_async_tasks, register_async_poller, reset_reactive_runtime, set_ui_waker,
-    spawn_tokio_interval, spawn_tokio_stream, spawn_tokio_task, spawn_tokio_task_with_status,
-    step_analytical_spring, tokio_handle, tokio_runtime, total_subscriber_executions, untracked,
-    wake_ui_loop, AsyncRuntimeMode, AsyncTaskHandle, Computed, ComputedId, Effect, EffectId,
+    batch, current_runtime_id, current_wake_handle, debug_stats, poll_async_tasks,
+    register_async_poller, reset_reactive_runtime, set_ui_waker, step_analytical_spring,
+    total_subscriber_executions, untracked, wake_ui_loop, Computed, ComputedId, Effect, EffectId,
     FastPathTransform, FrameClock, FrameTick, IntoKruiTemplateScalar, KruiBoolCondition,
     KruiIterableSource, KruiLoopItem, KruiTemplateScalar, ReactiveSession, RuntimeId, RuntimeStats,
-    Scope, ScopeId, SessionWakeHandle, Signal, SignalId, StreamSink, SubscriberId, UiWaker,
+    Scope, ScopeId, SessionWakeHandle, Signal, SignalId, SubscriberId, UiWaker,
+};
+#[cfg(not(target_arch = "wasm32"))]
+pub use krui_signals::{
+    init_async_runtime_mode, spawn_tokio_interval, spawn_tokio_stream, spawn_tokio_task,
+    spawn_tokio_task_with_status, tokio_handle, tokio_runtime, AsyncRuntimeMode, AsyncTaskHandle,
+    StreamSink,
 };
 pub use krui_style::{
     is_bidi_control_char, sanitize_untrusted_text, Affine2, AlignItems, AnimationDirection,
@@ -101,14 +107,18 @@ pub use krui_winit::preview;
 pub use krui_winit::preview as dev_hot_reload;
 #[cfg(feature = "desktop")]
 pub use krui_winit::{
-    apply_key_action, compute_idle_control_flow, compute_window_idle_control_flow,
-    get_clipboard_text, ime_event_from_winit, is_dev_hot_reload_enabled, key_info_from_logical_key,
-    key_info_from_winit, pack_premultiplied_rgba_to_softbuffer_u32, run_app_window,
-    run_app_window_with_hooks, set_clipboard_text, sync_window_ime_cursor_area,
-    touch_phase_from_winit, EngineSession, FrameTelemetry, KruiMultiWindowEvent, KruiWinitEvent,
-    MultiWindowApp, SoftbufferPresenter, WindowEventHooks, WindowSpec, WinitTextInputHost,
+    apply_key_action, compute_idle_control_flow, compute_tray_aware_idle_control_flow,
+    compute_window_idle_control_flow, get_clipboard_text, ime_event_from_winit,
+    is_dev_hot_reload_enabled, key_info_from_logical_key, key_info_from_winit,
+    pack_premultiplied_rgba_to_softbuffer_u32, resolve_close_request_command, run_app_window,
+    run_app_window_with_hooks, run_app_window_with_options, set_clipboard_text,
+    sync_window_ime_cursor_area, touch_phase_from_winit, AppIcon, AppIconError, CloseBehavior,
+    EngineSession, FrameTelemetry, KruiMultiWindowEvent, KruiWinitEvent, MultiWindowApp,
+    SoftbufferPresenter, TrayClickButton, TrayConfig, TrayEvent, TrayIdleState, TrayMenuItem,
+    WindowCommand, WindowEventHooks, WindowOptions, WindowSpec, WinitTextInputHost,
     CARET_BLINK_IDLE_TIMEOUT, FRAME_PACE_120HZ,
 };
+#[cfg(not(target_arch = "wasm32"))]
 pub use tokio;
 
 /// Two-way `bind:value` conversion helper supporting `Signal<String>` as well as numeric/bool `Signal<T>`.
@@ -198,5 +208,6 @@ pub mod __private {
     pub use krui_text as text;
     #[cfg(feature = "desktop")]
     pub use krui_winit as winit;
+    #[cfg(not(target_arch = "wasm32"))]
     pub use tokio;
 }

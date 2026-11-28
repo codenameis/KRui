@@ -18,13 +18,15 @@ pub const FRAME_PACE_120HZ: Duration = Duration::from_micros(8_333);
 pub const CARET_BLINK_IDLE_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Custom user event envelope dispatched into `EventLoop::<KruiWinitEvent>` from background
-/// `UiWaker` threads, live-preview file watchers, and `accesskit_winit::Adapter`.
+/// `UiWaker` threads, live-preview file watchers, system tray callbacks, and `accesskit_winit::Adapter`.
 #[derive(Debug)]
 pub enum KruiWinitEvent {
     /// Wakes the UI thread to drain completed background tasks (`poll_async_tasks`) and request redraw.
     WakeUi,
     /// Accessibility activation, action request, or deactivation event forwarded by `accesskit_winit`.
     AccessKit(accesskit_winit::Event),
+    /// Native system tray icon click or context-menu activation.
+    Tray(crate::tray::TrayEvent),
 }
 
 impl From<accesskit_winit::Event> for KruiWinitEvent {
@@ -184,6 +186,20 @@ pub trait WindowEventHooks {
         _reload_count: u64,
     ) -> Option<String> {
         None
+    }
+
+    /// Invoked when the system tray icon is clicked or a native tray menu item is activated.
+    fn on_tray_event(
+        &mut self,
+        _session: &mut EngineSession,
+        _event: &crate::tray::TrayEvent,
+    ) -> crate::tray::WindowCommand {
+        crate::tray::WindowCommand::None
+    }
+
+    /// Polled on event-loop turns to execute UI-initiated window or tray commands.
+    fn take_window_command(&mut self, _session: &mut EngineSession) -> crate::tray::WindowCommand {
+        crate::tray::WindowCommand::None
     }
 }
 

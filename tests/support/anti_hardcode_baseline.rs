@@ -89,6 +89,6 @@ pub(super) const LEGACY_RUNTIME_HARDCODE_BASELINE: &[&str] = &[
     "crates/winit/src/embed_panel_input.rs|key_info_from_panel_key|match_str|PageUp",
     "crates/winit/src/embed_panel_input.rs|key_info_from_panel_key|match_str|Spacebar",
     "crates/winit/src/embed_panel_input.rs|key_info_from_panel_key|match_str|Tab",
+    "crates/winit/src/launch.rs|run_app_window_with_options|str_cmp|--headless",
     "crates/winit/src/window_loop.rs|apply_hook_effect|str_cmp|__force_reload__",
-    "crates/winit/src/window_loop.rs|run_app_window_with_hooks|str_cmp|--headless",
 ];

@@ -39,6 +39,7 @@ fn finish_gallery_init(b: GalleryInitBundle, scheme: SchemePair) -> GalleryContr
         color_scheme_mode: scheme.0,
         color_scheme_label: scheme.1,
         animations_paused: Signal::new(false),
+        tray_hide_requested: Signal::new(false),
         theme_index: b.thm,
         theme_slug: b.s.theme_slug,
         theme_name: Signal::new("Material 3".to_string()),
@@ -147,7 +148,7 @@ impl GalleryController {
         let json = format!(
             r#"{{"theme":"{name}","data_theme":"{slug}","color_scheme":"{scheme}","reduced_motion":{motion},"shape_spec":"{spec}"}}"#
         );
-        set_clipboard_text(&json);
+        copy_theme_json_to_clipboard(&json);
         let this = self.clone();
         batch(move || {
             this.bottom_sheet_open.set(false);
@@ -195,4 +196,11 @@ impl GalleryController {
             this.status_banner.set(format!("서랍 탐색 이동: {label}"));
         });
     }
+}
+
+fn copy_theme_json_to_clipboard(json: &str) {
+    #[cfg(feature = "desktop")]
+    set_clipboard_text(json);
+    #[cfg(not(feature = "desktop"))]
+    let _ = json;
 }

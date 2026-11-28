@@ -2,9 +2,11 @@
 //! `IntoCanExecute`, `FromAppState`, and `AppStateExt`.
 
 use krui_core::{ClickTarget, InputTarget, PointerEvent, PointerTarget, WheelEvent, WheelTarget};
+#[cfg(not(target_arch = "wasm32"))]
+use krui_signals::Scope;
 use krui_signals::{
     batch, poll_async_tasks, register_async_poller_with_retention, Computed, ReactiveSession,
-    Scope, Signal,
+    Signal,
 };
 use std::rc::Rc;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -145,6 +147,7 @@ impl Command {
     ///
     /// Automatically exposes a reactive `is_running` `Signal<bool>`, prevents concurrent
     /// re-invocation, runs `on_done` on the UI thread, and cleans up via `Drop` guards on cancel/panic.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn from_future<Fut, T, MakeFut, OnDone>(future_factory: MakeFut, on_done: OnDone) -> Self
     where
         T: Send + 'static,

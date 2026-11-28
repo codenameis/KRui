@@ -11,6 +11,8 @@
 
 #[path = "../examples/component_gallery/controller/mod.rs"]
 mod controller;
+#[path = "../examples/component_gallery/desktop_tray.rs"]
+mod desktop_tray;
 #[path = "../examples/component_gallery/geometry_gates.rs"]
 mod geometry_gates;
 #[path = "../examples/component_gallery/interaction_gates.rs"]

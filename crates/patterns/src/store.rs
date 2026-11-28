@@ -2,16 +2,18 @@
 
 use crate::mvvm::{Command, InputCommand};
 use krui_signals::{
-    batch, current_wake_handle, poll_async_tasks, register_async_poller_with_retention,
-    spawn_tokio_stream, spawn_tokio_task_with_status, Computed, ReactiveSession, Scope,
-    SessionWakeHandle, Signal, StreamSink,
+    batch, current_wake_handle, poll_async_tasks, register_async_poller_with_retention, Computed,
+    ReactiveSession, SessionWakeHandle, Signal,
 };
+#[cfg(not(target_arch = "wasm32"))]
+use krui_signals::{spawn_tokio_stream, spawn_tokio_task_with_status, Scope, StreamSink};
 use std::cell::Cell;
 #[cfg(feature = "preview")]
 use std::cell::RefCell;
 #[cfg(feature = "preview")]
 use std::collections::HashMap;
 use std::collections::VecDeque;
+#[cfg(not(target_arch = "wasm32"))]
 use std::future::Future;
 use std::rc::Rc;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -20,12 +22,14 @@ use std::sync::{Arc, Mutex};
 /// Completion callback passed to `Effects::task(|done| { ... done(msg); })`.
 pub type EffectDoneCallback<Msg> = Box<dyn FnOnce(Msg) + Send + 'static>;
 
+#[cfg(not(target_arch = "wasm32"))]
 pub(crate) type FutureEffectSpawner<Msg> =
     Box<dyn FnOnce(Arc<Mutex<VecDeque<Msg>>>, Arc<AtomicUsize>, Rc<dyn Fn()>) + 'static>;
 
 pub(crate) enum EffectItem<Msg> {
     Immediate(Msg),
     Task(Box<dyn FnOnce(EffectDoneCallback<Msg>) + 'static>),
+    #[cfg(not(target_arch = "wasm32"))]
     Future(FutureEffectSpawner<Msg>),
 }
 
@@ -80,14 +84,17 @@ impl<Msg: 'static> Effects<Msg> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 struct DecInFlightOnDrop(Arc<AtomicUsize>);
 
+#[cfg(not(target_arch = "wasm32"))]
 impl Drop for DecInFlightOnDrop {
     fn drop(&mut self) {
         self.0.fetch_sub(1, Ordering::AcqRel);
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<Msg: Send + 'static> Effects<Msg> {
     /// Schedules a `tokio` future yielding `Msg` directly back to this store on completion.
     pub fn future<F>(future: F) -> Self
@@ -161,6 +168,7 @@ type StoreUpdateFn<State, Msg> = Box<dyn Fn(&mut State, Msg) -> Effects<Msg>>;
 
 pub(crate) struct StoreInner<State: Clone + 'static, Msg: Clone + Send + 'static> {
     pub(crate) owner_session: ReactiveSession,
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) owner_scope: Scope,
     pub(crate) state: Signal<State>,
     update: StoreUpdateFn<State, Msg>,
@@ -226,6 +234,7 @@ impl<State: Clone + 'static, Msg: Clone + Send + 'static> StoreInner<State, Msg>
                         }
                     }));
                 }
+                #[cfg(not(target_arch = "wasm32"))]
                 EffectItem::Future(runner) => {
                     if !krui_signals::is_scope_alive(self.owner_scope.id()) {
                         continue;
@@ -273,6 +282,7 @@ impl<State: Clone + 'static, Msg: Clone + Send + 'static> Store<State, Msg> {
     ) -> Self {
         let inner = Rc::new(StoreInner {
             owner_session: ReactiveSession::current(),
+            #[cfg(not(target_arch = "wasm32"))]
             owner_scope: Scope::current(),
             state: Signal::new(initial_state),
             update: Box::new(update),

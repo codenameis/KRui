@@ -315,23 +315,17 @@ impl WgpuFrameResources {
             limits,
         );
         let skipped = scene.primitives.len().saturating_sub(max_cmds);
-        let mut initialized = vec![false; 1 + max_depth];
+        let mut initialized_buf = [false; 1 + MAX_LAYER_POOL_DEPTH];
+        let initialized = &mut initialized_buf[..=max_depth];
         let mut stats = RecordCounters {
             clamped: skipped,
             verts: 0,
             indices: 0,
         };
         self.segment.clear();
-        self.record_primitives(
-            &scene.primitives[..max_cmds],
-            &env,
-            &mut initialized,
-            &mut stats,
-        );
+        self.record_primitives(&scene.primitives[..max_cmds], &env, initialized, &mut stats);
         if !initialized[0] && root_clear.is_some() {
-            let _ = self
-                .segment
-                .ensure_draw_pass(0, &mut initialized, root_clear);
+            let _ = self.segment.ensure_draw_pass(0, initialized, root_clear);
         }
         submit_recorded_segment(self, ctx, out_view, out_format, vp_size, use_sc, true);
         self.layer_pool.trim_idle(IDLE_LAYER_POOL_CAP);

@@ -1,5 +1,5 @@
 //! Safe JNI + Kotlin host bridge and lifecycle controller for KRui on Android (`#![deny(unsafe_code)]`,
-//! with 5 `#[no_mangle]` C-ABI export attributes in `jni_entrypoints` and zero `unsafe {}` blocks).
+//! with 7 `#[no_mangle]` C-ABI export attributes in `jni_entrypoints` and zero `unsafe {}` blocks).
 
 #![deny(unsafe_code)]
 
@@ -8,6 +8,7 @@ pub mod jni_entrypoints;
 pub mod preview_client;
 pub mod session;
 pub mod wear_host;
+pub mod widget_host;
 
 pub use ime_bridge::{
     composing_cursor_bytes, compute_utf8_delete_surrounding, editor_action_from_android_code,
@@ -19,3 +20,8 @@ pub use session::{
     with_registered_session, AndroidSession,
 };
 pub use wear_host::{WearDisplayMode, WearHostConfig, WearHostState, WearRenderBackend};
+pub use widget_host::{
+    create_registered_widget_host, destroy_registered_widget_host, register_widget_host,
+    with_registered_widget_host, AndroidWidgetHost, WidgetActionHandler, WIDGET_ACTION_INCREMENT,
+    WIDGET_ACTION_RESET,
+};

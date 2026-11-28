@@ -1,5 +1,6 @@
 //! Shared-GPU multi-window host (`MultiWindowApp`, `WindowSpec`) with isolated per-window `ReactiveSession`s.
 
+use crate::app_icon::AppIcon;
 use crate::ime_adapter::{sync_window_ime_cursor_area_cached, WinitImeStateCache};
 use crate::multi_window_runner::MultiWindowRunner;
 use crate::session::EngineSession;
@@ -51,6 +52,8 @@ pub struct WindowSpec {
     pub width: u32,
     /// Initial logical height in pixels.
     pub height: u32,
+    /// Optional native taskbar/titlebar icon for this window.
+    pub icon: Option<AppIcon>,
     pub(crate) build: Box<dyn FnOnce(&mut EngineSession)>,
 }
 
@@ -66,8 +69,15 @@ impl WindowSpec {
             title: title.into(),
             width: width.max(1),
             height: height.max(1),
+            icon: None,
             build: Box::new(build),
         }
+    }
+
+    /// Attaches a native window/taskbar icon to this [`WindowSpec`].
+    pub fn with_icon(mut self, icon: AppIcon) -> Self {
+        self.icon = Some(icon);
+        self
     }
 }
 

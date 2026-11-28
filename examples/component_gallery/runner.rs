@@ -15,17 +15,19 @@ struct GalleryWindowHooks {
     applied_dark_mode: bool,
     applied_scheme_mode: i32,
     applied_anim_paused: bool,
+    hide_on_close: bool,
     host_3d: Option<crate::viewport3d::Gallery3dHost>,
     last_3d_mode: Option<i32>,
 }
 
 impl GalleryWindowHooks {
-    fn new(controller: GalleryController) -> Self {
+    fn new(controller: GalleryController, hide_on_close: bool) -> Self {
         Self {
             applied_theme_idx: controller.theme_index.get_untracked(),
             applied_dark_mode: controller.dark_mode.get_untracked(),
             applied_scheme_mode: controller.color_scheme_mode.get_untracked(),
             applied_anim_paused: controller.animations_paused.get_untracked(),
+            hide_on_close,
             controller,
             host_3d: None,
             last_3d_mode: None,
@@ -170,6 +172,19 @@ impl WindowEventHooks for GalleryWindowHooks {
             .enter(|| ctrl.select_theme(idx));
         self.applied_theme_idx = idx;
         Some(None)
+    }
+
+    fn on_tray_event(&mut self, session: &mut EngineSession, ev: &TrayEvent) -> WindowCommand {
+        super::desktop_tray::handle_gallery_tray_event(
+            &self.controller,
+            &mut self.hide_on_close,
+            session,
+            ev,
+        )
+    }
+
+    fn take_window_command(&mut self, session: &mut EngineSession) -> WindowCommand {
+        super::desktop_tray::take_gallery_window_command(&self.controller, session)
     }
 }
 
@@ -515,32 +530,20 @@ fn run_headless_verification() {
 
 pub(crate) fn run_cli() {
     let args: Vec<String> = std::env::args().collect();
-    if let Some(path) = args
-        .iter()
-        .position(|a| a == "--snapshot")
-        .and_then(|idx| args.get(idx + 1))
-    {
-        screenshots::dump_single_snapshot(std::path::Path::new(path));
+    if let Some(i) = args.iter().position(|a| a == "--snapshot") {
+        if let Some(p) = args.get(i + 1) {
+            screenshots::dump_single_snapshot(std::path::Path::new(p));
+        }
         return;
     }
-    if let Some(pos) = args.iter().position(|a| a == "--screenshots") {
-        let dir = args
-            .get(pos + 1)
-            .map(std::path::PathBuf::from)
-            .unwrap_or_else(|| std::path::PathBuf::from("screenshots"));
-        screenshots::dump_gallery_screenshots(&dir);
-        return;
+    if let Some(i) = args.iter().position(|a| a == "--screenshots") {
+        let dir = args.get(i + 1).map_or("screenshots", String::as_str);
+        return screenshots::dump_gallery_screenshots(std::path::Path::new(dir));
     }
     if args.iter().any(|a| a == "--headless") {
-        run_headless_verification();
-        return;
+        return run_headless_verification();
     }
-    let (session, controller) = build_gallery_session(RenderBackendPreference::Auto);
-    let hooks = GalleryWindowHooks::new(controller);
-    run_app_window_with_hooks(
-        "KRui [component_gallery] — 순수 CSS 컴포넌트 갤러리 (Material 3 · Tailwind v4)",
-        session,
-        Some("examples/component_gallery/views/component_gallery.krui"),
-        hooks,
-    );
+    let (session, ctrl) = build_gallery_session(RenderBackendPreference::Auto);
+    let (opts, hide) = super::desktop_tray::build_gallery_window_options(&args, &ctrl);
+    super::desktop_tray::run_gallery_window(session, GalleryWindowHooks::new(ctrl, hide), opts);
 }

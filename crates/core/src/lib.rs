@@ -8,6 +8,7 @@
 
 #![forbid(unsafe_code)]
 
+pub mod app_widget;
 pub mod canvas_2d;
 pub mod canvas_2d_draw;
 pub mod canvas_2d_extras;
@@ -20,6 +21,10 @@ pub use crate::view_tree::static_ir;
 pub mod view_tree;
 
 pub use accesskit;
+pub use app_widget::{
+    collect_widget_hotspots, WidgetActionBinding, WidgetHotspot, WidgetRenderConfig,
+    WidgetSizeClass, WidgetSnapshot, MAX_WIDGET_EDGE_PX, MAX_WIDGET_SCALE, MIN_WIDGET_SCALE,
+};
 pub use krui_layout::LayoutRect;
 pub use media::{
     compute_object_fit_placement, DecodedImage, ExternalTextureId, ImageId, ImageSource, SvgColor,

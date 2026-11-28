@@ -13,5 +13,7 @@ Android JNI + Kotlin 호스트 브리지 크레이트입니다(`AGENTS.md` §1.1
 | `src/jni_entrypoints.rs:88` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeMotionOrInsets`) | 1 | 멀티터치(`MotionEvent`)와 `WindowInsetsCompat` 업데이트를 정수 핸들 + 원시 실수 인자만으로 안전하게 전달. |
 | `src/jni_entrypoints.rs:120` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeTextOp`) | 1 | `JString::is_null()` 검사 후 `JNIEnv::get_string` safe API만 사용하여 IME 조합/확정 및 라이브 프리뷰 주소를 전달. |
 | `src/jni_entrypoints.rs:146` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeImeRangeOp`) | 1 | UTF-16 `deleteSurroundingText` 및 `setSelection` 범위를 정수 핸들과 원시 정수 인자만으로 전달. |
-| `src/jni_entrypoints.rs:172` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeCopyFramebuffer`) | 1 | `JIntArray::is_null()` 및 길이 검사 후 `JNIEnv::set_int_array_region` safe API만 사용하여 `ARGB_8888` 프레임버퍼를 복사. |
-| **합계** | **`unsafe {}` 블록 0줄 / `#[no_mangle]` 5줄** | **5 / 10** | UniFFI 대비 추가 런타임 의존성 없이 `jni` 크레이트의 safe API만으로 `0` `unsafe {}` 블록 달성. |
+| `src/jni_entrypoints.rs:177` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeCopyFramebuffer`) | 1 | `JIntArray::is_null()` 및 길이 검사 후 `JNIEnv::set_int_array_region` safe API만 사용하여 `ARGB_8888` 프레임버퍼를 복사. |
+| `src/jni_entrypoints.rs:247` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeWidgetOp`) | 1 | 홈 화면 위젯 호스트 생성/해제/리사이즈/스냅샷 렌더링/탭 액션 디스패치를 단일 정수 핸들 심볼로 다중화 (`unsafe` 블록 0줄). |
+| `src/jni_entrypoints.rs:266` | `#[no_mangle]` (`Java_dev_krui_android_KruiBridge_nativeCopyWidgetData`) | 1 | `JIntArray::is_null()` 및 길이 검사 후 `JNIEnv::set_int_array_region`으로 `ARGB_8888` 비트맵 또는 패킹된 핫스팟 튜플을 복사. |
+| **합계** | **`unsafe {}` 블록 0줄 / `#[no_mangle]` 7줄** | **7 / 10** | UniFFI 대비 추가 런타임 의존성 없이 `jni` 크레이트의 safe API만으로 `0` `unsafe {}` 블록 달성. |

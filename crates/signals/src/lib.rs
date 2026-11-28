@@ -16,6 +16,7 @@ pub mod session_hub;
 mod signal_ops;
 mod spring;
 mod template_scalar;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod tokio_bridge;
 mod waker;
 
@@ -35,6 +36,7 @@ pub use session_hub::{
 pub use template_scalar::{
     IntoKruiTemplateScalar, KruiBoolCondition, KruiIterableSource, KruiLoopItem, KruiTemplateScalar,
 };
+#[cfg(not(target_arch = "wasm32"))]
 pub use tokio_bridge::{
     init_async_runtime_mode, spawn_tokio_interval, spawn_tokio_stream, spawn_tokio_task,
     spawn_tokio_task_with_status, tokio_handle, tokio_runtime, AsyncRuntimeMode, AsyncTaskHandle,

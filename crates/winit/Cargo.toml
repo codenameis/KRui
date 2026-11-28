@@ -8,6 +8,7 @@ description = "Desktop winit window host, event loop, arboard clipboard, EngineS
 [features]
 default = ["gpu"]
 gpu = ["krui-renderer/gpu", "dep:wgpu"]
+tray = ["dep:tray-icon"]
 preview = ["dep:krui-preview", "krui-core/preview", "krui-style/preview"]
 
 [dependencies]
@@ -20,6 +21,11 @@ krui-preview = { workspace = true, optional = true }
 accesskit = { workspace = true }
 accesskit_winit = { workspace = true }
 arboard = { workspace = true }
+image = { workspace = true }
 softbuffer = { workspace = true }
+tray-icon = { workspace = true, optional = true }
 wgpu = { workspace = true, optional = true }
 winit = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+tray-icon = { version = "0.26", default-features = false, features = ["ksni"], optional = true }

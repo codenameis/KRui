@@ -60,6 +60,20 @@ fn try_embedded_url(
     })
 }
 
+fn read_file_url_font(url_str: &str) -> Option<Arc<[u8]>> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        let parsed = url::Url::parse(url_str).ok()?;
+        let path = parsed.to_file_path().ok()?;
+        Some(Arc::from(std::fs::read(path).ok()?))
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        let _ = url_str;
+        None
+    }
+}
+
 fn resolve_url_font_source(
     url_str: &str,
     detected_format: &mut FontContainerFormat,
@@ -74,11 +88,8 @@ fn resolve_url_font_source(
         Arc::from(decode_base64(b64)?)
     } else if let Some(embedded) = try_embedded_url(url_str, resolve_embedded) {
         embedded
-    } else if let Ok(parsed) = url::Url::parse(url_str) {
-        let path = parsed.to_file_path().ok()?;
-        Arc::from(std::fs::read(path).ok()?)
     } else {
-        return None;
+        read_file_url_font(url_str)?
     };
     if is_woff2_magic(&bytes) {
         *detected_format = FontContainerFormat::Woff2;

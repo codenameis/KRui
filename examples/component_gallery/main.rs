@@ -13,6 +13,7 @@
 )]
 
 mod controller;
+mod desktop_tray;
 mod geometry_gates;
 mod interaction_gates;
 mod runner;

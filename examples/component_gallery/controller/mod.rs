@@ -57,6 +57,8 @@ pub struct GalleryController {
     pub color_scheme_label: Computed<String>,
     /// M3 모션·전환 일시정지 여부.
     pub animations_paused: Signal<bool>,
+    /// UI 버튼으로 요청된 시스템 트레이 숨김 대기 플래그.
+    pub tray_hide_requested: Signal<bool>,
     /// 활성 테마 인덱스 (`0=Material 3, 1=Tailwind v4`).
     pub theme_index: Signal<i32>,
     /// 현재 활성 순수 CSS `data-theme` 슬러그 (`"material"` 또는 `"tailwind"`).
@@ -265,6 +267,15 @@ impl GalleryController {
     /// 모션 및 컴포지터 전환 일시정지(Reduced motion)를 토글합니다.
     pub fn toggle_animations_paused(&self) {
         self.animations_paused.update(|v| *v = !*v);
+    }
+
+    /// 현재 창을 시스템 트레이로 숨기도록 윈도우 호스트에 요청합니다.
+    pub fn hide_to_tray(&self) {
+        self.tray_hide_requested.set(true);
+        self.status_banner.set(
+            "시스템 트레이로 창을 숨겼습니다. 트레이 아이콘을 눌러 다시 열 수 있습니다."
+                .to_string(),
+        );
     }
 
     /// 전역 `SearchView` 모달 오버레이를 엽니다.

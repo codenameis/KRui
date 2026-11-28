@@ -107,6 +107,9 @@
                     <IconDarkMode />
                 </if>
             </button>
+            <button id="rail-tray-btn" class="m3-scheme-pill" aria-label="시스템 트레이로 창 숨기기" onclick="{controller.hide_to_tray()}">
+                <span>Tray</span>
+            </button>
         </div>
     </div>
 
